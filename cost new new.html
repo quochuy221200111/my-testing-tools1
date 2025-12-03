@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quản Lý Chi Phí Công Tác</title>
+    <!-- Thư viện để xuất file Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: #f0f2f5;
+            --secondary-bg: #ffffff;
+            --text-color: #050505;
+            --text-secondary-color: #65676b;
+            --border-color: #ced0d4;
+            --button-bg: #e4e6eb;
+            --button-hover-bg: #d8dadf;
+            --accent-color: #1b74e4;
+            --accent-text: #ffffff;
+            --focused-border: #1b74e4;
+            --total-row-bg: #e7f3ff;
+            --danger-color: #fa383e;
+            --danger-bg: #fad2d2;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 8px;
+            font-size: 14px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        #toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: var(--primary-bg);
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .toolbar-actions button {
+            padding: 8px 12px;
+            font-size: 0.95em;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            flex-grow: 1;
+        }
+        .export-btn {
+            background-color: var(--accent-color);
+            color: var(--accent-text);
+            border-color: var(--accent-color) !important;
+        }
+        .delete-all-btn {
+            background-color: var(--danger-bg);
+            color: var(--danger-color);
+            border-color: var(--danger-color) !important;
+        }
+
+
+        .card {
+            background-color: var(--secondary-bg);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        h2, h3 {
+            margin: 0;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        h3 {
+             font-size: 1em;
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+
+        .input-group input[type="text"], .input-group input[type="number"], .input-group input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        .input-group button, .date-btn {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--button-bg);
+            cursor: pointer;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+        
+        .input-group button.add-project {
+            border-left: none;
+            border-radius: 0 4px 4px 0;
+        }
+        #projectNameInput { border-radius: 4px 0 0 4px; }
+        #inputDate { border-radius: 4px 0 0 4px; }
+        .date-btn { padding: 8px; border-left: none; }
+        .date-btn.plus { border-radius: 0 4px 4px 0; }
+        .input-group label { white-space: nowrap; margin-right: 5px; font-size: 0.95em; }
+        
+        .cost-input-wrapper {
+             display: flex;
+             align-items: center;
+             width: 100%;
+        }
+        .cost-input-wrapper input {
+            border-right: none;
+            border-radius: 4px 0 0 4px;
+            text-align: right;
+            -moz-appearance: textfield;
+        }
+        .cost-input-wrapper input::-webkit-outer-spin-button,
+        .cost-input-wrapper input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .cost-input-wrapper span {
+            padding: 8px 6px;
+            background-color: #f5f5f5;
+            border: 1px solid var(--border-color);
+            border-left: none;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.7em;
+            font-weight: 600;
+            color: var(--text-secondary-color);
+        }
+
+        .workday-group .workday-btn { min-width: 35px; text-align: center; }
+        .workday-group span { margin-left: 4px; font-size: 0.9em; color: var(--text-secondary-color); }
+
+        .main-add-button {
+            padding: 8px 12px;
+            border: none;
+            background-color: var(--button-bg);
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .main-add-button:hover { background-color: var(--button-hover-bg); }
+
+        .history-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .history-buttons button {
+            background-color: var(--button-bg);
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        .history-buttons button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        #desc-row .input-group {
+            flex-grow: 1;
+        }
+        #desc-row {
+            align-items: stretch;
+        }
+
+
+        /* --- Layout Bảng dữ liệu --- */
+        .project-display { display: flex; flex-direction: column; gap: 12px; }
+        #projectSelectorWrapper { border: 2px solid var(--focused-border); border-radius: 6px; }
+        #projectSelector {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            font-size: 1.1em;
+            font-weight: bold;
+            background-color: transparent;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007bff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22/%3E%3C/svg%3E');
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: .65em auto;
+            padding-right: 30px;
+        }
+        
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        .data-table th, .data-table td { border: 1px solid #e9e9e9; padding: 6px; text-align: left; vertical-align: middle; }
+        .data-table th { background-color: #f7f7f7; font-weight: 500; }
+        .data-table td:nth-child(3), .data-table td:nth-child(4) { text-align: right; }
+        .data-table td.workday-value { text-align: center; }
+
+        /* Style cho các ô có thể chỉnh sửa */
+        .data-table td[contenteditable="true"] {
+            background-color: #fef9e7;
+            cursor: cell;
+        }
+        .data-table td[contenteditable="true"]:focus {
+            background-color: #eaf2f8;
+            outline: 2px solid var(--focused-border);
+        }
+
+
+        .total-row td, .total-workday-row td { font-weight: bold; background-color: var(--total-row-bg); }
+        .workday-header th { text-align: center; background-color: var(--button-bg); font-weight: bold; padding: 8px; }
+        
+        .delete-btn { background: none; border: none; color: var(--danger-color); font-weight: bold; font-size: 1.2em; cursor: pointer; padding: 0 5px; line-height: 1; }
+        td.actions { text-align: center !important; width: 30px; }
+        
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="toolbar">
+        <div class="toolbar-actions">
+            <button class="export-btn" onclick="exportToExcel()">Xuất Excel</button>
+            <button class="delete-all-btn" onclick="deleteAllData()">Xóa Data</button>
+        </div>
+
+        <div class="card">
+            <div class="input-row">
+                <div class="input-group" style="flex-basis: 55%;">
+                    <input type="text" id="projectNameInput" placeholder="Nhập tên dự án">
+                    <button class="add-project" onclick="handleProject()">Thêm</button>
+                </div>
+                <div class="input-group" style="flex-basis: 45%;">
+                    <input type="date" id="inputDate">
+                    <button class="date-btn" onclick="changeDate(-1)">-</button>
+                    <button class="date-btn plus" onclick="changeDate(1)">+</button>
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="input-group" style="flex-basis: 55%;">
+                    <label>Chi phí:</label>
+                    <div class="cost-input-wrapper">
+                        <input type="number" id="inputCost" placeholder="VD: 50">
+                        <span>k VNĐ</span>
+                    </div>
+                </div>
+                <div class="input-group workday-group" style="flex-basis: 45%;">
+                    <label>Ngày công:</label>
+                    <button class="workday-btn" id="workday_0.5" onclick="selectWorkDay(0.5)">0.5</button>
+                    <button class="workday-btn" id="workday_1" onclick="selectWorkDay(1)">1</button>
+                    <span>Ngày</span>
+                </div>
+            </div>
+
+            <div class="input-row" id="desc-row">
+                <div class="input-group">
+                     <input type="text" id="inputDesc" placeholder="Mô tả: Chi tiết chi phí hoặc công việc">
+                </div>
+                <button class="main-add-button" onclick="addEntryFromForm()">Thêm</button>
+                <div class="history-buttons">
+                    <button id="redoBtn" onclick="redo()" title="Ctrl+Y">Y</button>
+                    <button id="undoBtn" onclick="undo()" title="Ctrl+Z">Z</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="project-display" id="projectDisplayContainer">
+    </div>
+
+</div>
+
+<script>
+    // --- STATE & CONFIG ---
+    const VND_TO_RMB_RATE = 3500;
+    const DEFAULT_PROJECT_NAME = "Lê Quốc Huy";
+    let state = {
+        projects: {},
+        focusedProject: null,
+        selectedWorkDay: 0,
+    };
+    let undoStack = [];
+    let redoStack = [];
+
+    // --- HISTORY (UNDO/REDO) FUNCTIONS ---
+    function saveStateToHistory() {
+        redoStack = [];
+        undoStack.push(JSON.parse(JSON.stringify(state)));
+        if (undoStack.length > 30) undoStack.shift();
+        updateHistoryButtons();
+    }
+
+    function undo() {
+        if (undoStack.length > 0) {
+            redoStack.push(JSON.parse(JSON.stringify(state)));
+            state = undoStack.pop();
+            saveData();
+            renderAll();
+        }
+    }
+
+    function redo() {
+        if (redoStack.length > 0) {
+            undoStack.push(JSON.parse(JSON.stringify(state)));
+            state = redoStack.pop();
+            saveData();
+            renderAll();
+        }
+    }
+
+    function updateHistoryButtons() {
+        document.getElementById('undoBtn').disabled = undoStack.length === 0;
+        document.getElementById('redoBtn').disabled = redoStack.length === 0;
+    }
+
+    // --- DATA PERSISTENCE ---
+    function saveData() {
+        localStorage.setItem('businessCostDataV2', JSON.stringify(state));
+    }
+
+    function resetAndInitialize() {
+        state = {
+            projects: { [DEFAULT_PROJECT_NAME]: { costs: [], workdays: [] } },
+            focusedProject: DEFAULT_PROJECT_NAME,
+            selectedWorkDay: 0,
+        };
+        undoStack = [];
+        redoStack = [];
+        saveData();
+        renderAll();
+    }
+    
+    function deleteAllData() {
+        alert('Chuẩn bị sao lưu dữ liệu ra file Excel trước khi xóa.');
+        exportToExcel();
+
+        if (confirm('Dữ liệu đã được sao lưu. Bạn có chắc chắn muốn XÓA TOÀN BỘ dữ liệu trên trình duyệt không? Hành động này không thể hoàn tác.')) {
+            localStorage.removeItem('businessCostDataV2');
+            resetAndInitialize();
+            alert('Đã xóa toàn bộ dữ liệu.');
+        } else {
+            alert('Hành động xóa đã bị hủy.');
+        }
+    }
+
+
+    function loadData() {
+        const savedData = localStorage.getItem('businessCostDataV2');
+        if (savedData) {
+            state = JSON.parse(savedData);
+        }
+        if (Object.keys(state.projects).length === 0) {
+            resetAndInitialize();
+        } else {
+             if (!state.focusedProject || !state.projects[state.focusedProject]) {
+                state.focusedProject = Object.keys(state.projects)[0];
+            }
+            state.selectedWorkDay = 0;
+        }
+    }
+
+    // --- CORE LOGIC FUNCTIONS ---
+    function handleProject() {
+        const projectName = document.getElementById('projectNameInput').value.trim();
+        if (!projectName) {
+            alert("Vui lòng nhập tên dự án.");
+            return;
+        }
+        saveStateToHistory();
+        if (!state.projects[projectName]) {
+            state.projects[projectName] = { costs: [], workdays: [] };
+        }
+        state.focusedProject = projectName;
+        document.getElementById('projectNameInput').value = '';
+        saveData();
+        renderAll();
+    }
+    
+    function deleteEntry(projectName, type, index) {
+        if (!confirm('Bạn có chắc muốn xóa mục này?')) return;
+        saveStateToHistory();
+        state.projects[projectName][type].splice(index, 1);
+        saveData();
+        renderAll();
+    }
+
+    function addEntryFromForm() {
+        const cost = parseFloat(document.getElementById('inputCost').value);
+        const workday = state.selectedWorkDay;
+        const desc = document.getElementById('inputDesc').value.trim();
+        const date = document.getElementById('inputDate').value;
+
+        if (!desc) {
+            alert("Vui lòng nhập mô tả.");
+            return;
+        }
+        if (!cost && !workday) {
+            alert("Vui lòng nhập chi phí hoặc chọn ngày công.");
+            return;
+        }
+
+        saveStateToHistory();
+
+        if (cost > 0) {
+            state.projects[state.focusedProject].costs.push({
+                date: date,
+                description: desc,
+                amountVND: cost * 1000
+            });
+        }
+        if (workday > 0) {
+             state.projects[state.focusedProject].workdays.push({
+                date: date,
+                description: desc,
+                days: workday
+            });
+        }
+        
+        document.getElementById('inputDesc').value = '';
+        document.getElementById('inputCost').value = '';
+        selectWorkDay(0);
+        
+        saveData();
+        renderAll();
+    }
+
+    // --- UI HELPER FUNCTIONS ---
+    function formatDate(dateStr) {
+        if (!dateStr || isNaN(new Date(dateStr))) return 'N/A';
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}`;
+    }
+
+    function changeDate(days) {
+        const dateInput = document.getElementById('inputDate');
+        const currentDate = new Date(dateInput.value);
+        currentDate.setDate(currentDate.getDate() + days);
+        dateInput.valueAsDate = currentDate;
+    }
+
+    function selectWorkDay(days) {
+        state.selectedWorkDay = (state.selectedWorkDay === days) ? 0 : days;
+        document.getElementById('workday_0.5').style.backgroundColor = state.selectedWorkDay === 0.5 ? 'var(--accent-color)' : '';
+        document.getElementById('workday_0.5').style.color = state.selectedWorkDay === 0.5 ? 'white' : '';
+        document.getElementById('workday_1').style.backgroundColor = state.selectedWorkDay === 1 ? 'var(--accent-color)' : '';
+        document.getElementById('workday_1').style.color = state.selectedWorkDay === 1 ? 'white' : '';
+    }
+
+    function switchProject(projectName) {
+        state.focusedProject = projectName;
+        saveData();
+        renderAll();
+    }
+    
+    // --- [MỚI] HÀM XỬ LÝ CHỈNH SỬA TRÊN BẢNG ---
+
+    /**
+     * Tự động chọn tất cả văn bản trong một ô khi click vào.
+     * @param {HTMLElement} element Ô (cell) được click.
+     */
+    function selectAllText(element) {
+        // Sử dụng một timeout nhỏ để đảm bảo con trỏ đã focus vào element
+        // trước khi thực hiện chọn tất cả. Điều này giúp tăng độ ổn định trên các trình duyệt.
+        setTimeout(() => {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }, 1);
+    }
+    
+    /**
+     * Cập nhật dữ liệu trong state khi người dùng chỉnh sửa xong một ô.
+     * Hàm này được gọi bởi sự kiện onblur.
+     * @param {HTMLElement} element Ô (cell) vừa được chỉnh sửa.
+     */
+    function updateEntry(element) {
+        const { project, type, index, field } = element.dataset;
+        const entry = state.projects[project][type][parseInt(index)];
+        let newValue = element.textContent.trim();
+        let oldValue = entry[field];
+
+        // Xử lý và xác thực dữ liệu đầu vào
+        try {
+            switch (field) {
+                case 'date':
+                    // Xử lý định dạng ngày: dd/mm
+                    const parts = newValue.match(/^(\d{1,2})\/(\d{1,2})$/);
+                    if (!parts) throw new Error("Ngày không hợp lệ. Vui lòng nhập theo định dạng dd/mm.");
+                    
+                    const day = parseInt(parts[1], 10);
+                    const month = parseInt(parts[2], 10);
+                    const currentYear = new Date(entry.date).getFullYear(); // Giữ nguyên năm cũ
+                    
+                    // Tạo ngày mới và kiểm tra tính hợp lệ
+                    const newDate = new Date(currentYear, month - 1, day);
+                    if (newDate.getDate() !== day || newDate.getMonth() !== month - 1) {
+                         throw new Error("Ngày không tồn tại.");
+                    }
+                    
+                    // Chuyển lại định dạng YYYY-MM-DD để lưu trữ
+                    newValue = newDate.toISOString().slice(0, 10);
+                    oldValue = entry.date;
+                    break;
+
+                case 'description':
+                    if (newValue === '') throw new Error("Mô tả không được để trống.");
+                    break;
+                
+                case 'amountVND':
+                    // Xóa các ký tự không phải số (giữ lại dấu chấm thập phân nếu có)
+                    newValue = parseFloat(newValue.replace(/[^0-9.]/g, ''));
+                    if (isNaN(newValue) || newValue < 0) throw new Error("Chi phí không hợp lệ.");
+                    oldValue = entry.amountVND;
+                    break;
+
+                case 'days':
+                    newValue = parseFloat(newValue);
+                    if (isNaN(newValue) || newValue <= 0) throw new Error("Số ngày công không hợp lệ.");
+                    oldValue = entry.days;
+                    break;
+            }
+
+            // Chỉ cập nhật nếu giá trị thực sự thay đổi
+            if (newValue !== oldValue) {
+                saveStateToHistory(); // Quan trọng: Lưu trạng thái trước khi thay đổi
+                entry[field] = newValue;
+                saveData();
+            }
+
+        } catch (error) {
+            alert(error.message); // Thông báo lỗi cho người dùng
+        } finally {
+            renderAll(); // Luôn render lại để hiển thị đúng định dạng hoặc khôi phục giá trị cũ nếu có lỗi
+        }
+    }
+
+
+    // --- RENDER FUNCTIONS ---
+    function renderAll() {
+        if (!state.focusedProject) return;
+        renderProjectSelector();
+        renderProjectData();
+        updateHistoryButtons();
+    }
+
+    function renderProjectSelector() {
+        const projectNames = Object.keys(state.projects);
+        let optionsHtml = projectNames.map(name => 
+            `<option value="${name}" ${name === state.focusedProject ? 'selected' : ''}>Dự án: ${name}</option>`
+        ).join('');
+        
+        const selectorWrapper = document.getElementById('projectSelectorWrapper') || document.createElement('div');
+        selectorWrapper.id = 'projectSelectorWrapper';
+        
+        selectorWrapper.innerHTML = `<select id="projectSelector" onchange="switchProject(this.value)">${optionsHtml}</select>`;
+        
+        const container = document.getElementById('projectDisplayContainer');
+        if (!document.getElementById('projectSelectorWrapper')) {
+             container.insertBefore(selectorWrapper, container.firstChild);
+        }
+    }
+
+    function renderProjectData() {
+        let container = document.getElementById('projectDataTables');
+        if(container) container.remove(); 
+
+        container = document.createElement('div');
+        container.id = 'projectDataTables';
+        
+        const project = state.projects[state.focusedProject];
+        if (!project) return;
+        
+        let totalVND = 0, totalRMB = 0, totalDays = 0;
+
+        // Bảng chi phí
+        let costHtml = `<table class="data-table"><thead><tr><th>Ngày</th><th>Mô tả (Chi Tiết)</th><th>VNĐ</th><th>RMB</th><th></th></tr></thead><tbody>`;
+        if (project.costs.length > 0) {
+            // [YÊU CẦU 2] SẮP XẾP: Tạo một bản sao của mảng và sắp xếp theo ngày (mới nhất lên trên)
+            const sortedCosts = project.costs
+                .map((item, index) => ({ ...item, originalIndex: index })) // Giữ lại chỉ số gốc
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            sortedCosts.forEach(cost => {
+                const rmb = (cost.amountVND / VND_TO_RMB_RATE).toFixed(2);
+                totalVND += cost.amountVND;
+                totalRMB += parseFloat(rmb);
+
+                // [YÊU CẦU 1] EDIT TRỰC TIẾP: Thêm các thuộc tính contenteditable và data-*
+                costHtml += `
+                    <tr>
+                        <td contenteditable="true" 
+                            onfocus="selectAllText(this)" 
+                            onblur="updateEntry(this)"
+                            data-project="${state.focusedProject}" data-type="costs" data-index="${cost.originalIndex}" data-field="date">
+                            ${formatDate(cost.date)}
+                        </td>
+                        <td contenteditable="true" 
+                            onfocus="selectAllText(this)" 
+                            onblur="updateEntry(this)"
+                            data-project="${state.focusedProject}" data-type="costs" data-index="${cost.originalIndex}" data-field="description">
+                            ${cost.description}
+                        </td>
+                        <td contenteditable="true" 
+                            onfocus="selectAllText(this)" 
+                            onblur="updateEntry(this)"
+                            data-project="${state.focusedProject}" data-type="costs" data-index="${cost.originalIndex}" data-field="amountVND">
+                            ${cost.amountVND.toLocaleString('vi-VN')}
+                        </td>
+                        <td>${rmb}</td>
+                        <td class="actions"><button class="delete-btn" onclick="deleteEntry('${state.focusedProject}', 'costs', ${cost.originalIndex})">×</button></td>
+                    </tr>
+                `;
+            });
+        }
+        costHtml += `<tr class="total-row"><td colspan="2"><b>TỔNG CỘNG</b></td><td><b>${totalVND.toLocaleString('vi-VN')}</b></td><td><b>${totalRMB.toFixed(2)}</b></td><td></td></tr></tbody></table>`;
+        container.innerHTML += costHtml;
+
+        // Bảng ngày công
+        if (project.workdays.length > 0) {
+            let workdayHtml = `<table class="data-table" style="margin-top: 12px;">
+                <thead>
+                    <tr class="workday-header"><th colspan="4">BẢNG KÊ NGÀY CÔNG</th></tr>
+                    <tr><th>Ngày</th><th>Mô tả Công Việc</th><th>Ngày công</th><th></th></tr>
+                </thead><tbody>`;
+            
+            // [YÊU CẦU 2] SẮP XẾP: Tương tự bảng chi phí
+            const sortedWorkdays = project.workdays
+                .map((item, index) => ({ ...item, originalIndex: index }))
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            sortedWorkdays.forEach(wd => {
+                totalDays += wd.days;
+                // [YÊU CẦU 1] EDIT TRỰC TIẾP: Thêm các thuộc tính contenteditable và data-*
+                workdayHtml += `
+                    <tr>
+                        <td contenteditable="true" 
+                            onfocus="selectAllText(this)" 
+                            onblur="updateEntry(this)"
+                            data-project="${state.focusedProject}" data-type="workdays" data-index="${wd.originalIndex}" data-field="date">
+                            ${formatDate(wd.date)}
+                        </td>
+                        <td contenteditable="true" 
+                            onfocus="selectAllText(this)" 
+                            onblur="updateEntry(this)"
+                            data-project="${state.focusedProject}" data-type="workdays" data-index="${wd.originalIndex}" data-field="description">
+                            ${wd.description}
+                        </td>
+                        <td class="workday-value"
+                            contenteditable="true" 
+                            onfocus="selectAllText(this)" 
+                            onblur="updateEntry(this)"
+                            data-project="${state.focusedProject}" data-type="workdays" data-index="${wd.originalIndex}" data-field="days">
+                            ${wd.days}
+                        </td>
+                        <td class="actions"><button class="delete-btn" onclick="deleteEntry('${state.focusedProject}', 'workdays', ${wd.originalIndex})">×</button></td>
+                    </tr>
+                `;
+            });
+            workdayHtml += `<tr class="total-workday-row"><td colspan="2"><b>TỔNG SỐ NGÀY CÔNG</b></td><td class="workday-value"><b>${totalDays}</b></td><td></td></tr></tbody></table>`;
+            container.innerHTML += workdayHtml;
+        }
+        
+        document.getElementById('projectDisplayContainer').appendChild(container);
+    }
+    
+    // --- EXPORT FUNCTION ---
+    function exportToExcel() {
+        if (Object.keys(state.projects).length === 0) {
+            alert("Không có dữ liệu để xuất.");
+            return;
+        }
+        const wb = XLSX.utils.book_new();
+        const allData = [];
+        
+        allData.push(["BÁO CÁO TỔNG HỢP"]);
+        allData.push([]);
+
+        for (const projectName in state.projects) {
+            const project = state.projects[projectName];
+            
+            allData.push([`Dự án: ${projectName}`]);
+            allData.push([]);
+            
+            if (project.costs.length > 0) {
+                allData.push(['BẢNG KÊ CHI PHÍ']);
+                allData.push(['Ngày', 'Mô tả', 'VNĐ', 'RMB']);
+                let totalVND = 0, totalRMB = 0;
+                // Sắp xếp trước khi xuất file
+                project.costs.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(cost => {
+                    const rmb = parseFloat((cost.amountVND / VND_TO_RMB_RATE).toFixed(2));
+                    totalVND += cost.amountVND;
+                    totalRMB += rmb;
+                    allData.push([formatDate(cost.date), cost.description, cost.amountVND, rmb]);
+                });
+                allData.push(['TỔNG CỘNG', '', totalVND, totalRMB.toFixed(2)]);
+                allData.push([]);
+            }
+            
+            if (project.workdays.length > 0) {
+                allData.push(['BẢNG KÊ NGÀY CÔNG']);
+                allData.push(['Ngày', 'Mô tả công việc', 'Ngày công']);
+                let totalDays = 0;
+                // Sắp xếp trước khi xuất file
+                project.workdays.slice().sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(wd => {
+                    totalDays += wd.days;
+                    allData.push([formatDate(wd.date), wd.description, wd.days]);
+                });
+                allData.push(['TỔNG CỘNG', '', totalDays]);
+                allData.push([]);
+            }
+             allData.push([]);
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(allData);
+        ws['!cols'] = [ {wch:12}, {wch:40}, {wch:15}, {wch:15} ];
+        XLSX.utils.book_append_sheet(wb, ws, 'BaoCao');
+        XLSX.writeFile(wb, `BaoCaoChiPhiCongTac_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+        loadData();
+        document.getElementById('inputDate').valueAsDate = new Date();
+        renderAll();
+    };
+
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey && (event.key === 'z' || event.key === 'Z')) {
+            event.preventDefault();
+            undo();
+        }
+        if (event.ctrlKey && (event.key === 'y' || event.key === 'Y')) {
+            event.preventDefault();
+            redo();
+        }
+    });
+
+</script>
+
+</body>
+</html>

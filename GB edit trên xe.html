@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sắp xếp ảnh - Giao diện mới (Đã sửa)</title>
+<!-- XÓA: Đã xóa thư viện Sortable.js để loại bỏ tính năng kéo thả -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+    /* === CSS CHUNG === */
+    body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; color: #333; }
+    button, label.custom-file-label { padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; white-space: nowrap; text-align: center; }
+    button:hover, label.custom-file-label:hover { opacity: 0.85; }
+    input[type="file"].custom-file-input { display: none; }
+    h3 { margin: 0 0 10px 0; font-size: 1.1em; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+
+    /* === BỐ CỤC TỔNG THỂ === */
+    .page-wrapper {
+        display: block;
+        height: 100vh;
+    }
+
+    .main-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 500px;
+        height: 100vh;
+    }
+
+    .main-content {
+        padding: 15px;
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+    
+    /* === BỐ CỤC THANH CÔNG CỤ === */
+    .controls {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background-color: #fff;
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .control-wrapper {
+        display: flex;
+        gap: 15px;
+        width: 100%;
+    }
+
+    .control-area {
+        flex: 1; 
+        display: flex;
+    }
+
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+        background-color: #fcfcfc;
+        width: 100%;
+    }
+
+    /* Bố cục cho các nút chức năng */
+    .action-buttons, .name-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .action-buttons > * { 
+        flex-grow: 1;
+    }
+
+    .action-buttons label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    #paste-zone { padding: 8px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; color: #666; background-color: #fafafa; transition: background-color 0.2s, border-color 0.2s; }
+    #paste-zone.drag-over { background-color: #e0e0e0; border-color: #007bff; }
+    #name-list { resize: vertical; min-height: 50px; height: 100px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; width: 100%; }
+    #range-inputs-container { display: flex; gap: 5px; align-items: center; }
+    #range-inputs-container input[type="number"] { width: 50px; padding: 3px; }
+
+    #download-progress { display: none; width: 100%; margin-top: 10px; }
+    
+    /* === STYLES CỦA ẢNH NHỎ === */
+    .photo-grid { 
+        display: grid; 
+        grid-template-columns: 1fr; /* Chỉ 1 cột */
+        gap: 20px; /* Tăng khoảng cách cho dễ nhìn */
+    }
+    .photo-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; }
+    
+    .img-container { 
+        position: relative; 
+        width: 100%; 
+        overflow: hidden; 
+        border-radius: 4px; 
+        background-color: #eee; 
+        cursor: pointer; 
+        transition: outline 0.2s ease-in-out; 
+    }
+    .photo-item { 
+        position: relative;
+        top: 0; left: 0; width: 100%; height: auto;
+        object-fit: contain;
+        border: none; 
+        display: block;
+    }
+    .delete-btn { position: absolute; z-index: 10; top: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 22px; text-align: center; padding: 0; opacity: 0; transition: opacity 0.2s; }
+    .photo-wrapper:hover .delete-btn { opacity: 1; }
+    .name-container { display: flex; align-items: center; width: 100%; margin-top: 5px; }
+    .drag-handle { display: none !important; }
+    
+    /* SỬA: Tăng chiều cao và cỡ chữ của ô nhập tên */
+    .name-container input[type="text"] {
+        flex: 1;
+        padding: 10px 8px; /* Tăng padding cho phù hợp */
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        min-width: 0;
+        font-size: 52.5px; /* TĂNG 500% (10.5px * 5) */
+        height: 120px; /* TĂNG 500% (24px * 5) */
+    }
+
+    /* === HIỆU ỨNG KHÁC === */
+    /* XÓA: Các lớp CSS cho kéo thả không còn cần thiết */
+    /* .ghost-class { ... } */
+    /* .drag-class { ... } */
+    .selected-photo .img-container { outline: 3px solid #007bff; outline-offset: 2px; }
+    @keyframes yellow-flash { from { outline: 4px solid gold; } to { outline: 4px solid transparent; } }
+    .newly-added .img-container { animation: yellow-flash 1.5s ease-out; }
+
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+    <div class="main-column">
+        <div class="controls">
+            <div class="control-wrapper">
+                <div class="control-area">
+                    <div class="control-group">
+                        <div class="action-buttons">
+                            <label for="photo-input" class="custom-file-label">Tải ảnh lên</label>
+                            <label for="zip-input" class="custom-file-label">Tải File ZIP</label>
+                            <div id="paste-zone">Hoặc kéo thả / dán ảnh</div>
+                            <button id="clear-btn">Xóa tất cả</button>
+                            <button id="download-all-btn">Tải tất cả</button>
+                            <button id="undo-btn">Hoàn tác (Ctrl+Z)</button>
+                            <!-- XÓA: Đã xóa nút tick "Khóa kéo thả" -->
+                            <label><input type="checkbox" id="smart-select-toggle"> Bật chọn số liệu</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-area">
+                    <div class="control-group">
+                        <div class="name-options">
+                            <textarea id="name-list" placeholder="Dán danh sách tên, mỗi tên trên một dòng"></textarea>
+                            <div style="display:flex; flex-direction:column; gap: 8px; align-self: flex-end; width: 100%;">
+                                <div id="range-name-options">
+                                    <label><input type="checkbox" id="range-name-toggle"> Chèn tên theo khoảng</label>
+                                    <div id="range-inputs-container" style="display: none;">
+                                        <label for="name-range-start">Từ:</label>
+                                        <input type="number" id="name-range-start" value="1" min="1">
+                                        <label for="name-range-end">Đến:</label>
+                                        <input type="number" id="name-range-end" value="10" min="1">
+                                    </div>
+                                </div>
+                                <button id="assign-names-btn">Chèn tên</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <progress id="download-progress" value="0" max="100"></progress>
+        </div>
+
+        <div class="main-content" id="main-content">
+            <div id="photo-grid-main" class="photo-grid"></div>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="photo-input" multiple accept="image/*" class="custom-file-input">
+<input type="file" id="zip-input" accept=".zip,application/zip" class="custom-file-input">
+
+<script>
+// --- Các biến toàn cục ---
+const photoInput = document.getElementById('photo-input');
+const zipInput = document.getElementById('zip-input');
+const clearBtn = document.getElementById('clear-btn');
+const assignNamesBtn = document.getElementById('assign-names-btn');
+const downloadAllBtn = document.getElementById('download-all-btn');
+const undoBtn = document.getElementById('undo-btn');
+// XÓA: Biến lockToggle không còn cần thiết
+const pasteZone = document.getElementById('paste-zone');
+const mainContentEl = document.getElementById('main-content');
+const nameListTextArea = document.getElementById('name-list');
+const rangeNameToggle = document.getElementById('range-name-toggle');
+const rangeInputsContainer = document.getElementById('range-inputs-container');
+const smartSelectToggle = document.getElementById('smart-select-toggle');
+
+
+let photoGrid = document.getElementById('photo-grid-main');
+// XÓA: Biến sortableInstance không còn cần thiết
+let photoIdCounter = 0;
+const photoDataMap = new Map();
+let history = [];
+let currentState = null;
+let lastSelectedWrapper = null;
+let lastFocusedInput = null;
+let isDownloading = false;
+// XÓA: Biến draggedItems không còn cần thiết
+
+// --- Các hàm tiện ích ---
+function removeLeadingOrderPrefix(filename) { return filename.replace(/^\d+\.\s+/, ''); }
+function syncInputAttributes() { mainContentEl.querySelectorAll('input[type="text"]').forEach(input => input.setAttribute('value', input.value)); mainContentEl.querySelectorAll('textarea').forEach(textarea => textarea.textContent = textarea.value); mainContentEl.querySelectorAll('input[type="checkbox"]').forEach(input => { if (input.checked) input.setAttribute('checked', 'checked'); else input.removeAttribute('checked'); }); }
+function saveState() { syncInputAttributes(); const stateHTML = mainContentEl.innerHTML; if (stateHTML !== currentState) { if (currentState !== null) history.push(currentState); if (history.length > 50) history.shift(); currentState = stateHTML; } }
+function updateCurrentState() { syncInputAttributes(); currentState = mainContentEl.innerHTML; }
+function restoreStateFromHistory() { if (history.length > 0) { const stateToRestore = history.pop(); mainContentEl.innerHTML = stateToRestore; currentState = stateToRestore; reInitializeApp(); } else { alert('Không có hành động nào để hoàn tác.'); } }
+
+function processImageRotation(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                if (img.height > img.width) {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.height;
+                    canvas.height = img.width;
+                    ctx.rotate(-90 * Math.PI / 180);
+                    ctx.translate(-img.width, 0);
+                    ctx.drawImage(img, 0, 0);
+                    canvas.toBlob(blob => {
+                        if (blob) resolve(blob);
+                        else reject(new Error('Canvas to Blob conversion failed'));
+                    }, file.type || 'image/jpeg', 0.95);
+                } else {
+                    resolve(file);
+                }
+            };
+            img.onerror = reject;
+            img.src = event.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function createPhotoElement(id, processedBlob, originalName) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'photo-wrapper newly-added';
+    wrapper.setAttribute('data-photo-id', id);
+
+    const imgContainer = document.createElement('div');
+    imgContainer.className = 'img-container';
+
+    const img = document.createElement('img');
+    img.className = 'photo-item';
+    img.src = URL.createObjectURL(processedBlob);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.innerHTML = '&times;';
+    deleteBtn.title = 'Xóa ảnh này';
+
+    const nameContainer = document.createElement('div');
+    nameContainer.className = 'name-container';
+    
+    const dragHandle = document.createElement('span');
+    dragHandle.className = 'drag-handle';
+    dragHandle.textContent = '☰';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    const nameWithoutExtension = originalName.replace(/\.[^/.]+$/, "");
+    
+    // === THAY ĐỔI BẮT ĐẦU TẠI ĐÂY ===
+    // Tách và chỉ lấy phần tên file cuối cùng từ đường dẫn đầy đủ (ví dụ: 'folder/file.jpg' -> 'file')
+    const finalFileName = nameWithoutExtension.split(/[\\/]/).pop();
+    const cleanName = removeLeadingOrderPrefix(finalFileName);
+    // === THAY ĐỔI KẾT THÚC TẠI ĐÂY ===
+
+    nameInput.value = cleanName;
+
+    imgContainer.appendChild(img);
+    imgContainer.appendChild(deleteBtn);
+
+    nameContainer.appendChild(dragHandle);
+    nameContainer.appendChild(nameInput);
+
+    wrapper.appendChild(imgContainer);
+    wrapper.appendChild(nameContainer);
+
+    photoDataMap.set(id, { blob: processedBlob, originalName: originalName });
+    setTimeout(() => wrapper.classList.remove('newly-added'), 1500);
+    return wrapper;
+}
+
+function updateNumbering() { const wrappers = photoGrid.querySelectorAll('.photo-wrapper'); wrappers.forEach((wrapper, index) => { const nameInput = wrapper.querySelector('.name-container input[type="text"]'); if (nameInput) { const currentName = removeLeadingOrderPrefix(nameInput.value); nameInput.value = `${index + 1}. ${currentName}`; } }); }
+
+async function processAndDisplayFiles(filesArray) {
+    if (filesArray.length === 0) return;
+    saveState();
+    const selectedWrappers = photoGrid.querySelectorAll('.photo-wrapper.selected-photo');
+    const insertionPoint = selectedWrappers.length === 1 ? selectedWrappers[0] : null;
+    const fragment = document.createDocumentFragment();
+    let lastAddedElement = null;
+
+    for (const file of filesArray) {
+        if (!file || !(file.type?.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(file.name))) continue;
+        try {
+            const processedBlob = await processImageRotation(file);
+            const id = `photo-${photoIdCounter++}`;
+            const originalName = file.name || `pasted_image_${Date.now()}.png`;
+            const wrapper = createPhotoElement(id, processedBlob, originalName);
+            fragment.appendChild(wrapper);
+            lastAddedElement = wrapper;
+        } catch (error) {
+            console.error("Lỗi xử lý ảnh:", file.name, error);
+            alert(`Không thể xử lý ảnh: ${file.name}. Lỗi: ${error.message}`);
+        }
+    }
+
+    if (insertionPoint) {
+        insertionPoint.after(fragment);
+    } else {
+        photoGrid.appendChild(fragment);
+    }
+
+    updateNumbering();
+    if (lastAddedElement) {
+        document.querySelectorAll('.selected-photo').forEach(el => el.classList.remove('selected-photo'));
+        lastAddedElement.classList.add('selected-photo');
+        lastSelectedWrapper = lastAddedElement;
+        lastAddedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    updateCurrentState();
+}
+
+function generateZipWithProgress() { if (isDownloading) return alert('Quá trình tải xuống đang diễn ra.'); const wrappers = photoGrid.querySelectorAll('.photo-wrapper'); if (wrappers.length === 0) return alert('Không có ảnh nào để tải xuống.'); isDownloading = true; const zip = new JSZip(); wrappers.forEach(wrapper => { const id = wrapper.getAttribute('data-photo-id'); const nameInput = wrapper.querySelector('.name-container input[type="text"]'); if (id && photoDataMap.has(id)) { const { blob } = photoDataMap.get(id); const fullFileName = nameInput.value.trim() || `image_${id}`; const extension = blob.type.split('/')[1] || 'jpg'; const finalZipName = `${fullFileName.replace(/[<>:"/\\|?*]+/g, '_')}.${extension}`; zip.file(finalZipName, blob); } }); const progressBar = document.getElementById('download-progress'); progressBar.style.display = 'block'; progressBar.value = 0; zip.generateAsync({ type: "blob" }, (metadata) => { progressBar.value = metadata.percent; }).then((content) => saveAs(content, 'all_photos.zip')).catch(err => { console.error("Lỗi khi tạo file ZIP:", err); alert("Đã có lỗi xảy ra khi tạo file ZIP."); }).finally(() => { progressBar.style.display = 'none'; isDownloading = false; }); }
+
+// XÓA: Toàn bộ hàm initializeSortable không còn cần thiết nữa
+/*
+function initializeSortable(isDraggable) { ... }
+*/
+
+function reInitializeApp() { 
+    photoGrid = document.getElementById('photo-grid-main'); 
+    photoGrid.querySelectorAll('.photo-wrapper').forEach(wrapper => { 
+        const id = wrapper.getAttribute('data-photo-id'); 
+        const img = wrapper.querySelector('.photo-item'); 
+        if (id && img && photoDataMap.has(id)) { 
+            const data = photoDataMap.get(id); 
+            if(data && data.blob) img.src = URL.createObjectURL(data.blob); 
+        } 
+    }); 
+    // XÓA: Các dòng liên quan đến kéo thả
+    // document.getElementById('lock-toggle').checked = false;
+    document.getElementById('smart-select-toggle').checked = false;
+    // initializeSortable(true); // XÓA LỆNH GỌI
+    const selectedEl = photoGrid.querySelector('.selected-photo'); 
+    lastSelectedWrapper = selectedEl || null; 
+    lastFocusedInput = null; 
+}
+
+async function handleZipUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const zip = await JSZip.loadAsync(file);
+        const imagePromises = [];
+
+        zip.forEach((relativePath, zipEntry) => {
+            if (zipEntry.dir || zipEntry.name.startsWith('__')) {
+                return;
+            }
+            const isImage = /\.(jpe?g|png|gif|webp)$/i.test(zipEntry.name);
+            if (isImage) {
+                const promise = zipEntry.async('blob').then(blob => {
+                    return new File([blob], zipEntry.name, { type: blob.type });
+                });
+                imagePromises.push(promise);
+            }
+        });
+
+        const imageFiles = await Promise.all(imagePromises);
+        await processAndDisplayFiles(imageFiles);
+
+    } catch (error) {
+        console.error("Lỗi khi đọc file ZIP:", error);
+        alert("Không thể đọc file ZIP. File có thể bị hỏng hoặc không đúng định dạng.");
+    } finally {
+        event.target.value = '';
+    }
+}
+
+
+// --- Trình lắng nghe sự kiện ---
+photoInput.addEventListener('change', (event) => { processAndDisplayFiles(Array.from(event.target.files)); event.target.value = ''; });
+zipInput.addEventListener('change', handleZipUpload);
+document.addEventListener('paste', (event) => { const files = Array.from(event.clipboardData?.items || []).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()); if (files.length > 0) { event.preventDefault(); processAndDisplayFiles(files); } });
+pasteZone.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); pasteZone.classList.add('drag-over'); });
+pasteZone.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); pasteZone.classList.remove('drag-over'); });
+pasteZone.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); pasteZone.classList.remove('drag-over'); processAndDisplayFiles(Array.from(e.dataTransfer.files)); });
+clearBtn.addEventListener('click', () => { if (photoGrid.children.length > 0 && confirm('Bạn có chắc chắn muốn xóa tất cả ảnh không?')) { saveState(); photoGrid.innerHTML = ''; photoDataMap.forEach(data => URL.revokeObjectURL(data.blob.src)); photoDataMap.clear(); photoIdCounter = 0; lastSelectedWrapper = null; lastFocusedInput = null; updateCurrentState(); } });
+assignNamesBtn.addEventListener('click', () => { saveState(); const nameList = nameListTextArea.value.trim().split('\n').filter(Boolean); if(nameList.length === 0) return; const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper')); if (rangeNameToggle.checked) { const start = parseInt(document.getElementById('name-range-start').value, 10); const end = parseInt(document.getElementById('name-range-end').value, 10); if (isNaN(start) || isNaN(end) || start < 1 || end < start || start > wrappers.length) { alert('Khoảng giá trị không hợp lệ. Vui lòng kiểm tra lại.'); return; } let nameIndex = 0; for (let i = start - 1; i < Math.min(end, wrappers.length); i++) { if(nameIndex >= nameList.length) break; const wrapper = wrappers[i]; const nameInput = wrapper.querySelector('.name-container input[type="text"]'); if (nameInput) { const currentNumbering = `${i + 1}. `; nameInput.value = currentNumbering + nameList[nameIndex].trim(); } nameIndex++; } } else { wrappers.forEach((wrapper, index) => { const nameInput = wrapper.querySelector('.name-container input[type="text"]'); if (nameInput && nameList[index]) { const currentNumbering = `${index + 1}. `; nameInput.value = currentNumbering + nameList[index].trim(); } }); } updateCurrentState(); });
+rangeNameToggle.addEventListener('change', (e) => { rangeInputsContainer.style.display = e.target.checked ? 'flex' : 'none'; });
+downloadAllBtn.addEventListener('click', generateZipWithProgress);
+undoBtn.addEventListener('click', restoreStateFromHistory);
+// XÓA: Trình lắng nghe sự kiện cho lockToggle không còn cần thiết
+// lockToggle.addEventListener('change', ...);
+document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); restoreStateFromHistory(); } });
+
+mainContentEl.addEventListener('click', (event) => {
+    const target = event.target;
+    const wrapper = target.closest('.photo-wrapper');
+    
+    if (wrapper) {
+        if (target.classList.contains('delete-btn')) {
+            saveState();
+            const wasSelected = wrapper.classList.contains('selected-photo');
+            const id = wrapper.getAttribute('data-photo-id');
+            if (id && photoDataMap.has(id)) { URL.revokeObjectURL(wrapper.querySelector('.photo-item').src); photoDataMap.delete(id); }
+            if (lastSelectedWrapper === wrapper) lastSelectedWrapper = null;
+            wrapper.remove();
+            updateNumbering();
+            updateCurrentState();
+            return;
+        }
+
+        if (target.closest('.img-container')) {
+            if (!event.ctrlKey && !event.shiftKey) {
+                document.querySelectorAll('.selected-photo').forEach(w => {
+                    if (w !== wrapper) w.classList.remove('selected-photo');
+                });
+                wrapper.classList.toggle('selected-photo');
+            } 
+            else if (event.ctrlKey) {
+                wrapper.classList.toggle('selected-photo');
+            } 
+            else if (event.shiftKey && lastSelectedWrapper) {
+                const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper'));
+                const startIndex = wrappers.indexOf(lastSelectedWrapper);
+                const endIndex = wrappers.indexOf(wrapper);
+                const [min, max] = [Math.min(startIndex, endIndex), Math.max(startIndex, endIndex)];
+                for (let i = min; i <= max; i++) {
+                    wrappers[i].classList.add('selected-photo');
+                }
+            }
+
+            if (wrapper.classList.contains('selected-photo')) {
+                lastSelectedWrapper = wrapper;
+            } else {
+                const selectedItems = photoGrid.querySelectorAll('.selected-photo');
+                lastSelectedWrapper = selectedItems.length > 0 ? selectedItems[selectedItems.length - 1] : null;
+            }
+        }
+    }
+    
+    if (smartSelectToggle.checked && target.matches('.name-container input[type="text"]')) {
+        const input = target;
+        const regex = /([\d.x]+)\s*(?:kg|g|cm|mm|m|s)\b/i;
+        const value = input.value;
+        const match = value.match(regex);
+        if (match) {
+            // event.preventDefault(); // <<< === SỬA LỖI TẠI ĐÂY: Xóa dòng này để cho phép focus và edit.
+            const numberPart = match[1];
+            const startIndex = value.indexOf(numberPart);
+            const endIndex = startIndex + numberPart.length;
+            setTimeout(() => { input.focus(); input.setSelectionRange(startIndex, endIndex); }, 0);
+        }
+    }
+});
+
+
+mainContentEl.addEventListener('focusin', (event) => {
+    const input = event.target;
+    if (input.matches('.name-container input[type="text"]')) {
+        if (input !== lastFocusedInput) {
+             const regex = /([\d.x]+)\s*(?:kg|g|cm|mm|m|s)\b/i;
+             if (!smartSelectToggle.checked || !input.value.match(regex)) {
+                const value = input.value;
+                const prefixMatch = value.match(/^\d+\.\s+/);
+                if (prefixMatch) {
+                    const prefixEnd = prefixMatch[0].length;
+                    setTimeout(() => { input.setSelectionRange(prefixEnd, value.length); }, 0);
+                }
+             }
+            lastFocusedInput = input;
+        }
+    }
+});
+
+document.addEventListener('click', (event) => { if (!event.target.closest('.name-container')) { lastFocusedInput = null; } });
+mainContentEl.addEventListener('input', (event) => { if (event.target.matches('.name-container input[type="text"]') || event.target.matches('#name-list')) { clearTimeout(event.target.saveTimeout); event.target.saveTimeout = setTimeout(() => { saveState(); updateCurrentState(); }, 500); } });
+
+// --- Khởi tạo ban đầu ---
+reInitializeApp();
+saveState();
+
+</script>
+</body>
+</html>
