@@ -5,24 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang tổng hợp công cụ kiểm định</title>
     <style>
-        body { font-family: sans-serif; margin: 0; }
-        .tabs { border-bottom: 1px solid #ccc; padding: 10px; background-color: #f1f1f1; }
-        .tab-button { background-color: inherit; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; }
-        .tab-button:hover { background-color: #ddd; }
-        .tab-button.active { background-color: #ccc; }
-        .tab-content { display: none; padding: 0; border-top: none; width: 100%; height: calc(100vh - 60px); }
-        .tab-content.active { display: block; }
-        iframe { width: 100%; height: 100%; border: none; }
+        /* --- CSS TỔNG THỂ --- */
+        body { 
+            font-family: sans-serif; 
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Đảm bảo body chiếm toàn bộ chiều cao màn hình */
+        }
+
+        /* --- PHẦN NÚT ẨN/HIỆN THANH TABS (THAY ĐỔI MỚI) --- */
+        .nav-toggle-container {
+            padding: 10px;
+            background-color: #e0e0e0;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .nav-toggle-label {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            user-select: none; /* Ngăn người dùng bôi đen chữ */
+            transition: background-color 0.3s;
+        }
+        
+        .nav-toggle-label:hover {
+            background-color: #0056b3;
+        }
+
+        .nav-toggle-checkbox {
+            display: none; /* Ẩn checkbox mặc định */
+        }
+
+        /* --- PHẦN THANH TABS (ĐƯỢC ĐIỀU KHIỂN) --- */
+        .tabs { 
+            border-bottom: 1px solid #ccc; 
+            padding: 10px; 
+            background-color: #f1f1f1; 
+            overflow: hidden; /* Quan trọng: để ẩn nội dung khi thu gọn */
+            transition: max-height 0.5s ease-out, padding 0.5s ease-out, border 0.5s ease-out; /* Tạo hiệu ứng cuộn mượt mà */
+            max-height: 200px; /* Chiều cao tối đa khi hiện ra, có thể điều chỉnh */
+        }
+
+        /* Logic ẩn thanh tabs khi checkbox không được tick */
+        .nav-toggle-checkbox:not(:checked) ~ .tabs {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .tab-button { 
+            background-color: inherit; 
+            border: none; 
+            outline: none; 
+            cursor: pointer; 
+            padding: 14px 16px; 
+            transition: 0.3s; 
+            border-radius: 4px;
+            margin: 2px;
+        }
+        
+        .tab-button:hover { 
+            background-color: #ddd; 
+        }
+        
+        .tab-button.active { 
+            background-color: #ccc; 
+        }
+
+        /* --- PHẦN NỘI DUNG IFRAME --- */
+        #content-container {
+            flex-grow: 1; /* Quan trọng: giúp nội dung tự động lấp đầy không gian còn lại */
+        }
+        
+        .tab-content { 
+            display: none; 
+            padding: 0; 
+            border-top: none; 
+            width: 100%; 
+            height: 100%; /* Chiều cao 100% của container cha */
+        }
+        
+        .tab-content.active { 
+            display: block; 
+        }
+        
+        iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+        }
     </style>
 </head>
 <body>
 
-    <div class="tabs" id="tab-container">
-        <!-- Các nút tab sẽ được tự động chèn vào đây -->
+    <!-- NÚT ĐIỀU KHIỂN ẨN/HIỆN -->
+    <div class="nav-toggle-container">
+        <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" checked>
+        <label for="nav-toggle" class="nav-toggle-label">Ẩn/Hiện Menu</label>
     </div>
 
+    <!-- THANH CHỨA CÁC TAB (Bị điều khiển bởi nút trên) -->
+    <div class="tabs" id="tab-container">
+        <!-- Các nút tab sẽ được tự động chèn vào đây bằng JavaScript -->
+    </div>
+
+    <!-- KHU VỰC HIỂN THỊ NỘI DUNG -->
     <div id="content-container">
-        <!-- Các iframe sẽ được tự động chèn vào đây -->
+        <!-- Các iframe sẽ được tự động chèn vào đây bằng JavaScript -->
     </div>
 
     <script>
@@ -30,7 +124,7 @@
         const GITHUB_USERNAME = "quochuy221200111"; // Thay bằng tên đăng nhập GitHub của bạn
         const GITHUB_REPO = "my-testing-tools1"; // Thay bằng tên kho chứa của bạn
 
-        // --- ĐOẠN MÃ XỬ LÝ CHÍNH ---
+        // --- ĐOẠN MÃ XỬ LÝ CHÍNH (KHÔNG THAY ĐỔI) ---
         const tabContainer = document.getElementById('tab-container');
         const contentContainer = document.getElementById('content-container');
         const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
@@ -46,7 +140,7 @@
                     const tabButton = document.createElement('button');
                     tabButton.className = 'tab-button';
                     tabButton.textContent = file.name;
-                    tabButton.onclick = () => openTab(file.name);
+                    tabButton.onclick = (event) => openTab(file.name, event); // Truyền event vào hàm
                     tabContainer.appendChild(tabButton);
 
                     // 2. Tạo nội dung Tab (iframe)
@@ -69,7 +163,7 @@
             })
             .catch(error => console.error('Lỗi khi lấy danh sách file từ GitHub:', error));
 
-        function openTab(fileName) {
+        function openTab(fileName, event) {
             // Ẩn tất cả các tab content và xóa trạng thái active của button
             const tabContents = document.getElementsByClassName('tab-content');
             for (let i = 0; i < tabContents.length; i++) {
