@@ -5,118 +5,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang tổng hợp công cụ kiểm định</title>
     <style>
-        /* --- CSS TỔNG THỂ --- */
-        body { 
-            font-family: sans-serif; 
+        /* CSS cơ bản */
+        body {
+            font-family: sans-serif;
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh; /* Đảm bảo body chiếm toàn bộ chiều cao màn hình */
+            overflow: hidden; /* Ngăn cuộn trang chính */
         }
 
-        /* --- PHẦN NÚT ẨN/HIỆN THANH TABS (THAY ĐỔI MỚI) --- */
-        .nav-toggle-container {
-            padding: 10px;
-            background-color: #e0e0e0;
-            border-bottom: 1px solid #ccc;
-        }
-        
-        .nav-toggle-label {
-            display: inline-block;
-            background-color: #007bff;
-            color: white;
-            padding: 8px 12px;
+        /* Nút bật/tắt menu */
+        #menu-toggle {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1001; /* Luôn nổi trên cùng */
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
             border-radius: 5px;
             cursor: pointer;
-            user-select: none; /* Ngăn người dùng bôi đen chữ */
-            transition: background-color 0.3s;
-        }
-        
-        .nav-toggle-label:hover {
-            background-color: #0056b3;
+            padding: 10px;
+            font-size: 20px;
         }
 
-        .nav-toggle-checkbox {
-            display: none; /* Ẩn checkbox mặc định */
+        /* Thanh chứa các tab */
+        .tabs {
+            position: fixed; /* Cố định vị trí */
+            top: 0;
+            left: 0;
+            width: 250px; /* Độ rộng của thanh tab */
+            height: 100vh; /* Cao bằng chiều cao màn hình */
+            background-color: #f1f1f1;
+            border-right: 1px solid #ccc;
+            padding-top: 60px; /* Tạo không gian cho nút toggle */
+            transform: translateX(-100%); /* Mặc định ẩn sang bên trái */
+            transition: transform 0.3s ease; /* Hiệu ứng cuộn mượt */
+            overflow-y: auto; /* Cho phép cuộn nếu có nhiều tab */
+            z-index: 1000;
         }
 
-        /* --- PHẦN THANH TABS (ĐƯỢC ĐIỀU KHIỂN) --- */
-        .tabs { 
-            border-bottom: 1px solid #ccc; 
-            padding: 10px; 
-            background-color: #f1f1f1; 
-            overflow: hidden; /* Quan trọng: để ẩn nội dung khi thu gọn */
-            transition: max-height 0.5s ease-out, padding 0.5s ease-out, border 0.5s ease-out; /* Tạo hiệu ứng cuộn mượt mà */
-            max-height: 200px; /* Chiều cao tối đa khi hiện ra, có thể điều chỉnh */
+        /* Trạng thái hiển thị của thanh tab */
+        .tabs.active {
+            transform: translateX(0);
         }
 
-        /* Logic ẩn thanh tabs khi checkbox không được tick */
-        .nav-toggle-checkbox:not(:checked) ~ .tabs {
-            max-height: 0;
-            padding-top: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-        
-        .tab-button { 
-            background-color: inherit; 
-            border: none; 
-            outline: none; 
-            cursor: pointer; 
-            padding: 14px 16px; 
-            transition: 0.3s; 
-            border-radius: 4px;
-            margin: 2px;
-        }
-        
-        .tab-button:hover { 
-            background-color: #ddd; 
-        }
-        
-        .tab-button.active { 
-            background-color: #ccc; 
+        /* Các nút tab */
+        .tab-button {
+            display: block; /* Hiển thị mỗi nút trên một hàng */
+            width: 100%;
+            background-color: inherit;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            text-align: left; /* Căn chữ sang trái */
         }
 
-        /* --- PHẦN NỘI DUNG IFRAME --- */
-        #content-container {
-            flex-grow: 1; /* Quan trọng: giúp nội dung tự động lấp đầy không gian còn lại */
+        .tab-button:hover {
+            background-color: #ddd;
+        }
+
+        .tab-button.active {
+            background-color: #ccc;
+        }
+
+        /* Vùng chứa nội dung chính */
+        #main-container {
+            width: 100%;
+            height: 100vh;
+            padding-left: 0; /* Mặc định không có khoảng cách */
+            transition: padding-left 0.3s ease; /* Hiệu ứng đồng bộ với thanh tab */
         }
         
-        .tab-content { 
-            display: none; 
-            padding: 0; 
-            border-top: none; 
-            width: 100%; 
-            height: 100%; /* Chiều cao 100% của container cha */
+        /* Khi thanh tab hiện ra, đẩy nội dung sang phải */
+        #main-container.active {
+            padding-left: 250px; /* Bằng với độ rộng của thanh tab */
         }
-        
-        .tab-content.active { 
-            display: block; 
+
+
+        /* Nội dung của tab (iframe) */
+        .tab-content {
+            display: none;
+            width: 100%;
+            height: 100vh; /* Cao bằng chiều cao màn hình */
         }
-        
-        iframe { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
+
+        .tab-content.active {
+            display: block;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
 <body>
 
-    <!-- NÚT ĐIỀU KHIỂN ẨN/HIỆN -->
-    <div class="nav-toggle-container">
-        <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" checked>
-        <label for="nav-toggle" class="nav-toggle-label">Ẩn/Hiện Menu</label>
-    </div>
+    <button id="menu-toggle">☰</button>
 
-    <!-- THANH CHỨA CÁC TAB (Bị điều khiển bởi nút trên) -->
     <div class="tabs" id="tab-container">
-        <!-- Các nút tab sẽ được tự động chèn vào đây bằng JavaScript -->
+        <!-- Các nút tab sẽ được tự động chèn vào đây -->
     </div>
 
-    <!-- KHU VỰC HIỂN THỊ NỘI DUNG -->
-    <div id="content-container">
-        <!-- Các iframe sẽ được tự động chèn vào đây bằng JavaScript -->
+    <div id="main-container">
+        <div id="content-container">
+            <!-- Các iframe sẽ được tự động chèn vào đây -->
+        </div>
     </div>
 
     <script>
@@ -124,10 +119,18 @@
         const GITHUB_USERNAME = "quochuy221200111"; // Thay bằng tên đăng nhập GitHub của bạn
         const GITHUB_REPO = "my-testing-tools1"; // Thay bằng tên kho chứa của bạn
 
-        // --- ĐOẠN MÃ XỬ LÝ CHÍNH (KHÔNG THAY ĐỔI) ---
+        // --- ĐOẠN MÃ XỬ LÝ CHÍNH ---
         const tabContainer = document.getElementById('tab-container');
         const contentContainer = document.getElementById('content-container');
+        const menuToggle = document.getElementById('menu-toggle');
+        const mainContainer = document.getElementById('main-container');
         const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
+
+        // Sự kiện click cho nút toggle
+        menuToggle.addEventListener('click', () => {
+            tabContainer.classList.toggle('active');
+            mainContainer.classList.toggle('active');
+        });
 
         // Gọi API của GitHub để lấy danh sách file
         fetch(apiUrl)
@@ -135,12 +138,17 @@
             .then(files => {
                 const htmlFiles = files.filter(file => file.name.endsWith('.html') && file.name !== 'index.html');
                 
+                if (htmlFiles.length === 0) {
+                    console.warn("Không tìm thấy file HTML nào trong kho chứa.");
+                    return;
+                }
+
                 htmlFiles.forEach((file, index) => {
                     // 1. Tạo nút Tab
                     const tabButton = document.createElement('button');
                     tabButton.className = 'tab-button';
-                    tabButton.textContent = file.name;
-                    tabButton.onclick = (event) => openTab(file.name, event); // Truyền event vào hàm
+                    tabButton.textContent = file.name.replace('.html', ''); // Bỏ đuôi .html cho gọn
+                    tabButton.onclick = (event) => openTab(file.name, event);
                     tabContainer.appendChild(tabButton);
 
                     // 2. Tạo nội dung Tab (iframe)
@@ -160,16 +168,22 @@
                         tabContent.classList.add('active');
                     }
                 });
+
+                // Tự động mở thanh tab khi có file
+                tabContainer.classList.add('active');
+                mainContainer.classList.add('active');
+
             })
             .catch(error => console.error('Lỗi khi lấy danh sách file từ GitHub:', error));
 
         function openTab(fileName, event) {
-            // Ẩn tất cả các tab content và xóa trạng thái active của button
+            // Ẩn tất cả các tab content
             const tabContents = document.getElementsByClassName('tab-content');
             for (let i = 0; i < tabContents.length; i++) {
                 tabContents[i].classList.remove('active');
             }
 
+            // Xóa trạng thái active của tất cả button
             const tabButtons = document.getElementsByClassName('tab-button');
             for (let i = 0; i < tabButtons.length; i++) {
                 tabButtons[i].classList.remove('active');
@@ -177,7 +191,9 @@
 
             // Hiển thị tab content được chọn và đánh dấu button là active
             document.getElementById(fileName).classList.add('active');
-            event.currentTarget.classList.add('active');
+            if (event) {
+                event.currentTarget.classList.add('active');
+            }
         }
     </script>
 
