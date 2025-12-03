@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Up Ảnh Drive Local</title>
+    <style>
+        body { font-family: sans-serif; background: #222; color: #fff; display: flex; justify-content: center; height: 100vh; align-items: center; margin: 0; }
+        .box { width: 500px; padding: 20px; background: #333; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); text-align: center; }
+        #paste-area { 
+            border: 2px dashed #555; height: 150px; display: flex; align-items: center; 
+            justify-content: center; margin-bottom: 20px; cursor: pointer; color: #aaa;
+            flex-direction: column;
+        }
+        #paste-area.active { border-color: #4CAF50; color: #4CAF50; background: #2a3a2a; }
+        .status { margin-top: 10px; font-size: 14px; text-align: left; max-height: 150px; overflow-y: auto; }
+        .item { padding: 5px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .loading { color: #FF9800; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h2>Tool Up Ảnh Từ PC</h2>
+        <div id="paste-area">
+            <span>Click vào đây và nhấn <b>Ctrl + V</b></span>
+            <small>(Hoặc kéo thả ảnh vào)</small>
+        </div>
+        <div id="status-list" class="status"></div>
+    </div>
+
+    <script>
+        // ======================================================
+        // DÁN URL APP SCRIPT CỦA BẠN VÀO DƯỚI ĐÂY
+        var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxZ1k5vUt6G_VHWWsrxmAh2s-uiSNBgJHMFjb9o5zd8RcB1LLjThEs6tofIQdOPAPrj/exec'; 
+        // ======================================================
+
+        var pasteArea = document.getElementById('paste-area');
+        var statusList = document.getElementById('status-list');
+
+        // Hiệu ứng giao diện
+        pasteArea.addEventListener('click', () => pasteArea.classList.add('active'));
+        pasteArea.addEventListener('dragleave', () => pasteArea.classList.remove('active'));
+        pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('active'); });
+        
+        // Xử lý kéo thả file
+        pasteArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pasteArea.classList.remove('active');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // Xử lý dán (Paste)
+        document.onpaste = function(e) {
+            var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            var files = [];
+            for (var index in items) {
+                var item = items[index];
+                if (item.kind === 'file' && item.type.includes('image')) {
+                    files.push(item.getAsFile());
+                }
+            }
+            handleFiles(files);
+        };
+
+        function handleFiles(files) {
+            if (!SCRIPT_URL.includes('/exec')) {
+                alert("Bạn chưa dán link Script URL vào code HTML!");
+                return;
+            }
+            ([...files]).forEach(uploadFile);
+        }
+
+        function uploadFile(file) {
+            var rowId = 'log-' + Math.random().toString(36).substr(2, 9);
+            logStatus(rowId, file.name, 'Đang tải...', 'loading');
+
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var base64 = e.target.result;
+                
+                // Gửi dữ liệu bằng fetch (AJAX)
+                fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Quan trọng: Google redirect nên cần no-cors hoặc xử lý text/plain
+                    headers: { 'Content-Type': 'text/plain' }, // Hack để tránh lỗi CORS Preflight
+                    body: JSON.stringify({
+                        base64: base64,
+                        name: file.name
+                    })
+                })
+                .then(response => {
+                    // Vì mode 'no-cors' không trả về nội dung JSON đọc được ngay,
+                    // nhưng nếu không báo lỗi mạng nghĩa là request đã đến server.
+                    // Google Script xử lý xong là OK.
+                    // Để đơn giản cho Web Local, ta giả định gửi đi thành công.
+                    logStatus(rowId, file.name, '✅ Đã gửi lệnh (Check Drive)', 'success');
+                })
+                .catch(error => {
+                    logStatus(rowId, file.name, '❌ Lỗi mạng', 'error');
+                    console.error(error);
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function logStatus(id, name, msg, type) {
+            var oldRow = document.getElementById(id);
+            var html = `<span>${name}</span> <span class="${type}">${msg}</span>`;
+            if (oldRow) {
+                oldRow.innerHTML = html;
+            } else {
+                var div = document.createElement('div');
+                div.id = id;
+                div.className = 'item';
+                div.innerHTML = html;
+                statusList.prepend(div);
+            }
+        }
+    </script>
+</body>
+</html>
