@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang tổng hợp công cụ kiểm định</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; }
+        .tabs { border-bottom: 1px solid #ccc; padding: 10px; background-color: #f1f1f1; }
+        .tab-button { background-color: inherit; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; }
+        .tab-button:hover { background-color: #ddd; }
+        .tab-button.active { background-color: #ccc; }
+        .tab-content { display: none; padding: 0; border-top: none; width: 100%; height: calc(100vh - 60px); }
+        .tab-content.active { display: block; }
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+
+    <div class="tabs" id="tab-container">
+        <!-- Các nút tab sẽ được tự động chèn vào đây -->
+    </div>
+
+    <div id="content-container">
+        <!-- Các iframe sẽ được tự động chèn vào đây -->
+    </div>
+
+    <script>
+        // --- THAY ĐỔI CÁC THÔNG SỐ NÀY ---
+        const GITHUB_USERNAME = "quochuy221200111"; // Thay bằng tên đăng nhập GitHub của bạn
+        const GITHUB_REPO = "my-testing-tools1"; // Thay bằng tên kho chứa của bạn
+
+        // --- ĐOẠN MÃ XỬ LÝ CHÍNH ---
+        const tabContainer = document.getElementById('tab-container');
+        const contentContainer = document.getElementById('content-container');
+        const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
+
+        // Gọi API của GitHub để lấy danh sách file
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(files => {
+                const htmlFiles = files.filter(file => file.name.endsWith('.html') && file.name !== 'index.html');
+                
+                htmlFiles.forEach((file, index) => {
+                    // 1. Tạo nút Tab
+                    const tabButton = document.createElement('button');
+                    tabButton.className = 'tab-button';
+                    tabButton.textContent = file.name;
+                    tabButton.onclick = () => openTab(file.name);
+                    tabContainer.appendChild(tabButton);
+
+                    // 2. Tạo nội dung Tab (iframe)
+                    const tabContent = document.createElement('div');
+                    tabContent.className = 'tab-content';
+                    tabContent.id = file.name;
+                    
+                    const iframe = document.createElement('iframe');
+                    // URL đến file đã được public qua GitHub Pages
+                    iframe.src = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${file.name}`;
+                    tabContent.appendChild(iframe);
+                    contentContainer.appendChild(tabContent);
+
+                    // Mở tab đầu tiên làm mặc định
+                    if (index === 0) {
+                        tabButton.classList.add('active');
+                        tabContent.classList.add('active');
+                    }
+                });
+            })
+            .catch(error => console.error('Lỗi khi lấy danh sách file từ GitHub:', error));
+
+        function openTab(fileName) {
+            // Ẩn tất cả các tab content và xóa trạng thái active của button
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+
+            const tabButtons = document.getElementsByClassName('tab-button');
+            for (let i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove('active');
+            }
+
+            // Hiển thị tab content được chọn và đánh dấu button là active
+            document.getElementById(fileName).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+    </script>
+
+</body>
+</html>
