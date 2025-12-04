@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sắp xếp ảnh - Giao diện mới (Đã nâng cấp Pro)</title>
+<meta charset="UTF-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+    /* === CSS CHUNG === */
+    body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; color: #333; }
+    button, label.custom-file-label { padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; white-space: nowrap; text-align: center; }
+    button:hover, label.custom-file-label:hover { opacity: 0.85; }
+    input[type="file"].custom-file-input { display: none; }
+    h3 { margin: 0 0 10px 0; font-size: 1.1em; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+
+    /* === BỐ CỤC TỔNG THỂ === */
+    .page-wrapper { display: flex; height: 100vh; gap: 15px; }
+    .main-column { flex: 1; display: flex; flex-direction: column; min-width: 500px; overflow-y: hidden; }
+    .main-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
+    
+    .preview-column {
+        width: 50%; max-width: 50%; flex-shrink: 0; background-color: #e9ecef;
+        padding: 15px; display: flex; flex-direction: column; position: sticky;
+        top: 0; height: 100vh; box-sizing: border-box;
+    }
+
+    /* === THANH CÔNG CỤ === */
+    .controls { position: sticky; top: 0; z-index: 1000; background-color: #fff; padding: 10px; border-bottom: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+    .control-wrapper { display: flex; gap: 15px; width: 100%; }
+    .control-area { flex: 1; display: flex; }
+    .control-group { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fcfcfc; width: 100%; }
+    .action-buttons, .name-options { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .action-buttons > * { flex-grow: 1; }
+    .action-buttons label { display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+    #paste-zone { padding: 8px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; color: #666; background-color: #fafafa; transition: background-color 0.2s, border-color 0.2s; }
+    #paste-zone.drag-over { background-color: #e0e0e0; border-color: #007bff; }
+    
+    /* Highlight dòng đang edit trong textarea */
+    #name-list { 
+        resize: vertical; min-height: 50px; height: 100px; padding: 5px; 
+        border: 1px solid #ccc; border-radius: 4px; width: 100%; 
+        font-family: monospace; line-height: 1.5; white-space: pre;
+    }
+    
+    #range-inputs-container { display: flex; gap: 5px; align-items: center; }
+    #range-inputs-container input[type="number"] { width: 50px; padding: 3px; }
+    #download-progress { display: none; width: 100%; margin-top: 10px; }
+
+    /* === XEM TRƯỚC ẢNH === */
+    #large-preview-container {
+        flex-grow: 1; display: flex; align-items: center; justify-content: center;
+        background-color: #333; border-radius: 8px;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        overflow: hidden; min-height: 0; position: relative;
+        cursor: grab; user-select: none;
+    }
+    #large-preview-container:active { cursor: grabbing; }
+
+    #large-preview-img { 
+        max-width: 100%; max-height: 100%; object-fit: contain; 
+        transform-origin: center center;
+        will-change: transform;
+        /* Quan trọng để không bị kéo ảnh đi bởi trình duyệt */
+        pointer-events: none; 
+        user-select: none;
+        -webkit-user-drag: none;
+    }
+    .preview-placeholder { color: #ccc; font-size: 1.2em; pointer-events: none; }
+    
+    .preview-controls { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; flex-wrap: wrap; gap: 5px; }
+    .rotate-controls { display: flex; gap: 5px; }
+
+    /* === PHOTO GRID === */
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+    .photo-grid.dense-mode { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; }
+    .photo-grid.dense-mode .name-container input[type="text"] { font-size: 9px; padding: 1px 2px; height: 20px; }
+
+    .photo-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; }
+    .img-container { position: relative; width: 100%; padding-top: 75%; overflow: hidden; border-radius: 4px; background-color: #eee; cursor: pointer; transition: outline 0.2s ease-in-out; }
+    .photo-item { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border: none; pointer-events: none; }
+    .delete-btn { position: absolute; z-index: 10; top: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 22px; text-align: center; padding: 0; opacity: 0; transition: opacity 0.2s; }
+    .photo-wrapper:hover .delete-btn { opacity: 1; }
+    .name-container { display: flex; align-items: center; width: 100%; margin-top: 5px; }
+    
+    .name-container input[type="text"] { flex: 1; padding: 3px 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 3px; min-width: 0; font-size: 10.5px; height: 24px; }
+
+    /* === SORTABLE & EFFECTS === */
+    .ghost-class { opacity: 0.4; background-color: #c0e0ff; border: 2px dashed #007bff; }
+    .drag-class { opacity: 0.8; transform: scale(1.05); } 
+    .selected-photo .img-container { outline: 3px solid #007bff; outline-offset: 2px; }
+    @keyframes yellow-flash { from { outline: 4px solid gold; } to { outline: 4px solid transparent; } }
+    .newly-added .img-container { animation: yellow-flash 1.5s ease-out; }
+
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+    <div class="main-column">
+        <div class="controls">
+            <div class="control-wrapper">
+                <div class="control-area">
+                    <div class="control-group">
+                        <div class="action-buttons">
+                            <label for="photo-input" class="custom-file-label">Tải ảnh lên</label>
+                            <div id="paste-zone">Hoặc kéo thả / dán ảnh</div>
+                            <button id="clear-btn" style="background-color: #dc3545;">Xóa tất cả</button>
+                            <button id="download-all-btn">Tải tất cả</button>
+                            <button id="undo-btn">Hoàn tác (Ctrl+Z)</button>
+                            <button id="grid-toggle-btn" style="background-color: #6c757d;">Chế độ lưới x2</button>
+                            <label><input type="checkbox" id="lock-toggle"> Khóa kéo thả</label>
+                            <label><input type="checkbox" id="smart-select-toggle"> Bật chọn số liệu</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-area">
+                    <div class="control-group">
+                        <div class="name-options">
+                            <textarea id="name-list" placeholder="Danh sách tên (tự động cuộn khi sửa tên ảnh)"></textarea>
+                            <div style="display:flex; flex-direction:column; gap: 8px; align-self: flex-end; width: 100%;">
+                                <div id="range-name-options">
+                                    <label><input type="checkbox" id="range-name-toggle"> Chèn tên theo khoảng</label>
+                                    <div id="range-inputs-container" style="display: none;">
+                                        <label for="name-range-start">Từ:</label>
+                                        <input type="number" id="name-range-start" value="1" min="1">
+                                        <label for="name-range-end">Đến:</label>
+                                        <input type="number" id="name-range-end" value="10" min="1">
+                                    </div>
+                                </div>
+                                <button id="assign-names-btn">Chèn tên từ danh sách</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <progress id="download-progress" value="0" max="100"></progress>
+        </div>
+
+        <div class="main-content" id="main-content">
+            <div id="photo-grid-main" class="photo-grid"></div>
+        </div>
+    </div>
+
+    <div class="preview-column">
+        <div class="preview-controls">
+            <h3>Xem trước ảnh</h3>
+            <div class="rotate-controls">
+                <button id="rotate-left-btn" title="Xoay trái 90 độ">↺ Trái</button>
+                <button id="rotate-right-btn" title="Xoay phải 90 độ">↻ Phải</button>
+            </div>
+            <button id="capture-btn" title="Copy vùng hiển thị vào Clipboard (Tỷ lệ 3:4)">📋 Copy ảnh (3:4)</button>
+        </div>
+        <div id="large-preview-container">
+            <span id="preview-placeholder" class="preview-placeholder">Chọn ảnh để xem. Lăn chuột để Zoom, Giữ chuột trái để Kéo.</span>
+            <img id="large-preview-img" src="" alt="" draggable="false">
+        </div>
+    </div>
+</div>
+
+<input type="file" id="photo-input" multiple accept="image/*" class="custom-file-input">
+
+<script>
+// --- Các biến toàn cục ---
+const photoInput = document.getElementById('photo-input');
+const clearBtn = document.getElementById('clear-btn');
+const assignNamesBtn = document.getElementById('assign-names-btn');
+const downloadAllBtn = document.getElementById('download-all-btn');
+const undoBtn = document.getElementById('undo-btn');
+const lockToggle = document.getElementById('lock-toggle');
+const pasteZone = document.getElementById('paste-zone');
+const mainContentEl = document.getElementById('main-content');
+const nameListTextArea = document.getElementById('name-list');
+const rangeNameToggle = document.getElementById('range-name-toggle');
+const rangeInputsContainer = document.getElementById('range-inputs-container');
+const largePreviewImg = document.getElementById('large-preview-img');
+const largePreviewContainer = document.getElementById('large-preview-container');
+const previewPlaceholder = document.getElementById('preview-placeholder');
+const smartSelectToggle = document.getElementById('smart-select-toggle');
+const gridToggleBtn = document.getElementById('grid-toggle-btn');
+const captureBtn = document.getElementById('capture-btn');
+const rotateLeftBtn = document.getElementById('rotate-left-btn');
+const rotateRightBtn = document.getElementById('rotate-right-btn');
+
+
+let photoGrid = document.getElementById('photo-grid-main');
+let sortableInstance = null;
+let photoIdCounter = 0;
+const photoDataMap = new Map(); // Store blob data and rotation
+let history = [];
+let currentState = null;
+let lastSelectedWrapper = null;
+let lastFocusedInput = null;
+let isDownloading = false;
+let draggedItems = [];
+
+// Biến cho Zoom & Pan
+let imgScale = 1;
+let imgTranslate = { x: 0, y: 0 };
+let isPanning = false;
+let startPan = { x: 0, y: 0 };
+
+// --- Các hàm tiện ích ---
+function removeLeadingOrderPrefix(filename) { return filename.replace(/^\d+\.\s+/, ''); }
+function syncInputAttributes() { mainContentEl.querySelectorAll('input[type="text"]').forEach(input => input.setAttribute('value', input.value)); mainContentEl.querySelectorAll('textarea').forEach(textarea => textarea.textContent = textarea.value); mainContentEl.querySelectorAll('input[type="checkbox"]').forEach(input => { if (input.checked) input.setAttribute('checked', 'checked'); else input.removeAttribute('checked'); }); }
+function saveState() { 
+    syncInputAttributes(); 
+    const stateHTML = mainContentEl.innerHTML; 
+    if (stateHTML !== currentState) { 
+        if (currentState !== null) history.push(currentState); 
+        if (history.length > 50) history.shift(); 
+        currentState = stateHTML; 
+    } 
+}
+function updateCurrentState() { syncInputAttributes(); currentState = mainContentEl.innerHTML; }
+function restoreStateFromHistory() { 
+    if (history.length > 0) { 
+        const stateToRestore = history.pop(); 
+        mainContentEl.innerHTML = stateToRestore; 
+        currentState = stateToRestore; 
+        reInitializeApp(); 
+    } else { 
+        alert('Không có hành động nào để hoàn tác.'); 
+    } 
+}
+
+// Xử lý xoay ảnh từ File gốc khi upload (nếu có EXIF)
+function processImageRotation(file) {
+    return new Promise((resolve, reject) => {
+        // Trả về file gốc, việc xoay sẽ được xử lý thủ công hoặc khi render
+        // Ở đây giữ nguyên file gốc để đảm bảo chất lượng
+        resolve(file); 
+    });
+}
+
+// === TÍNH NĂNG XOAY ẢNH VÀ LƯU BLOB MỚI ===
+async function rotateCurrentPhoto(degrees) {
+    if (!lastSelectedWrapper) return;
+    const id = lastSelectedWrapper.getAttribute('data-photo-id');
+    if (!id || !photoDataMap.has(id)) return;
+
+    saveState();
+
+    const currentData = photoDataMap.get(id);
+    const blob = currentData.blob;
+    
+    // Tạo Canvas để xoay
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Đảo chiều width/height nếu xoay 90 hoặc 270 (-90)
+    if (Math.abs(degrees) === 90) {
+        canvas.width = bitmap.height;
+        canvas.height = bitmap.width;
+    } else {
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+    }
+
+    // Dịch chuyển tâm và xoay
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(degrees * Math.PI / 180);
+    ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+
+    // Xuất ra Blob mới
+    canvas.toBlob((newBlob) => {
+        if (!newBlob) return;
+        
+        // Cập nhật Map
+        photoDataMap.set(id, { ...currentData, blob: newBlob });
+        
+        // Tạo URL mới
+        const newUrl = URL.createObjectURL(newBlob);
+        
+        // Cập nhật Thumbnail trong Grid
+        const thumbImg = lastSelectedWrapper.querySelector('.photo-item');
+        thumbImg.src = newUrl;
+        
+        // Cập nhật Preview lớn
+        largePreviewImg.src = newUrl;
+        largePreviewImg.setAttribute('data-current-src', newUrl);
+        
+        // Reset Zoom để tránh lỗi hiển thị sau khi xoay
+        resetZoom();
+
+        updateCurrentState();
+
+    }, blob.type || 'image/jpeg', 0.95);
+}
+
+// === ZOOM & PAN LOGIC (Được làm mượt) ===
+function resetZoom() {
+    imgScale = 1;
+    imgTranslate = { x: 0, y: 0 };
+    updateTransform();
+}
+
+function updateTransform() {
+    // Không dùng transition trong JS để tránh lag khi kéo, dùng CSS will-change
+    largePreviewImg.style.transform = `translate(${imgTranslate.x}px, ${imgTranslate.y}px) scale(${imgScale})`;
+}
+
+function updatePreview(wrapper) {
+    const selectedWrappers = photoGrid.querySelectorAll('.photo-wrapper.selected-photo');
+    if (selectedWrappers.length === 1) {
+        const singleWrapper = selectedWrappers[0];
+        const id = singleWrapper.getAttribute('data-photo-id');
+        const data = photoDataMap.get(id);
+        
+        // Sử dụng Blob URL từ Map để đảm bảo chất lượng và trạng thái xoay
+        const imgSrc = data ? URL.createObjectURL(data.blob) : singleWrapper.querySelector('.photo-item').src;
+        
+        if (largePreviewImg.getAttribute('data-current-src') !== imgSrc) {
+            largePreviewImg.src = imgSrc;
+            largePreviewImg.alt = singleWrapper.querySelector('input[type="text"]').value;
+            largePreviewImg.setAttribute('data-current-src', imgSrc);
+            resetZoom();
+        }
+        previewPlaceholder.style.display = 'none';
+        largePreviewImg.style.display = 'block';
+    } else {
+        largePreviewImg.src = "";
+        largePreviewImg.alt = "";
+        largePreviewImg.removeAttribute('data-current-src');
+        largePreviewImg.style.display = 'none';
+        previewPlaceholder.style.display = 'block';
+    }
+}
+
+function createPhotoElement(id, processedBlob, originalName) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'photo-wrapper newly-added';
+    wrapper.setAttribute('data-photo-id', id);
+
+    const imgContainer = document.createElement('div');
+    imgContainer.className = 'img-container';
+
+    const img = document.createElement('img');
+    img.className = 'photo-item';
+    img.src = URL.createObjectURL(processedBlob);
+    // Prevent dragging image element natively
+    img.draggable = false; 
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.innerHTML = '&times;';
+    deleteBtn.title = 'Xóa ảnh này';
+
+    const nameContainer = document.createElement('div');
+    nameContainer.className = 'name-container';
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    const nameWithoutExtension = originalName.replace(/\.[^/.]+$/, "");
+    const cleanName = removeLeadingOrderPrefix(nameWithoutExtension);
+    nameInput.value = cleanName;
+
+    imgContainer.appendChild(img);
+    imgContainer.appendChild(deleteBtn);
+
+    nameContainer.appendChild(nameInput);
+
+    wrapper.appendChild(imgContainer);
+    wrapper.appendChild(nameContainer);
+
+    photoDataMap.set(id, { blob: processedBlob, originalName: originalName });
+    setTimeout(() => wrapper.classList.remove('newly-added'), 1500);
+    return wrapper;
+}
+
+function syncNameListFromInputs() {
+    const allNameInputs = photoGrid.querySelectorAll('.name-container input[type="text"]');
+    const namesArray = Array.from(allNameInputs).map(input => {
+        return removeLeadingOrderPrefix(input.value.trim());
+    });
+    nameListTextArea.value = namesArray.join('\n');
+}
+
+function updateNumberingAndSync() {
+    const wrappers = photoGrid.querySelectorAll('.photo-wrapper');
+    wrappers.forEach((wrapper, index) => {
+        const nameInput = wrapper.querySelector('.name-container input[type="text"]');
+        if (nameInput) {
+            const currentName = removeLeadingOrderPrefix(nameInput.value);
+            nameInput.value = `${index + 1}. ${currentName}`;
+        }
+    });
+    syncNameListFromInputs();
+}
+
+async function processAndDisplayFiles(filesArray) {
+    if (filesArray.length === 0) return;
+    saveState();
+    const selectedWrappers = photoGrid.querySelectorAll('.photo-wrapper.selected-photo');
+    const insertionPoint = selectedWrappers.length === 1 ? selectedWrappers[0] : null;
+    const fragment = document.createDocumentFragment();
+    let lastAddedElement = null;
+
+    for (const file of filesArray) {
+        if (!file.type.startsWith('image/')) continue;
+        try {
+            const processedBlob = await processImageRotation(file);
+            const id = `photo-${photoIdCounter++}`;
+            const originalName = file.name || `image_${Date.now()}.jpg`;
+            const wrapper = createPhotoElement(id, processedBlob, originalName);
+            fragment.appendChild(wrapper);
+            lastAddedElement = wrapper;
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    if (insertionPoint) {
+        insertionPoint.after(fragment);
+    } else {
+        photoGrid.appendChild(fragment);
+    }
+
+    updateNumberingAndSync(); 
+    if (lastAddedElement) {
+        document.querySelectorAll('.selected-photo').forEach(el => el.classList.remove('selected-photo'));
+        lastAddedElement.classList.add('selected-photo');
+        lastSelectedWrapper = lastAddedElement;
+        lastAddedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        updatePreview(lastAddedElement);
+    }
+    updateCurrentState();
+}
+
+function generateZipWithProgress() { 
+    if (isDownloading) return alert('Quá trình tải xuống đang diễn ra.'); 
+    const wrappers = photoGrid.querySelectorAll('.photo-wrapper'); 
+    if (wrappers.length === 0) return alert('Không có ảnh nào để tải xuống.'); 
+    isDownloading = true; 
+    const zip = new JSZip(); 
+    
+    wrappers.forEach(wrapper => { 
+        const id = wrapper.getAttribute('data-photo-id'); 
+        const nameInput = wrapper.querySelector('.name-container input[type="text"]'); 
+        if (id && photoDataMap.has(id)) { 
+            const { blob } = photoDataMap.get(id); 
+            // Blob trong photoDataMap đã được cập nhật khi xoay ảnh
+            const fullFileName = nameInput.value.trim() || `image_${id}`; 
+            const extension = blob.type.split('/')[1] || 'jpg'; 
+            const finalZipName = `${fullFileName.replace(/[<>:"/\\|?*]+/g, '_')}.${extension}`; 
+            zip.file(finalZipName, blob); 
+        } 
+    }); 
+
+    const progressBar = document.getElementById('download-progress'); 
+    progressBar.style.display = 'block'; 
+    progressBar.value = 0; 
+    zip.generateAsync({ type: "blob" }, (metadata) => { progressBar.value = metadata.percent; })
+    .then((content) => saveAs(content, 'all_photos.zip'))
+    .catch(err => { console.error("Lỗi:", err); alert("Lỗi khi tạo file ZIP."); })
+    .finally(() => { progressBar.style.display = 'none'; isDownloading = false; }); 
+}
+
+// === LOGIC KÉO THẢ GIỮ THỨ TỰ (Quan trọng) ===
+function initializeSortable(isDraggable) {
+    if (sortableInstance) sortableInstance.destroy();
+    if (photoGrid) {
+        sortableInstance = new Sortable(photoGrid, {
+            group: 'shared-photos',
+            animation: 150,
+            ghostClass: 'ghost-class',
+            dragClass: 'drag-class',
+            draggable: '.photo-wrapper',
+            sort: isDraggable,
+            onStart: function(evt) {
+                // Thu thập các item được chọn theo đúng thứ tự DOM hiện tại
+                const allSelected = Array.from(photoGrid.querySelectorAll('.selected-photo'));
+                // Nếu item đang kéo không nằm trong nhóm selected, thì chỉ kéo chính nó
+                if (!evt.item.classList.contains('selected-photo')) {
+                    draggedItems = [];
+                } else {
+                    // Lọc bỏ item chính đang được Sortable xử lý để tránh conflict
+                    draggedItems = allSelected.filter(item => item !== evt.item);
+                }
+                // Ẩn các item đi theo để tạo hiệu ứng gom lại
+                draggedItems.forEach(item => item.style.display = 'none');
+            },
+            onEnd: function(evt) {
+                // Hiện lại các item
+                draggedItems.forEach(item => item.style.display = '');
+                
+                // Logic chèn lại: Chèn lần lượt sau item vừa thả để giữ thứ tự
+                let referenceNode = evt.item;
+                draggedItems.forEach(item => {
+                    // InsertAfter logic
+                    referenceNode.parentNode.insertBefore(item, referenceNode.nextSibling);
+                    // Cập nhật referenceNode để item tiếp theo nằm sau item này
+                    referenceNode = item;
+                });
+                
+                draggedItems = [];
+                saveState();
+                updateNumberingAndSync();
+                updateCurrentState();
+            },
+        });
+    }
+}
+
+function reInitializeApp() { 
+    photoGrid = document.getElementById('photo-grid-main'); 
+    photoGrid.querySelectorAll('.photo-wrapper').forEach(wrapper => { 
+        const id = wrapper.getAttribute('data-photo-id'); 
+        const img = wrapper.querySelector('.photo-item'); 
+        if (id && img && photoDataMap.has(id)) { 
+            const data = photoDataMap.get(id); 
+            if(data && data.blob) img.src = URL.createObjectURL(data.blob); 
+        } 
+    }); 
+    
+    gridToggleBtn.textContent = photoGrid.classList.contains('dense-mode') ? 'Chế độ lưới bình thường' : 'Chế độ lưới x2';
+    document.getElementById('lock-toggle').checked = false; 
+    initializeSortable(true); 
+    const selectedEl = photoGrid.querySelector('.selected-photo'); 
+    lastSelectedWrapper = selectedEl || null; 
+    updatePreview(lastSelectedWrapper); 
+    syncNameListFromInputs(); 
+}
+
+// === EVENT LISTENERS FOR PREVIEW ===
+// Xử lý zoom bằng lăn chuột
+largePreviewContainer.addEventListener('wheel', (e) => {
+    if (!largePreviewImg.src || largePreviewImg.style.display === 'none') return;
+    e.preventDefault();
+    const delta = e.deltaY * -0.001; 
+    const newScale = Math.min(Math.max(1, imgScale + delta * 5), 10);
+    imgScale = newScale;
+    if (imgScale === 1) imgTranslate = {x: 0, y: 0};
+    updateTransform();
+});
+
+// Xử lý Pan (Chỉ khi giữ chuột trái)
+largePreviewContainer.addEventListener('mousedown', (e) => {
+    if (imgScale <= 1 || !largePreviewImg.src) return;
+    if (e.button !== 0) return; // Chỉ chuột trái
+    isPanning = true;
+    startPan = { x: e.clientX - imgTranslate.x, y: e.clientY - imgTranslate.y };
+    largePreviewContainer.style.cursor = 'grabbing';
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    imgTranslate.x = e.clientX - startPan.x;
+    imgTranslate.y = e.clientY - startPan.y;
+    updateTransform();
+});
+
+document.addEventListener('mouseup', () => {
+    if (isPanning) {
+        isPanning = false;
+        largePreviewContainer.style.cursor = 'grab';
+    }
+});
+
+// Xoay ảnh
+rotateLeftBtn.addEventListener('click', () => rotateCurrentPhoto(-90));
+rotateRightBtn.addEventListener('click', () => rotateCurrentPhoto(90));
+
+// === CAPTURE VÀO CLIPBOARD ===
+captureBtn.addEventListener('click', async () => {
+    if (!largePreviewImg.src || largePreviewImg.style.display === 'none') {
+        alert("Vui lòng chọn ảnh để xem trước khi copy.");
+        return;
+    }
+
+    try {
+        const naturalWidth = largePreviewImg.naturalWidth;
+        const naturalHeight = largePreviewImg.naturalHeight;
+        
+        // Tính toán vùng crop
+        const rect = largePreviewContainer.getBoundingClientRect();
+        const containerW = rect.width;
+        const containerH = rect.height;
+
+        let cropWidth = naturalWidth / imgScale;
+        let cropHeight = cropWidth * 0.75; // Tỷ lệ 3:4
+
+        const baseScale = Math.min(containerW / naturalWidth, containerH / naturalHeight);
+        const displayedImgW = naturalWidth * baseScale * imgScale;
+        const displayedImgH = naturalHeight * baseScale * imgScale;
+
+        const imgLeft = (containerW - displayedImgW) / 2 + imgTranslate.x;
+        const imgTop = (containerH - displayedImgH) / 2 + imgTranslate.y;
+
+        const relativeCenterX = ((containerW / 2) - imgLeft) / displayedImgW;
+        const relativeCenterY = ((containerH / 2) - imgTop) / displayedImgH;
+
+        const centerX_natural = relativeCenterX * naturalWidth;
+        const centerY_natural = relativeCenterY * naturalHeight;
+
+        let sx = centerX_natural - (cropWidth / 2);
+        let sy = centerY_natural - (cropHeight / 2);
+
+        if (sx < 0) sx = 0;
+        if (sy < 0) sy = 0;
+        if (sx + cropWidth > naturalWidth) sx = naturalWidth - cropWidth;
+        if (sy + cropHeight > naturalHeight) sy = naturalHeight - cropHeight;
+        
+        if (cropHeight > naturalHeight) {
+            cropHeight = naturalHeight;
+            cropWidth = cropHeight / 0.75;
+            sx = centerX_natural - (cropWidth / 2);
+            if (sx < 0) sx = 0;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = cropWidth;
+        canvas.height = cropHeight;
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(largePreviewImg, sx, sy, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+        canvas.toBlob(blob => {
+            if (blob) {
+                // GHI VÀO CLIPBOARD
+                navigator.clipboard.write([
+                    new ClipboardItem({
+                        [blob.type]: blob
+                    })
+                ]).then(() => {
+                    // Hiệu ứng thông báo nhỏ nút bấm
+                    const originalText = captureBtn.textContent;
+                    captureBtn.textContent = "✅ Đã copy!";
+                    setTimeout(() => captureBtn.textContent = originalText, 1500);
+                }).catch(err => {
+                    console.error(err);
+                    alert("Không thể copy vào clipboard. Hãy đảm bảo trang web có quyền truy cập clipboard.");
+                });
+            }
+        }, 'image/png', 1.0);
+    } catch (e) {
+        console.error("Capture failed:", e);
+        alert("Có lỗi xảy ra khi xử lý ảnh.");
+    }
+});
+
+
+// --- SỰ KIỆN CHUNG ---
+photoInput.addEventListener('change', (event) => { processAndDisplayFiles(Array.from(event.target.files)); event.target.value = ''; });
+document.addEventListener('paste', (event) => { const files = Array.from(event.clipboardData?.items || []).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()); if (files.length > 0) { event.preventDefault(); processAndDisplayFiles(files); } });
+pasteZone.addEventListener('dragover', e => { e.preventDefault(); pasteZone.classList.add('drag-over'); });
+pasteZone.addEventListener('dragleave', e => { e.preventDefault(); pasteZone.classList.remove('drag-over'); });
+pasteZone.addEventListener('drop', e => { e.preventDefault(); pasteZone.classList.remove('drag-over'); processAndDisplayFiles(Array.from(e.dataTransfer.files)); });
+
+clearBtn.addEventListener('click', () => { 
+    if (photoGrid.children.length > 0 && confirm('Bạn có chắc chắn muốn xóa tất cả ảnh không?')) { 
+        saveState(); 
+        photoGrid.innerHTML = ''; 
+        photoDataMap.forEach(data => URL.revokeObjectURL(data.blob)); 
+        photoDataMap.clear(); 
+        photoIdCounter = 0; 
+        lastSelectedWrapper = null; 
+        updateCurrentState(); 
+        updatePreview(null); 
+        syncNameListFromInputs(); 
+    } 
+});
+
+assignNamesBtn.addEventListener('click', () => { 
+    saveState(); 
+    const nameList = nameListTextArea.value.trim().split('\n').filter(Boolean); 
+    if(nameList.length === 0) return; 
+    const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper')); 
+    if (rangeNameToggle.checked) { 
+        const start = parseInt(document.getElementById('name-range-start').value, 10); 
+        const end = parseInt(document.getElementById('name-range-end').value, 10); 
+        let nameIndex = 0; 
+        for (let i = start - 1; i < Math.min(end, wrappers.length); i++) { 
+            if(nameIndex >= nameList.length) break; 
+            const wrapper = wrappers[i]; 
+            wrapper.querySelector('.name-container input[type="text"]').value = `${i + 1}. ${nameList[nameIndex].trim()}`;
+            nameIndex++; 
+        } 
+    } else { 
+        wrappers.forEach((wrapper, index) => { 
+            if (nameList[index]) wrapper.querySelector('.name-container input[type="text"]').value = `${index + 1}. ${nameList[index].trim()}`;
+        }); 
+    } 
+    updateCurrentState(); 
+});
+
+rangeNameToggle.addEventListener('change', (e) => { rangeInputsContainer.style.display = e.target.checked ? 'flex' : 'none'; });
+downloadAllBtn.addEventListener('click', generateZipWithProgress);
+undoBtn.addEventListener('click', restoreStateFromHistory);
+lockToggle.addEventListener('change', (e) => { initializeSortable(!e.target.checked); });
+document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); restoreStateFromHistory(); } });
+
+gridToggleBtn.addEventListener('click', () => {
+    photoGrid.classList.toggle('dense-mode');
+    gridToggleBtn.textContent = photoGrid.classList.contains('dense-mode') ? 'Chế độ lưới bình thường' : 'Chế độ lưới x2';
+});
+
+// Xử lý click chọn ảnh
+mainContentEl.addEventListener('click', (event) => {
+    const target = event.target;
+    const wrapper = target.closest('.photo-wrapper');
+    
+    if (wrapper) {
+        if (target.classList.contains('delete-btn')) {
+            saveState();
+            const wasSelected = wrapper.classList.contains('selected-photo');
+            if (lastSelectedWrapper === wrapper) lastSelectedWrapper = null;
+            wrapper.remove();
+            updateNumberingAndSync(); 
+            updateCurrentState();
+            if (wasSelected) updatePreview(null);
+            return;
+        }
+
+        if (target.closest('.img-container')) {
+            if (!event.ctrlKey && !event.shiftKey) {
+                document.querySelectorAll('.selected-photo').forEach(w => w.classList.remove('selected-photo'));
+                wrapper.classList.add('selected-photo');
+            } 
+            else if (event.ctrlKey) wrapper.classList.toggle('selected-photo');
+            else if (event.shiftKey && lastSelectedWrapper) {
+                const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper'));
+                const [start, end] = [wrappers.indexOf(lastSelectedWrapper), wrappers.indexOf(wrapper)].sort((a,b)=>a-b);
+                for (let i = start; i <= end; i++) wrappers[i].classList.add('selected-photo');
+            }
+
+            lastSelectedWrapper = wrapper.classList.contains('selected-photo') ? wrapper : (photoGrid.querySelector('.selected-photo') || null);
+            updatePreview(wrapper.classList.contains('selected-photo') ? wrapper : null);
+        }
+    }
+});
+
+// === ĐỒNG BỘ INPUT -> TEXTAREA VÀ SCROLL (REQUIREMENT 3) ===
+mainContentEl.addEventListener('input', (event) => {
+    const target = event.target;
+    
+    // Nếu đang sửa tên ở input nhỏ
+    if (target.matches('.name-container input[type="text"]')) {
+        // Cập nhật danh sách tên
+        const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper'));
+        const index = wrappers.indexOf(target.closest('.photo-wrapper'));
+        
+        // Cập nhật giá trị vào textarea
+        const allInputs = photoGrid.querySelectorAll('.name-container input[type="text"]');
+        const names = Array.from(allInputs).map(inp => removeLeadingOrderPrefix(inp.value.trim()));
+        nameListTextArea.value = names.join('\n');
+        
+        // Tính năng cuộn textarea đến đúng dòng
+        if (index >= 0) {
+            // Tính toán vị trí dòng. Chiều cao dòng (line-height) khoảng 20px (tùy font)
+            // Cách chính xác nhất là set scrollTop dựa trên tỷ lệ
+            const lineHeight = 18; // Ước lượng font monospace 13px line-height 1.5
+            const scrollPos = index * lineHeight;
+            nameListTextArea.scrollTop = scrollPos;
+        }
+    }
+    
+    // Lưu state khi dừng gõ
+    if (target.matches('.name-container input[type="text"]') || target.matches('#name-list')) {
+        clearTimeout(target.saveTimeout);
+        target.saveTimeout = setTimeout(() => { saveState(); updateCurrentState(); }, 500);
+    }
+});
+
+// Khởi tạo ban đầu
+reInitializeApp();
+saveState();
+
+</script>
+</body>
+</html>
