@@ -5,19 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang tổng hợp công cụ kiểm định</title>
     <style>
-        /* CSS cơ bản */
+        /* CSS cơ bản - Không thay đổi */
         body {
             font-family: sans-serif;
             margin: 0;
-            overflow: hidden; /* Ngăn cuộn trang chính */
+            overflow: hidden;
         }
-
-        /* Nút bật/tắt menu */
         #menu-toggle {
             position: fixed;
             top: 10px;
             left: 10px;
-            z-index: 1001; /* Luôn nổi trên cùng */
+            z-index: 1001;
             background-color: #f1f1f1;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -25,79 +23,146 @@
             padding: 10px;
             font-size: 20px;
         }
-
-        /* Thanh chứa các tab */
         .tabs {
-            position: fixed; /* Cố định vị trí */
+            position: fixed;
             top: 0;
             left: 0;
-            width: 250px; /* Độ rộng của thanh tab */
-            height: 100vh; /* Cao bằng chiều cao màn hình */
+            width: 250px;
+            height: 100vh;
             background-color: #f1f1f1;
             border-right: 1px solid #ccc;
-            padding-top: 60px; /* Tạo không gian cho nút toggle */
-            transform: translateX(-100%); /* Mặc định ẩn sang bên trái */
-            transition: transform 0.3s ease; /* Hiệu ứng cuộn mượt */
-            overflow-y: auto; /* Cho phép cuộn nếu có nhiều tab */
+            padding-top: 60px;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
         }
-
-        /* Trạng thái hiển thị của thanh tab */
         .tabs.active {
             transform: translateX(0);
         }
-
-        /* Các nút tab */
-        .tab-button {
-            display: block; /* Hiển thị mỗi nút trên một hàng */
-            width: 100%;
-            background-color: inherit;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            padding: 14px 16px;
-            transition: 0.3s;
-            text-align: left; /* Căn chữ sang trái */
-        }
-
-        .tab-button:hover {
-            background-color: #ddd;
-        }
-
-        .tab-button.active {
-            background-color: #ccc;
-        }
-
-        /* Vùng chứa nội dung chính */
         #main-container {
             width: 100%;
             height: 100vh;
-            padding-left: 0; /* Mặc định không có khoảng cách */
-            transition: padding-left 0.3s ease; /* Hiệu ứng đồng bộ với thanh tab */
+            padding-left: 0;
+            transition: padding-left 0.3s ease;
         }
-        
-        /* Khi thanh tab hiện ra, đẩy nội dung sang phải */
         #main-container.active {
-            padding-left: 250px; /* Bằng với độ rộng của thanh tab */
+            padding-left: 250px;
         }
-
-
-        /* Nội dung của tab (iframe) */
         .tab-content {
             display: none;
             width: 100%;
-            height: 100vh; /* Cao bằng chiều cao màn hình */
+            height: 100vh;
         }
-
         .tab-content.active {
             display: block;
         }
-
         iframe {
             width: 100%;
             height: 100%;
             border: none;
         }
+        .tab-button.active {
+            background-color: #ccc;
+        }
+        
+        /* === CSS MỚI CHO TÍNH NĂNG CHỈNH SỬA === */
+
+        /* Nút quản lý chỉnh sửa */
+        #edit-mode-toggle {
+            display: block;
+            width: calc(100% - 20px);
+            margin: 5px 10px;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+        }
+        #edit-mode-toggle:hover {
+            background-color: #0056b3;
+        }
+        #edit-mode-toggle.editing {
+            background-color: #28a745; /* Màu xanh lá khi đang chỉnh sửa */
+        }
+        #edit-mode-toggle.editing:hover {
+            background-color: #218838;
+        }
+
+        /* Nút tab và các thành phần con */
+        .tab-button {
+            display: flex; /* Dùng flexbox để căn chỉnh các item */
+            align-items: center;
+            width: 100%;
+            background-color: inherit;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 12px 16px;
+            transition: 0.3s;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        .tab-button:hover {
+            background-color: #ddd;
+        }
+
+        /* Phần tên của tab */
+        .tab-name {
+            flex-grow: 1; /* Cho phép tên tab chiếm hết không gian còn lại */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Ô nhập liệu để đổi tên */
+        .rename-input {
+            flex-grow: 1;
+            border: 1px solid #007bff;
+            padding: 4px;
+            display: none; /* Mặc định ẩn */
+        }
+
+        /* Các biểu tượng chỉnh sửa */
+        .edit-controls {
+            display: none; /* Mặc định ẩn */
+            margin-left: auto; /* Đẩy các nút về bên phải */
+            padding-left: 10px;
+        }
+        
+        /* Hiển thị các nút khi ở chế độ chỉnh sửa */
+        .tabs.edit-mode .edit-controls {
+            display: flex;
+            align-items: center;
+        }
+        
+        .tabs.edit-mode .tab-button {
+            cursor: grab; /* Thay đổi con trỏ chuột khi có thể kéo */
+        }
+
+        .drag-handle, .rename-icon {
+            cursor: pointer;
+            padding: 5px;
+            color: #555;
+        }
+        .drag-handle:hover, .rename-icon:hover {
+            color: #000;
+        }
+        .drag-handle {
+            font-size: 20px;
+        }
+        
+        /* Style cho tab đang được kéo */
+        .tab-button.dragging {
+            opacity: 0.5;
+            background: #cce5ff;
+        }
+
     </style>
 </head>
 <body>
@@ -105,12 +170,16 @@
     <button id="menu-toggle">☰</button>
 
     <div class="tabs" id="tab-container">
-        <!-- Các nút tab sẽ được tự động chèn vào đây -->
+        <!-- Nút bật/tắt chế độ chỉnh sửa -->
+        <button id="edit-mode-toggle">Chỉnh sửa</button>
+        <div id="tab-buttons-list">
+            <!-- Các nút tab sẽ được chèn vào đây -->
+        </div>
     </div>
 
     <div id="main-container">
         <div id="content-container">
-            <!-- Các iframe sẽ được tự động chèn vào đây -->
+            <!-- Các iframe sẽ được chèn vào đây -->
         </div>
     </div>
 
@@ -121,44 +190,169 @@
 
         // --- ĐOẠN MÃ XỬ LÝ CHÍNH ---
         const tabContainer = document.getElementById('tab-container');
+        const tabButtonsList = document.getElementById('tab-buttons-list');
         const contentContainer = document.getElementById('content-container');
         const menuToggle = document.getElementById('menu-toggle');
         const mainContainer = document.getElementById('main-container');
+        const editModeToggle = document.getElementById('edit-mode-toggle');
         const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
 
-        // Sự kiện click cho nút toggle
+        const TAB_ORDER_KEY = 'tabOrder';
+        const TAB_NAMES_KEY = 'tabNames';
+
+        // Hàm helper để lấy dữ liệu từ localStorage
+        function loadData(key) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (e) {
+                console.error(`Lỗi khi đọc dữ liệu từ localStorage với key "${key}":`, e);
+                return null;
+            }
+        }
+
+        // Hàm helper để lưu dữ liệu vào localStorage
+        function saveData(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (e) {
+                console.error(`Lỗi khi lưu dữ liệu vào localStorage với key "${key}":`, e);
+            }
+        }
+
+        // Sự kiện click cho nút toggle menu
         menuToggle.addEventListener('click', () => {
             tabContainer.classList.toggle('active');
             mainContainer.classList.toggle('active');
         });
 
-        // Gọi API của GitHub để lấy danh sách file
+        // Sự kiện click cho nút bật/tắt chế độ chỉnh sửa
+        editModeToggle.addEventListener('click', () => {
+            const isEditing = tabContainer.classList.toggle('edit-mode');
+            editModeToggle.textContent = isEditing ? 'Lưu & Thoát' : 'Chỉnh sửa';
+            editModeToggle.classList.toggle('editing', isEditing);
+
+            // Kích hoạt/Vô hiệu hóa tính năng kéo thả
+            const tabButtons = tabButtonsList.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.draggable = isEditing;
+            });
+        });
+
+        // Lấy dữ liệu và dựng giao diện
         fetch(apiUrl)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Lỗi mạng: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(files => {
-                const htmlFiles = files.filter(file => file.name.endsWith('.html') && file.name !== 'index.html');
+                let htmlFiles = files.filter(file => file.name.endsWith('.html') && file.name !== 'index.html');
                 
                 if (htmlFiles.length === 0) {
                     console.warn("Không tìm thấy file HTML nào trong kho chứa.");
                     return;
                 }
 
+                const savedOrder = loadData(TAB_ORDER_KEY) || [];
+                const savedNames = loadData(TAB_NAMES_KEY) || {};
+
+                // Sắp xếp các file theo thứ tự đã lưu
+                htmlFiles.sort((a, b) => {
+                    const indexA = savedOrder.indexOf(a.name);
+                    const indexB = savedOrder.indexOf(b.name);
+                    if (indexA === -1 && indexB === -1) return 0; // Cả hai đều là file mới
+                    if (indexA === -1) return 1; // a là file mới, đẩy xuống cuối
+                    if (indexB === -1) return -1; // b là file mới, đẩy xuống cuối
+                    return indexA - indexB; // Sắp xếp theo thứ tự đã lưu
+                });
+
+                // Tạo tab và nội dung tương ứng
                 htmlFiles.forEach((file, index) => {
-                    // 1. Tạo nút Tab
+                    const fileName = file.name;
+                    const defaultName = fileName.replace('.html', '');
+                    const displayName = savedNames[fileName] || defaultName;
+
+                    // 1. Tạo nút Tab phức hợp
                     const tabButton = document.createElement('button');
                     tabButton.className = 'tab-button';
-                    tabButton.textContent = file.name.replace('.html', ''); // Bỏ đuôi .html cho gọn
-                    tabButton.onclick = (event) => openTab(file.name, event);
-                    tabContainer.appendChild(tabButton);
+                    tabButton.dataset.fileName = fileName; // Lưu trữ tên file gốc
+
+                    // Tên hiển thị
+                    const tabNameSpan = document.createElement('span');
+                    tabNameSpan.className = 'tab-name';
+                    tabNameSpan.textContent = displayName;
+
+                    // Ô nhập liệu để đổi tên (ẩn)
+                    const renameInput = document.createElement('input');
+                    renameInput.type = 'text';
+                    renameInput.className = 'rename-input';
+                    renameInput.value = displayName;
+
+                    // Các nút điều khiển (ẩn)
+                    const editControls = document.createElement('div');
+                    editControls.className = 'edit-controls';
+                    
+                    const renameIcon = document.createElement('span');
+                    renameIcon.className = 'rename-icon';
+                    renameIcon.innerHTML = '✏️';
+                    
+                    const dragHandle = document.createElement('span');
+                    dragHandle.className = 'drag-handle';
+                    dragHandle.innerHTML = '⠿';
+
+                    editControls.appendChild(renameIcon);
+                    editControls.appendChild(dragHandle);
+
+                    tabButton.appendChild(tabNameSpan);
+                    tabButton.appendChild(renameInput);
+                    tabButton.appendChild(editControls);
+                    tabButtonsList.appendChild(tabButton);
+
+                    // Gán sự kiện cho nút tab
+                    tabButton.addEventListener('click', (event) => {
+                        // Chỉ mở tab nếu không phải đang trong chế độ chỉnh sửa
+                        if (!tabContainer.classList.contains('edit-mode')) {
+                           openTab(fileName, event.currentTarget);
+                        }
+                    });
+
+                    // Sự kiện cho đổi tên
+                    renameIcon.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Ngăn sự kiện click của button cha
+                        tabNameSpan.style.display = 'none';
+                        renameInput.style.display = 'block';
+                        renameInput.focus();
+                        renameInput.select();
+                    });
+
+                    const saveNewName = () => {
+                        const newName = renameInput.value.trim();
+                        if (newName) {
+                            tabNameSpan.textContent = newName;
+                            // Cập nhật vào localStorage
+                            const currentNames = loadData(TAB_NAMES_KEY) || {};
+                            currentNames[fileName] = newName;
+                            saveData(TAB_NAMES_KEY, currentNames);
+                        }
+                        tabNameSpan.style.display = 'block';
+                        renameInput.style.display = 'none';
+                    };
+                    renameInput.addEventListener('blur', saveNewName);
+                    renameInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            saveNewName();
+                        }
+                    });
 
                     // 2. Tạo nội dung Tab (iframe)
                     const tabContent = document.createElement('div');
                     tabContent.className = 'tab-content';
-                    tabContent.id = file.name;
+                    tabContent.id = fileName;
                     
                     const iframe = document.createElement('iframe');
-                    // URL đến file đã được public qua GitHub Pages
-                    iframe.src = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${file.name}`;
+                    iframe.src = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${fileName}`;
                     tabContent.appendChild(iframe);
                     contentContainer.appendChild(tabContent);
 
@@ -169,14 +363,55 @@
                     }
                 });
 
+                // Cập nhật lại thứ tự trong localStorage nếu có file mới
+                const currentOrder = htmlFiles.map(f => f.name);
+                saveData(TAB_ORDER_KEY, currentOrder);
+
                 // Tự động mở thanh tab khi có file
                 tabContainer.classList.add('active');
                 mainContainer.classList.add('active');
 
+                // Logic kéo và thả
+                let draggedItem = null;
+                tabButtonsList.addEventListener('dragstart', (e) => {
+                    if(tabContainer.classList.contains('edit-mode')) {
+                        draggedItem = e.target.closest('.tab-button');
+                        setTimeout(() => {
+                            if (draggedItem) draggedItem.classList.add('dragging');
+                        }, 0);
+                    }
+                });
+                tabButtonsList.addEventListener('dragend', () => {
+                     if (draggedItem) {
+                        draggedItem.classList.remove('dragging');
+                        draggedItem = null;
+
+                        // Lưu lại thứ tự mới sau khi thả
+                        const newOrder = Array.from(tabButtonsList.querySelectorAll('.tab-button'))
+                                              .map(btn => btn.dataset.fileName);
+                        saveData(TAB_ORDER_KEY, newOrder);
+                    }
+                });
+                 tabButtonsList.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if(tabContainer.classList.contains('edit-mode')) {
+                        const targetItem = e.target.closest('.tab-button');
+                        if (targetItem && targetItem !== draggedItem) {
+                            const rect = targetItem.getBoundingClientRect();
+                            const offset = e.clientY - rect.top - rect.height / 2;
+                            if (offset < 0) {
+                                tabButtonsList.insertBefore(draggedItem, targetItem);
+                            } else {
+                                tabButtonsList.insertBefore(draggedItem, targetItem.nextSibling);
+                            }
+                        }
+                    }
+                });
+
             })
             .catch(error => console.error('Lỗi khi lấy danh sách file từ GitHub:', error));
 
-        function openTab(fileName, event) {
+        function openTab(fileName, targetButton) {
             // Ẩn tất cả các tab content
             const tabContents = document.getElementsByClassName('tab-content');
             for (let i = 0; i < tabContents.length; i++) {
@@ -191,8 +426,8 @@
 
             // Hiển thị tab content được chọn và đánh dấu button là active
             document.getElementById(fileName).classList.add('active');
-            if (event) {
-                event.currentTarget.classList.add('active');
+            if (targetButton) {
+                targetButton.classList.add('active');
             }
         }
     </script>
