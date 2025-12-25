@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quản Lý Ảnh Drive</title>
+    <title>Hệ Thống Quản Lý Ảnh Drive - Sắc nét</title>
     <style>
-        /* --- CÀI ĐẶT CHUNG --- */
+        /* CSS không thay đổi, giữ nguyên như cũ */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ddd; margin: 0; padding: 20px; }
-
-        /* --- CSS CHUNG --- */
         h2 { text-align: center; color: #fff; margin-bottom: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         .upload-box { background: #2d2d2d; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; margin-bottom: 30px; }
@@ -41,8 +39,6 @@
         .img-card.selected { box-shadow: 0 0 0 3px #2196F3; }
         .img-card.selected::after { content: '✔'; position: absolute; top: 8px; left: 8px; background: #2196F3; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; pointer-events: none; }
         .loading-overlay { text-align: center; padding: 20px; color: #888; font-style: italic; }
-
-        /* --- CSS CHO LIGHTBOX --- */
         .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
         .lightbox.show { opacity: 1; visibility: visible; }
         .lightbox-content { max-width: 90%; max-height: 90%; position: relative; }
@@ -53,16 +49,11 @@
 <body>
 
     <div class="container">
-        <!-- Mô tả phiên bản -->
         <div style="background: #252525; border-left: 4px solid #f39c12; color: #ccc; padding: 15px; margin: 20px 0; border-radius: 5px;">
-            <h3 style="margin-top: 0; color: #f39c12;">Hệ Thống Quản Lý Ảnh - Dùng Link Thumbnail Chất Lượng Cao</h3>
-            <p>
-                <b>Cách hoạt động:</b> Sử dụng API thumbnail của Google Drive nhưng yêu cầu một kích thước ảnh lớn (ví dụ: `sz=w2048`). Ảnh trả về có chất lượng gần như gốc và hiển thị cực kỳ ổn định.
-            </p>
-            <p><b>Ưu điểm:</b> Rất nhanh, ổn định, không cần sửa code Apps Script. Tỷ lệ thành công cao nhất.</p>
+            <h3 style="margin-top: 0; color: #f39c12;">Hệ Thống Quản Lý Ảnh Drive - Hiển thị Sắc nét</h3>
+            <p><b>Cách hoạt động:</b> Tải ảnh thumbnail chất lượng cao (`sz=w400`) để hiển thị sắc nét ngay trên lưới ảnh. Vẫn có thể nhấp vào để xem ảnh với chất lượng đầy đủ.</p>
         </div>
         
-        <!-- HTML của ứng dụng -->
         <h2>Quản Lý Ảnh Drive</h2>
         <div class="upload-box">
             <div id="paste-area"><span>Ctrl + V để dán ảnh</span><small>Hoặc kéo thả file</small></div>
@@ -79,7 +70,6 @@
         <div class="gallery"></div>
         <div class="loading-overlay">Đang tải...</div>
         
-        <!-- Lightbox để xem ảnh -->
         <div class="lightbox">
             <div class="lightbox-content">
                 <span class="lightbox-close">&times;</span>
@@ -95,7 +85,6 @@
     // ======================================================
 
     document.addEventListener('DOMContentLoaded', () => {
-        // --- Lấy các phần tử DOM ---
         const pasteArea = document.getElementById('paste-area');
         const fileInput = document.getElementById('file-input');
         const statusList = document.querySelector('.status-log');
@@ -107,7 +96,6 @@
         const lightboxImg = lightbox.querySelector('img');
         const lightboxClose = lightbox.querySelector('.lightbox-close');
 
-        // --- Gán sự kiện ---
         pasteArea.addEventListener('dragleave', () => pasteArea.classList.remove('active'));
         pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('active'); });
         pasteArea.addEventListener('drop', (e) => {
@@ -124,12 +112,11 @@
         });
         fileInput.addEventListener('change', (e) => { 
             handleFiles(e.target.files); 
-            e.target.value = ''; // Reset input để có thể chọn lại file giống nhau
+            e.target.value = '';
         });
         btnRefresh.addEventListener('click', fetchImages);
         btnDeleteSelected.addEventListener('click', deleteSelectedImages);
 
-        // --- Chức năng xử lý file ---
         function handlePaste(e) {
             const files = [];
             for (const item of (e.clipboardData || e.originalEvent.clipboardData).items) {
@@ -138,11 +125,11 @@
                 }
             }
             if (files.length > 0) handleFiles(files);
-            document.onpaste = null; // Hủy sự kiện sau khi dán xong
+            document.onpaste = null;
         }
 
         function handleFiles(files) {
-            if (SCRIPT_URL.includes('AKfyc')) { // Kiểm tra SCRIPT_URL mặc định
+            if (SCRIPT_URL.includes('AKfyc')) {
                 [...files].forEach(uploadFile);
             } else {
                  alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
@@ -152,17 +139,15 @@
         function uploadFile(file) {
             const rowId = 'log-' + Math.random().toString(36).substr(2, 9);
             logStatus(rowId, file.name, 'Đang tải lên...', 'log-loading');
-
             const reader = new FileReader();
             reader.onload = (e) => {
                 fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Sử dụng no-cors để gửi lệnh mà không cần chờ phản hồi phức tạp
+                    mode: 'no-cors',
                     body: JSON.stringify({ action: 'upload', base64: e.target.result, name: file.name })
                 })
                 .then(() => {
-                    logStatus(rowId, file.name, '✅ Đã gửi lệnh (Chờ cập nhật)', 'log-success');
-                    // Tự động cập nhật sau một khoảng thời gian ngắn
+                    logStatus(rowId, file.name, '✅ Đã gửi lệnh', 'log-success');
                     setTimeout(fetchImages, 3000);
                 })
                 .catch(error => { 
@@ -173,12 +158,10 @@
             reader.readAsDataURL(file);
         }
 
-        // --- Chức năng hiển thị và quản lý thư viện ảnh ---
         function fetchImages() {
             loadingMsg.style.display = 'block';
             galleryArea.innerHTML = '';
             updateSelectionControls();
-
             fetch(SCRIPT_URL)
             .then(response => response.json())
             .then(data => {
@@ -191,39 +174,43 @@
                 }
             })
             .catch(err => {
-                loadingMsg.innerHTML = 'Không thể kết nối đến máy chủ. Hãy kiểm tra lại link SCRIPT_URL hoặc đường truyền mạng.';
+                loadingMsg.innerHTML = 'Không thể kết nối đến máy chủ.';
                 loadingMsg.style.display = 'block';
                 console.error(err);
             });
         }
 
         function renderGallery(images) {
-            galleryArea.innerHTML = ''; // Xóa ảnh cũ trước khi render
+            galleryArea.innerHTML = '';
             if (images.length === 0) {
                 galleryArea.innerHTML = '<p style="text-align:center; width:100%; color:#666;">Thư mục trống</p>';
                 return;
             }
-
             images.forEach(img => {
                 const div = document.createElement('div');
                 div.className = 'img-card';
                 div.dataset.fileId = img.id;
                 
-                const thumbUrl = img.url; // Google tự động tạo thumbnail
+                // ================== THAY ĐỔI QUAN TRỌNG Ở ĐÂY ==================
+                // Tạo link thumbnail chất lượng cao hơn (w400) để hiển thị trên lưới
+                const sharpThumbUrl = `https://drive.google.com/thumbnail?id=${img.id}&sz=w400`;
+                
+                // Link chất lượng đầy đủ cho lightbox vẫn giữ nguyên
                 const highResUrl = `https://drive.google.com/thumbnail?id=${img.id}&sz=w2048`;
+                // =================================================================
 
                 div.innerHTML = `
                     <button class="btn-delete" title="Xóa ảnh">×</button>
-                    <img src="${thumbUrl}" class="img-thumb" alt="${img.name}" data-highres-url="${highResUrl}">
+                    <img src="${sharpThumbUrl}" class="img-thumb" alt="${img.name}">
                     <div class="img-info" title="${img.name}">${img.name}</div>
                 `;
                 
-                // Gán sự kiện trực tiếp thay vì dùng onclick trong HTML
                 div.querySelector('.btn-delete').addEventListener('click', (e) => {
                     e.stopPropagation();
                     deleteImage(img.id);
                 });
 
+                // Khi click vào ảnh, vẫn mở lightbox với ảnh chất lượng cao nhất
                 div.querySelector('.img-thumb').addEventListener('click', () => {
                     openLightbox(highResUrl);
                 });
@@ -237,7 +224,6 @@
                     updateSelectionControls();
                 });
                 div.prepend(checkbox);
-
                 galleryArea.appendChild(div);
             });
         }
@@ -246,12 +232,7 @@
              if (!confirm("Bạn có chắc muốn xóa ảnh này không?")) return;
              const card = document.querySelector(`.img-card[data-file-id="${fileId}"]`);
              if (card) card.style.opacity = '0.3';
-             
-             fetch(SCRIPT_URL, { 
-                 method: 'POST', 
-                 mode: 'no-cors', 
-                 body: JSON.stringify({ action: 'delete', fileId: fileId }) 
-             })
+             fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'delete', fileId }) })
              .then(() => { 
                  if (card) card.remove();
                  updateSelectionControls();
@@ -266,18 +247,12 @@
             const selectedCards = document.querySelectorAll('.img-card.selected');
             if (selectedCards.length === 0) return;
             if (!confirm(`Bạn có chắc muốn xóa ${selectedCards.length} ảnh đã chọn?`)) return;
-
             for (const card of selectedCards) {
                 card.style.opacity = '0.3';
                 try {
-                    await fetch(SCRIPT_URL, { 
-                        method: 'POST', 
-                        mode: 'no-cors', 
-                        body: JSON.stringify({ action: 'delete', fileId: card.dataset.fileId }) 
-                    });
+                    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'delete', fileId: card.dataset.fileId }) });
                     card.remove();
                 } catch (err) {
-                    console.error('Lỗi xóa file:', card.dataset.fileId);
                     card.style.opacity = '1';
                 }
             }
@@ -286,11 +261,9 @@
 
         function updateSelectionControls() {
             const selectedCount = document.querySelectorAll('.img-card.selected').length;
+            btnDeleteSelected.style.display = selectedCount > 0 ? 'inline-flex' : 'none';
             if (selectedCount > 0) {
-                btnDeleteSelected.style.display = 'inline-flex';
                 btnDeleteSelected.textContent = `🗑️ Xóa ${selectedCount} ảnh`;
-            } else {
-                btnDeleteSelected.style.display = 'none';
             }
         }
         
@@ -306,7 +279,6 @@
             logRow.innerHTML = html;
         }
 
-        // --- Chức năng Lightbox ---
         function openLightbox(imageUrl) {
             lightboxImg.src = imageUrl;
             lightbox.classList.add('show');
@@ -314,19 +286,13 @@
 
         function closeLightbox() {
             lightbox.classList.remove('show');
-            lightboxImg.src = ''; // Xóa link ảnh để tránh tải lại
+            lightboxImg.src = '';
         }
 
         lightboxClose.addEventListener('click', closeLightbox);
-        lightbox.addEventListener('click', (e) => {
-            // Chỉ đóng khi click vào nền đen, không phải ảnh
-            if (e.target === lightbox) {
-                closeLightbox();
-            }
-        });
+        lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
 
-        // --- Tự động tải ảnh khi trang được mở ---
-        if (SCRIPT_URL.includes('AKfyc')) { // Kiểm tra SCRIPT_URL mặc định
+        if (SCRIPT_URL.includes('AKfyc')) {
             fetchImages();
         } else {
              alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
