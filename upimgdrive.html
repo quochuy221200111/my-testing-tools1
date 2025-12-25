@@ -5,214 +5,179 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Quản Lý Ảnh Drive</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e1e1e; color: #ddd; margin: 0; padding: 20px; }
-        h2 { text-align: center; color: #fff; margin-bottom: 20px; }
-        
-        /* Container chính */
-        .container { max-width: 1000px; margin: 0 auto; }
+        /* --- CÀI ĐẶT CHUNG --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ddd; margin: 0; padding: 20px; }
 
-        /* Khu vực Upload */
-        .upload-box { 
-            background: #2d2d2d; padding: 20px; border-radius: 10px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; margin-bottom: 30px;
-        }
-        
-        #paste-area { 
-            border: 2px dashed #555; height: 120px; display: flex; align-items: center; 
-            justify-content: center; margin: 15px 0; cursor: pointer; color: #aaa;
-            flex-direction: column; transition: 0.3s; background: #252525;
-            border-radius: 8px;
+        /* --- CSS CHUNG --- */
+        h2 { text-align: center; color: #fff; margin-bottom: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .upload-box { background: #2d2d2d; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: center; margin-bottom: 30px; }
+        #paste-area {
+            border: 2px dashed #555; height: 120px; display: flex; align-items: center; justify-content: center;
+            margin: 15px 0; cursor: pointer; color: #aaa; flex-direction: column; transition: 0.3s;
+            background: #252525; border-radius: 8px;
         }
         #paste-area.active { border-color: #4CAF50; background: #2f3f2f; color: #fff; }
         #paste-area:hover { border-color: #666; }
-        
-        /* Nút chọn file thủ công */
         .file-input-wrapper { margin-top: 10px; }
         input[type="file"] { display: none; }
-        .btn-select {
-            background: #2196F3; color: white; padding: 8px 20px; border-radius: 5px; cursor: pointer;
-            display: inline-block; font-size: 14px; transition: 0.2s;
-        }
+        .btn-select { background: #2196F3; color: white; padding: 8px 20px; border-radius: 5px; cursor: pointer; display: inline-block; font-size: 14px; transition: 0.2s; }
         .btn-select:hover { background: #1976D2; }
-
-        /* Khu vực hiển thị trạng thái log */
         .status-log { margin-top: 10px; font-size: 13px; text-align: left; max-height: 100px; overflow-y: auto; color: #bbb; }
         .log-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #333; }
         .log-success { color: #4CAF50; } .log-error { color: #f44336; } .log-loading { color: #FF9800; }
-
-        /* Nút Refresh */
         .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .btn-refresh { 
-            background: #444; color: #fff; border: none; padding: 8px 15px; border-radius: 5px; 
-            cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 5px;
-        }
-        .btn-refresh:hover { background: #555; }
-
-        /* --- SỬA ĐỔI PHẦN GRID VÀ ẢNH --- */
-        .gallery { 
-            display: grid; 
-            /* Cột tự động co giãn, tối thiểu 180px */
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
-            gap: 15px; 
-            align-items: start; /* Căn chỉnh các item lên trên cùng để tránh khoảng trắng lạ */
-        }
-        
-        .img-card { 
-            background: #2d2d2d; border-radius: 8px; overflow: hidden; 
-            position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-            transition: transform 0.2s;
-            /* Không set chiều cao cố định cho card */
-        }
+        .btn { color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 5px; transition: background 0.2s; }
+        .btn-refresh { background: #444; } .btn-refresh:hover { background: #555; }
+        .btn-delete-selected { background: #c0392b; } .btn-delete-selected:hover { background: #e74c3c; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .img-card { background: #2d2d2d; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; }
         .img-card:hover { transform: translateY(-3px); }
-        
-        /* Sửa đổi style ảnh thumbnail */
-        .img-thumb { 
-            width: 100%; 
-            height: auto; /* Để chiều cao tự động theo ảnh */
-            max-height: 400px; /* (Tùy chọn) Giới hạn chiều cao nếu ảnh quá dài */
-            object-fit: contain; /* Đảm bảo hiển thị trọn vẹn ảnh */
-            display: block; 
-            cursor: pointer;
-            background-color: #000; /* Thêm nền đen nếu ảnh trong suốt */
-        }
-        
+        .img-thumb { width: 100%; height: 180px; object-fit: cover; display: block; cursor: pointer; background-color: #000; }
         .img-info { padding: 8px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #333; }
-
-        /* Sửa đổi nút xóa - Luôn hiện */
-        .btn-delete {
-            position: absolute; top: 5px; right: 5px;
-            background: #f44336; /* Màu đỏ rõ hơn */
-            color: white; border: none;
-            width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; 
-            opacity: 1; /* LUÔN HIỆN (Thay vì 0) */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.6); /* Thêm bóng để dễ nhìn trên nền trắng */
-            transition: 0.2s;
-            z-index: 10;
-        }
+        .btn-delete { position: absolute; top: 8px; right: 8px; background: rgba(244, 67, 54, 0.8); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; opacity: 0; transition: 0.2s; z-index: 10; }
+        .img-card:hover .btn-delete { opacity: 1; }
         .btn-delete:hover { background: #d32f2f; transform: scale(1.1); }
-        
-        /* Hiệu ứng đang tải danh sách */
+        .img-card.selected { box-shadow: 0 0 0 3px #2196F3; }
+        .img-card.selected::after { content: '✔'; position: absolute; top: 8px; left: 8px; background: #2196F3; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; pointer-events: none; }
         .loading-overlay { text-align: center; padding: 20px; color: #888; font-style: italic; }
 
+        /* --- CSS CHO LIGHTBOX --- */
+        .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        .lightbox.show { opacity: 1; visibility: visible; }
+        .lightbox-content { max-width: 90%; max-height: 90%; position: relative; }
+        .lightbox-content img { width: 100%; height: 100%; object-fit: contain; }
+        .lightbox-close { position: absolute; top: -40px; right: 0; font-size: 35px; color: #fff; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Quản Lý Ảnh Drive</h2>
-
-        <!-- KHU VỰC UPLOAD -->
-        <div class="upload-box">
-            <div id="paste-area">
-                <span>Click vào đây và nhấn <b>Ctrl + V</b> (Dán ảnh)</span>
-                <small>Hoặc kéo thả file vào khung này</small>
-            </div>
-            
-            <div class="file-input-wrapper">
-                <label class="btn-select">
-                    📂 Chọn file từ máy tính
-                    <input type="file" id="file-input" multiple accept="image/*">
-                </label>
-            </div>
-            <div id="status-list" class="status-log"></div>
-        </div>
-
-        <!-- KHU VỰC HIỂN THỊ ẢNH -->
-        <div class="controls">
-            <h3>Danh sách ảnh trên Drive</h3>
-            <button class="btn-refresh" onclick="fetchImages()">↻ Cập nhật danh sách</button>
+        <!-- Mô tả phiên bản -->
+        <div style="background: #252525; border-left: 4px solid #f39c12; color: #ccc; padding: 15px; margin: 20px 0; border-radius: 5px;">
+            <h3 style="margin-top: 0; color: #f39c12;">Hệ Thống Quản Lý Ảnh - Dùng Link Thumbnail Chất Lượng Cao</h3>
+            <p>
+                <b>Cách hoạt động:</b> Sử dụng API thumbnail của Google Drive nhưng yêu cầu một kích thước ảnh lớn (ví dụ: `sz=w2048`). Ảnh trả về có chất lượng gần như gốc và hiển thị cực kỳ ổn định.
+            </p>
+            <p><b>Ưu điểm:</b> Rất nhanh, ổn định, không cần sửa code Apps Script. Tỷ lệ thành công cao nhất.</p>
         </div>
         
-        <div id="gallery-area" class="gallery">
-            <!-- Ảnh sẽ được load vào đây -->
+        <!-- HTML của ứng dụng -->
+        <h2>Quản Lý Ảnh Drive</h2>
+        <div class="upload-box">
+            <div id="paste-area"><span>Ctrl + V để dán ảnh</span><small>Hoặc kéo thả file</small></div>
+            <div class="file-input-wrapper"><label class="btn-select">📂 Chọn file<input type="file" id="file-input" multiple accept="image/*"></label></div>
+            <div class="status-log"></div>
         </div>
-        <div id="loading-msg" class="loading-overlay">Đang tải dữ liệu từ Drive...</div>
+        <div class="controls">
+            <h3>Danh sách ảnh</h3>
+            <div>
+                <button class="btn btn-delete-selected" style="display: none;">🗑️ Xóa đã chọn</button>
+                <button class="btn btn-refresh">↻ Cập nhật</button>
+            </div>
+        </div>
+        <div class="gallery"></div>
+        <div class="loading-overlay">Đang tải...</div>
+        
+        <!-- Lightbox để xem ảnh -->
+        <div class="lightbox">
+            <div class="lightbox-content">
+                <span class="lightbox-close">&times;</span>
+                <img src="" alt="Ảnh phóng to">
+            </div>
+        </div>
     </div>
 
     <script>
-        // ======================================================
-        // DÁN URL APP SCRIPT CỦA BẠN VÀO ĐÂY (GIỮ NGUYÊN)
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4x825A6wuoIA2jC6LUujtAK7un69P3AsxI645UWUbDmMrUWnxwjlCLNK-aXJlKyS1FA/exec'; 
-        // ======================================================
+    // ======================================================
+    // DÁN URL APP SCRIPT CỦA BẠN VÀO ĐÂY
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4x825A6wuoIA2jC6LUujtAK7un69P3AsxI645UWUbDmMrUWnxwjlCLNK-aXJlKyS1FA/exec'; 
+    // ======================================================
 
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Lấy các phần tử DOM ---
         const pasteArea = document.getElementById('paste-area');
         const fileInput = document.getElementById('file-input');
-        const statusList = document.getElementById('status-list');
-        const galleryArea = document.getElementById('gallery-area');
-        const loadingMsg = document.getElementById('loading-msg');
+        const statusList = document.querySelector('.status-log');
+        const galleryArea = document.querySelector('.gallery');
+        const loadingMsg = document.querySelector('.loading-overlay');
+        const btnDeleteSelected = document.querySelector('.btn-delete-selected');
+        const btnRefresh = document.querySelector('.btn-refresh');
+        const lightbox = document.querySelector('.lightbox');
+        const lightboxImg = lightbox.querySelector('img');
+        const lightboxClose = lightbox.querySelector('.lightbox-close');
 
-        // --- 1. XỬ LÝ SỰ KIỆN UPLOAD (Paste, Drop, Select) ---
-        pasteArea.addEventListener('click', () => pasteArea.classList.add('active'));
+        // --- Gán sự kiện ---
         pasteArea.addEventListener('dragleave', () => pasteArea.classList.remove('active'));
         pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('active'); });
-
         pasteArea.addEventListener('drop', (e) => {
             e.preventDefault();
             pasteArea.classList.remove('active');
             handleFiles(e.dataTransfer.files);
         });
+        pasteArea.addEventListener('click', () => {
+             pasteArea.querySelector('span').textContent = 'Đang chờ dán...';
+             document.onpaste = (e) => {
+                handlePaste(e);
+                pasteArea.querySelector('span').textContent = 'Ctrl + V để dán ảnh';
+             };
+        });
+        fileInput.addEventListener('change', (e) => { 
+            handleFiles(e.target.files); 
+            e.target.value = ''; // Reset input để có thể chọn lại file giống nhau
+        });
+        btnRefresh.addEventListener('click', fetchImages);
+        btnDeleteSelected.addEventListener('click', deleteSelectedImages);
 
-        document.onpaste = function(e) {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        // --- Chức năng xử lý file ---
+        function handlePaste(e) {
             const files = [];
-            for (let item of items) {
-                if (item.kind === 'file' && item.type.includes('image')) {
+            for (const item of (e.clipboardData || e.originalEvent.clipboardData).items) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
                     files.push(item.getAsFile());
                 }
             }
             if (files.length > 0) handleFiles(files);
-        };
-
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-            fileInput.value = ''; 
-        });
-
-        function handleFiles(files) {
-            if (SCRIPT_URL.includes('XXXXX')) {
-                alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
-                return;
-            }
-            ([...files]).forEach(uploadFile);
+            document.onpaste = null; // Hủy sự kiện sau khi dán xong
         }
 
-        // --- 2. HÀM UPLOAD FILE ---
+        function handleFiles(files) {
+            if (SCRIPT_URL.includes('AKfyc')) { // Kiểm tra SCRIPT_URL mặc định
+                [...files].forEach(uploadFile);
+            } else {
+                 alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
+            }
+        }
+
         function uploadFile(file) {
             const rowId = 'log-' + Math.random().toString(36).substr(2, 9);
             logStatus(rowId, file.name, 'Đang tải lên...', 'log-loading');
 
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64 = e.target.result;
-                
+            reader.onload = (e) => {
                 fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({
-                        action: 'upload', 
-                        base64: base64,
-                        name: file.name
-                    })
+                    mode: 'no-cors', // Sử dụng no-cors để gửi lệnh mà không cần chờ phản hồi phức tạp
+                    body: JSON.stringify({ action: 'upload', base64: e.target.result, name: file.name })
                 })
                 .then(() => {
                     logStatus(rowId, file.name, '✅ Đã gửi lệnh (Chờ cập nhật)', 'log-success');
-                    setTimeout(fetchImages, 3000); 
+                    // Tự động cập nhật sau một khoảng thời gian ngắn
+                    setTimeout(fetchImages, 3000);
                 })
-                .catch(error => {
-                    logStatus(rowId, file.name, '❌ Lỗi mạng', 'log-error');
-                    console.error(error);
+                .catch(error => { 
+                    logStatus(rowId, file.name, '❌ Lỗi mạng', 'log-error'); 
+                    console.error(error); 
                 });
             };
             reader.readAsDataURL(file);
         }
 
-        // --- 3. HÀM LẤY DANH SÁCH ẢNH (GET) ---
+        // --- Chức năng hiển thị và quản lý thư viện ảnh ---
         function fetchImages() {
             loadingMsg.style.display = 'block';
-            galleryArea.innerHTML = ''; 
+            galleryArea.innerHTML = '';
+            updateSelectionControls();
 
             fetch(SCRIPT_URL)
             .then(response => response.json())
@@ -226,13 +191,14 @@
                 }
             })
             .catch(err => {
-                loadingMsg.innerHTML = 'Không thể kết nối Server.';
+                loadingMsg.innerHTML = 'Không thể kết nối đến máy chủ. Hãy kiểm tra lại link SCRIPT_URL hoặc đường truyền mạng.';
                 loadingMsg.style.display = 'block';
                 console.error(err);
             });
         }
 
         function renderGallery(images) {
+            galleryArea.innerHTML = ''; // Xóa ảnh cũ trước khi render
             if (images.length === 0) {
                 galleryArea.innerHTML = '<p style="text-align:center; width:100%; color:#666;">Thư mục trống</p>';
                 return;
@@ -241,62 +207,132 @@
             images.forEach(img => {
                 const div = document.createElement('div');
                 div.className = 'img-card';
-                div.id = 'img-' + img.id;
+                div.dataset.fileId = img.id;
+                
+                const thumbUrl = img.url; // Google tự động tạo thumbnail
+                const highResUrl = `https://drive.google.com/thumbnail?id=${img.id}&sz=w2048`;
+
                 div.innerHTML = `
-                    <button class="btn-delete" onclick="deleteImage('${img.id}')" title="Xóa ảnh">×</button>
-                    <a href="${img.url.replace('thumbnail', 'uc')}&export=view" target="_blank">
-                        <img src="${img.url}" class="img-thumb" alt="${img.name}">
-                    </a>
-                    <div class="img-info">${img.name}</div>
+                    <button class="btn-delete" title="Xóa ảnh">×</button>
+                    <img src="${thumbUrl}" class="img-thumb" alt="${img.name}" data-highres-url="${highResUrl}">
+                    <div class="img-info" title="${img.name}">${img.name}</div>
                 `;
+                
+                // Gán sự kiện trực tiếp thay vì dùng onclick trong HTML
+                div.querySelector('.btn-delete').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteImage(img.id);
+                });
+
+                div.querySelector('.img-thumb').addEventListener('click', () => {
+                    openLightbox(highResUrl);
+                });
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'select-checkbox';
+                checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    div.classList.toggle('selected', checkbox.checked);
+                    updateSelectionControls();
+                });
+                div.prepend(checkbox);
+
                 galleryArea.appendChild(div);
             });
         }
-
-        // --- 4. HÀM XÓA ẢNH (POST) ---
+        
         function deleteImage(fileId) {
-            if (!confirm("Bạn có chắc muốn xóa ảnh này không?")) return;
-
-            const card = document.getElementById('img-' + fileId);
-            if (card) card.style.opacity = '0.3';
-
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({
-                    action: 'delete',
-                    fileId: fileId
-                })
-            })
-            .then(() => {
-                console.log("Đã gửi lệnh xóa: " + fileId);
-                if (card) card.remove();
-                setTimeout(fetchImages, 2000);
-            })
-            .catch(err => {
-                alert("Lỗi khi gửi lệnh xóa");
-                if (card) card.style.opacity = '1'; 
-            });
+             if (!confirm("Bạn có chắc muốn xóa ảnh này không?")) return;
+             const card = document.querySelector(`.img-card[data-file-id="${fileId}"]`);
+             if (card) card.style.opacity = '0.3';
+             
+             fetch(SCRIPT_URL, { 
+                 method: 'POST', 
+                 mode: 'no-cors', 
+                 body: JSON.stringify({ action: 'delete', fileId: fileId }) 
+             })
+             .then(() => { 
+                 if (card) card.remove();
+                 updateSelectionControls();
+             })
+             .catch(() => { 
+                 alert("Lỗi khi xóa ảnh."); 
+                 if (card) card.style.opacity = '1'; 
+             });
         }
 
-        function logStatus(id, name, msg, type) {
-            const oldRow = document.getElementById(id);
-            const html = `<span>${name}</span> <span class="${type}">${msg}</span>`;
-            if (oldRow) {
-                oldRow.innerHTML = html;
+        async function deleteSelectedImages() {
+            const selectedCards = document.querySelectorAll('.img-card.selected');
+            if (selectedCards.length === 0) return;
+            if (!confirm(`Bạn có chắc muốn xóa ${selectedCards.length} ảnh đã chọn?`)) return;
+
+            for (const card of selectedCards) {
+                card.style.opacity = '0.3';
+                try {
+                    await fetch(SCRIPT_URL, { 
+                        method: 'POST', 
+                        mode: 'no-cors', 
+                        body: JSON.stringify({ action: 'delete', fileId: card.dataset.fileId }) 
+                    });
+                    card.remove();
+                } catch (err) {
+                    console.error('Lỗi xóa file:', card.dataset.fileId);
+                    card.style.opacity = '1';
+                }
+            }
+            updateSelectionControls();
+        }
+
+        function updateSelectionControls() {
+            const selectedCount = document.querySelectorAll('.img-card.selected').length;
+            if (selectedCount > 0) {
+                btnDeleteSelected.style.display = 'inline-flex';
+                btnDeleteSelected.textContent = `🗑️ Xóa ${selectedCount} ảnh`;
             } else {
-                const div = document.createElement('div');
-                div.id = id;
-                div.className = 'log-item';
-                div.innerHTML = html;
-                statusList.prepend(div);
+                btnDeleteSelected.style.display = 'none';
             }
         }
-
-        if (!SCRIPT_URL.includes('XXXXX')) {
-            fetchImages();
+        
+        function logStatus(id, name, msg, type) {
+            let logRow = statusList.querySelector(`#${id}`);
+            const html = `<span>${name}</span> <span class="${type}">${msg}</span>`;
+            if (!logRow) {
+                logRow = document.createElement('div');
+                logRow.id = id;
+                logRow.className = 'log-item';
+                statusList.prepend(logRow);
+            }
+            logRow.innerHTML = html;
         }
+
+        // --- Chức năng Lightbox ---
+        function openLightbox(imageUrl) {
+            lightboxImg.src = imageUrl;
+            lightbox.classList.add('show');
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('show');
+            lightboxImg.src = ''; // Xóa link ảnh để tránh tải lại
+        }
+
+        lightboxClose.addEventListener('click', closeLightbox);
+        lightbox.addEventListener('click', (e) => {
+            // Chỉ đóng khi click vào nền đen, không phải ảnh
+            if (e.target === lightbox) {
+                closeLightbox();
+            }
+        });
+
+        // --- Tự động tải ảnh khi trang được mở ---
+        if (SCRIPT_URL.includes('AKfyc')) { // Kiểm tra SCRIPT_URL mặc định
+            fetchImages();
+        } else {
+             alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
+        }
+    });
     </script>
+
 </body>
 </html>
