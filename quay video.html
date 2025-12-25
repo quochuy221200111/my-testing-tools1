@@ -1,0 +1,264 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quay Video Kiểm Định (Tắt Tiếng)</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; padding: 15px; background-color: #f4f7f9; }
+        .container { max-width: 700px; margin: auto; background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; text-align: center; border-bottom: 2px solid #eef; padding-bottom: 10px; }
+        .setup-section, .list-section { margin-bottom: 25px; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        input[type="text"], select { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        button, a.btn { padding: 12px 20px; font-size: 15px; border: none; border-radius: 5px; cursor: pointer; transition: all 0.2s; font-weight: 600; white-space: nowrap; text-align: center; }
+        .btn-add { background-color: #28a745; color: white; }
+        .btn-add:hover { background-color: #218838; }
+        .btn-record { background-color: #1a73e8; color: white; }
+        .btn-stop { background-color: #dc3545; color: white; }
+        .btn-download { background-color: #1e8e3e; color: white; text-decoration: none; display: inline-block; }
+        .btn-delete-item { background-color: #6c757d; color: white; }
+        .btn-delete-all { background-color: #c82333; color: white; width: 100%; margin-top: 10px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        video { width: 100%; border-radius: 8px; background-color: #000; margin-bottom: 15px; }
+        .item { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 10px; }
+        .item-name { font-weight: 500; word-break: break-word; }
+        .item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .status-bar { text-align: center; font-weight: bold; padding: 10px; border-radius: 5px; margin-top: 15px; display: none; }
+        .status-recording { background-color: #ffe0e3; color: #dc3545; }
+        .status-processing { background-color: #cce5ff; color: #004085; }
+        .status-error { background-color: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Video Kiểm Định (Không Âm Thanh)</h1>
+        <div class="setup-section">
+            <h2>1. Thiết lập hạng mục</h2>
+            <div class="form-group">
+                <input type="text" id="item-name-input" placeholder="Nhập tên hạng mục (ví dụ: Kiểm tra động cơ)">
+                <button id="add-item-btn" class="btn-add">Thêm</button>
+            </div>
+            <div class="form-group">
+                <label for="compression-level" style="flex-shrink: 0; align-self: center;">Mức nén video:</label>
+                <select id="compression-level">
+                    <option value="high">Chất lượng cao (720p)</option>
+                    <option value="medium" selected>Trung bình (480p)</option>
+                    <option value="max">Nén tối đa (360p)</option>
+                </select>
+            </div>
+            <button id="delete-all-btn" class="btn-delete-all">Xóa Toàn Bộ Dữ Liệu</button>
+        </div>
+        <video id="video-preview" playsinline autoplay muted style="display: none;"></video>
+        <div id="status-bar" class="status-bar"></div>
+        <div class="list-section">
+            <h2>2. Danh sách quay</h2>
+            <div id="inspection-list"></div>
+        </div>
+    </div>
+
+<script>
+    const STORAGE_KEY = 'inspectionVideoApp_items_muted';
+
+    // --- DOM Elements ---
+    const itemNameInput = document.getElementById('item-name-input');
+    const addItemBtn = document.getElementById('add-item-btn');
+    const deleteAllBtn = document.getElementById('delete-all-btn');
+    const compressionSelect = document.getElementById('compression-level');
+    const videoEl = document.getElementById('video-preview');
+    const itemListDiv = document.getElementById('inspection-list');
+    const statusBar = document.getElementById('status-bar');
+
+    // --- State Management ---
+    let inspectionItems = [];
+    let mediaRecorder, stream, recordedChunks = [];
+    let currentlyRecordingIndex = null;
+
+    const compressionPresets = {
+        high: { width: { ideal: 1280 }, height: { ideal: 720 }, bitrate: 2500000 },
+        medium: { width: { ideal: 854 }, height: { ideal: 480 }, bitrate: 1000000 },
+        max: { width: { ideal: 640 }, height: { ideal: 360 }, bitrate: 500000 }
+    };
+
+    // --- Persistence Functions ---
+    function saveItemsToLocalStorage() {
+        const savableItems = inspectionItems.map(item => ({ name: item.name, status: item.status === 'done' ? 'new' : item.status }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savableItems));
+    }
+
+    function loadItemsFromLocalStorage() {
+        const storedItems = localStorage.getItem(STORAGE_KEY);
+        if (storedItems) {
+            inspectionItems = JSON.parse(storedItems);
+            inspectionItems.forEach(item => { if (item.status === 'recording' || item.status === 'done') item.status = 'new'; });
+        }
+    }
+
+    // --- Core Functions ---
+    function renderItems() {
+        itemListDiv.innerHTML = '';
+        if (inspectionItems.length === 0) {
+            itemListDiv.innerHTML = '<p style="text-align: center; color: #888;">Chưa có hạng mục nào.</p>';
+            return;
+        }
+        inspectionItems.forEach((item, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item';
+            
+            let actionsHtml = '';
+            const isAnotherRecording = currentlyRecordingIndex !== null && currentlyRecordingIndex !== index;
+
+            switch (item.status) {
+                case 'recording':
+                    actionsHtml = `<button class="btn-stop" data-index="${index}">Dừng</button>`;
+                    break;
+                case 'done':
+                    actionsHtml = `<a class="btn btn-download" href="${item.videoUrl}" download="${sanitizeFileName(item.name)}.${item.fileExtension}">Tải Lại</a>`;
+                    break;
+                default:
+                    actionsHtml = `<button class="btn-record" data-index="${index}" ${isAnotherRecording ? 'disabled' : ''}>Quay</button>`;
+            }
+
+            itemDiv.innerHTML = `
+                <span class="item-name">${item.name}</span>
+                <div class="item-actions">
+                    ${actionsHtml}
+                    <button class="btn-delete-item" data-index="${index}">Xóa</button>
+                </div>
+            `;
+            itemListDiv.appendChild(itemDiv);
+        });
+    }
+
+    async function startRecording(index) {
+        currentlyRecordingIndex = index;
+        const item = inspectionItems[index];
+        item.status = 'recording';
+        renderItems();
+        
+        const preset = compressionPresets[compressionSelect.value];
+        const mediaConstraints = {
+            video: {
+                width: preset.width,
+                height: preset.height,
+                facingMode: { exact: "environment" }
+            },
+            // YÊU CẦU MỚI: Tắt âm thanh bằng cách đặt audio: false
+            audio: false 
+        };
+
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+            videoEl.srcObject = stream;
+            videoEl.style.display = 'block';
+            
+            statusBar.textContent = `Đang quay: ${item.name} (Không có âm thanh)`;
+            statusBar.className = 'status-bar status-recording';
+            statusBar.style.display = 'block';
+
+            let mimeType = 'video/mp4';
+            if (!MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/webm';
+            
+            mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: preset.bitrate });
+            mediaRecorder.ondataavailable = e => e.data.size > 0 && recordedChunks.push(e.data);
+            mediaRecorder.onstop = () => handleStop(index);
+            mediaRecorder.start();
+
+        } catch (err) {
+            statusBar.textContent = 'LỖI: Không thể truy cập camera sau. Vui lòng kiểm tra quyền và thiết bị.';
+            statusBar.className = 'status-bar status-error';
+            statusBar.style.display = 'block';
+            videoEl.style.display = 'none';
+            item.status = 'new';
+            currentlyRecordingIndex = null;
+            renderItems();
+        }
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    }
+
+    function handleStop(index) {
+        const fileExtension = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const videoBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+        recordedChunks = [];
+
+        const item = inspectionItems[index];
+        const fileName = sanitizeFileName(item.name);
+
+        autoDownloadBackup(videoBlob, `${fileName}_BACKUP.${fileExtension}`);
+        
+        item.status = 'done';
+        item.videoUrl = URL.createObjectURL(videoBlob);
+        item.fileExtension = fileExtension;
+
+        currentlyRecordingIndex = null;
+        stream.getTracks().forEach(track => track.stop());
+        videoEl.style.display = 'none';
+        
+        statusBar.textContent = `Đã quay xong! File backup (không tiếng) đã được tự động tải về.`;
+        statusBar.className = 'status-bar status-processing';
+
+        saveItemsToLocalStorage();
+        renderItems();
+    }
+
+    function autoDownloadBackup(blob, fileName) {
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        const url = window.URL.createObjectURL(blob);
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    }
+    
+    function sanitizeFileName(name) {
+        return name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '');
+    }
+
+    // --- Event Listeners ---
+    addItemBtn.addEventListener('click', () => {
+        const name = itemNameInput.value.trim();
+        if (name) {
+            inspectionItems.push({ name: name, status: 'new' });
+            itemNameInput.value = '';
+            saveItemsToLocalStorage();
+            renderItems();
+        } else {
+            alert('Vui lòng nhập tên hạng mục.');
+        }
+    });
+
+    deleteAllBtn.addEventListener('click', () => {
+        if (confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ danh sách hạng mục không?')) {
+            inspectionItems = [];
+            saveItemsToLocalStorage();
+            renderItems();
+        }
+    });
+
+    itemListDiv.addEventListener('click', (e) => {
+        const target = e.target;
+        const index = parseInt(target.dataset.index, 10);
+        if (target.matches('.btn-record')) startRecording(index);
+        else if (target.matches('.btn-stop')) stopRecording();
+        else if (target.matches('.btn-delete-item')) {
+            if (confirm(`Bạn có muốn xóa hạng mục "${inspectionItems[index].name}"?`)) {
+                inspectionItems.splice(index, 1);
+                saveItemsToLocalStorage();
+                renderItems();
+            }
+        }
+    });
+
+    // --- Initial Load ---
+    loadItemsFromLocalStorage();
+    renderItems();
+</script>
+</body>
+</html>
