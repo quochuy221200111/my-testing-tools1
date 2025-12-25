@@ -1,436 +1,264 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang tổng hợp công cụ kiểm định</title>
+    <title>Hệ Thống Quay Video Kiểm Định (Tắt Tiếng)</title>
     <style>
-        /* CSS cơ bản - Không thay đổi */
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            overflow: hidden;
-        }
-        #menu-toggle {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1001;
-            background-color: #f1f1f1;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            cursor: pointer;
-            padding: 10px;
-            font-size: 20px;
-        }
-        .tabs {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 250px;
-            height: 100vh;
-            background-color: #f1f1f1;
-            border-right: 1px solid #ccc;
-            padding-top: 60px;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            overflow-y: auto;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-        .tabs.active {
-            transform: translateX(0);
-        }
-        #main-container {
-            width: 100%;
-            height: 100vh;
-            padding-left: 0;
-            transition: padding-left 0.3s ease;
-        }
-        #main-container.active {
-            padding-left: 250px;
-        }
-        .tab-content {
-            display: none;
-            width: 100%;
-            height: 100vh;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        .tab-button.active {
-            background-color: #ccc;
-        }
-        
-        /* === CSS MỚI CHO TÍNH NĂNG CHỈNH SỬA === */
-
-        /* Nút quản lý chỉnh sửa */
-        #edit-mode-toggle {
-            display: block;
-            width: calc(100% - 20px);
-            margin: 5px 10px;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            text-align: center;
-        }
-        #edit-mode-toggle:hover {
-            background-color: #0056b3;
-        }
-        #edit-mode-toggle.editing {
-            background-color: #28a745; /* Màu xanh lá khi đang chỉnh sửa */
-        }
-        #edit-mode-toggle.editing:hover {
-            background-color: #218838;
-        }
-
-        /* Nút tab và các thành phần con */
-        .tab-button {
-            display: flex; /* Dùng flexbox để căn chỉnh các item */
-            align-items: center;
-            width: 100%;
-            background-color: inherit;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            padding: 12px 16px;
-            transition: 0.3s;
-            text-align: left;
-            box-sizing: border-box;
-        }
-        .tab-button:hover {
-            background-color: #ddd;
-        }
-
-        /* Phần tên của tab */
-        .tab-name {
-            flex-grow: 1; /* Cho phép tên tab chiếm hết không gian còn lại */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* Ô nhập liệu để đổi tên */
-        .rename-input {
-            flex-grow: 1;
-            border: 1px solid #007bff;
-            padding: 4px;
-            display: none; /* Mặc định ẩn */
-        }
-
-        /* Các biểu tượng chỉnh sửa */
-        .edit-controls {
-            display: none; /* Mặc định ẩn */
-            margin-left: auto; /* Đẩy các nút về bên phải */
-            padding-left: 10px;
-        }
-        
-        /* Hiển thị các nút khi ở chế độ chỉnh sửa */
-        .tabs.edit-mode .edit-controls {
-            display: flex;
-            align-items: center;
-        }
-        
-        .tabs.edit-mode .tab-button {
-            cursor: grab; /* Thay đổi con trỏ chuột khi có thể kéo */
-        }
-
-        .drag-handle, .rename-icon {
-            cursor: pointer;
-            padding: 5px;
-            color: #555;
-        }
-        .drag-handle:hover, .rename-icon:hover {
-            color: #000;
-        }
-        .drag-handle {
-            font-size: 20px;
-        }
-        
-        /* Style cho tab đang được kéo */
-        .tab-button.dragging {
-            opacity: 0.5;
-            background: #cce5ff;
-        }
-
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; padding: 15px; background-color: #f4f7f9; }
+        .container { max-width: 700px; margin: auto; background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; text-align: center; border-bottom: 2px solid #eef; padding-bottom: 10px; }
+        .setup-section, .list-section { margin-bottom: 25px; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        input[type="text"], select { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        button, a.btn { padding: 12px 20px; font-size: 15px; border: none; border-radius: 5px; cursor: pointer; transition: all 0.2s; font-weight: 600; white-space: nowrap; text-align: center; }
+        .btn-add { background-color: #28a745; color: white; }
+        .btn-add:hover { background-color: #218838; }
+        .btn-record { background-color: #1a73e8; color: white; }
+        .btn-stop { background-color: #dc3545; color: white; }
+        .btn-download { background-color: #1e8e3e; color: white; text-decoration: none; display: inline-block; }
+        .btn-delete-item { background-color: #6c757d; color: white; }
+        .btn-delete-all { background-color: #c82333; color: white; width: 100%; margin-top: 10px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        video { width: 100%; border-radius: 8px; background-color: #000; margin-bottom: 15px; }
+        .item { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 10px; }
+        .item-name { font-weight: 500; word-break: break-word; }
+        .item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .status-bar { text-align: center; font-weight: bold; padding: 10px; border-radius: 5px; margin-top: 15px; display: none; }
+        .status-recording { background-color: #ffe0e3; color: #dc3545; }
+        .status-processing { background-color: #cce5ff; color: #004085; }
+        .status-error { background-color: #fff3cd; color: #856404; }
     </style>
 </head>
 <body>
-
-    <button id="menu-toggle">☰</button>
-
-    <div class="tabs" id="tab-container">
-        <!-- Nút bật/tắt chế độ chỉnh sửa -->
-        <button id="edit-mode-toggle">Chỉnh sửa</button>
-        <div id="tab-buttons-list">
-            <!-- Các nút tab sẽ được chèn vào đây -->
+    <div class="container">
+        <h1>Video Kiểm Định (Không Âm Thanh)</h1>
+        <div class="setup-section">
+            <h2>1. Thiết lập hạng mục</h2>
+            <div class="form-group">
+                <input type="text" id="item-name-input" placeholder="Nhập tên hạng mục (ví dụ: Kiểm tra động cơ)">
+                <button id="add-item-btn" class="btn-add">Thêm</button>
+            </div>
+            <div class="form-group">
+                <label for="compression-level" style="flex-shrink: 0; align-self: center;">Mức nén video:</label>
+                <select id="compression-level">
+                    <option value="high">Chất lượng cao (720p)</option>
+                    <option value="medium" selected>Trung bình (480p)</option>
+                    <option value="max">Nén tối đa (360p)</option>
+                </select>
+            </div>
+            <button id="delete-all-btn" class="btn-delete-all">Xóa Toàn Bộ Dữ Liệu</button>
+        </div>
+        <video id="video-preview" playsinline autoplay muted style="display: none;"></video>
+        <div id="status-bar" class="status-bar"></div>
+        <div class="list-section">
+            <h2>2. Danh sách quay</h2>
+            <div id="inspection-list"></div>
         </div>
     </div>
 
-    <div id="main-container">
-        <div id="content-container">
-            <!-- Các iframe sẽ được chèn vào đây -->
-        </div>
-    </div>
+<script>
+    const STORAGE_KEY = 'inspectionVideoApp_items_muted';
 
-    <script>
-        // --- THAY ĐỔI CÁC THÔNG SỐ NÀY ---
-        const GITHUB_USERNAME = "quochuy221200111"; // Thay bằng tên đăng nhập GitHub của bạn
-        const GITHUB_REPO = "my-testing-tools1"; // Thay bằng tên kho chứa của bạn
+    // --- DOM Elements ---
+    const itemNameInput = document.getElementById('item-name-input');
+    const addItemBtn = document.getElementById('add-item-btn');
+    const deleteAllBtn = document.getElementById('delete-all-btn');
+    const compressionSelect = document.getElementById('compression-level');
+    const videoEl = document.getElementById('video-preview');
+    const itemListDiv = document.getElementById('inspection-list');
+    const statusBar = document.getElementById('status-bar');
 
-        // --- ĐOẠN MÃ XỬ LÝ CHÍNH ---
-        const tabContainer = document.getElementById('tab-container');
-        const tabButtonsList = document.getElementById('tab-buttons-list');
-        const contentContainer = document.getElementById('content-container');
-        const menuToggle = document.getElementById('menu-toggle');
-        const mainContainer = document.getElementById('main-container');
-        const editModeToggle = document.getElementById('edit-mode-toggle');
-        const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
+    // --- State Management ---
+    let inspectionItems = [];
+    let mediaRecorder, stream, recordedChunks = [];
+    let currentlyRecordingIndex = null;
 
-        const TAB_ORDER_KEY = 'tabOrder';
-        const TAB_NAMES_KEY = 'tabNames';
+    const compressionPresets = {
+        high: { width: { ideal: 1280 }, height: { ideal: 720 }, bitrate: 2500000 },
+        medium: { width: { ideal: 854 }, height: { ideal: 480 }, bitrate: 1000000 },
+        max: { width: { ideal: 640 }, height: { ideal: 360 }, bitrate: 500000 }
+    };
 
-        // Hàm helper để lấy dữ liệu từ localStorage
-        function loadData(key) {
-            try {
-                const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : null;
-            } catch (e) {
-                console.error(`Lỗi khi đọc dữ liệu từ localStorage với key "${key}":`, e);
-                return null;
-            }
+    // --- Persistence Functions ---
+    function saveItemsToLocalStorage() {
+        const savableItems = inspectionItems.map(item => ({ name: item.name, status: item.status === 'done' ? 'new' : item.status }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savableItems));
+    }
+
+    function loadItemsFromLocalStorage() {
+        const storedItems = localStorage.getItem(STORAGE_KEY);
+        if (storedItems) {
+            inspectionItems = JSON.parse(storedItems);
+            inspectionItems.forEach(item => { if (item.status === 'recording' || item.status === 'done') item.status = 'new'; });
         }
+    }
 
-        // Hàm helper để lưu dữ liệu vào localStorage
-        function saveData(key, value) {
-            try {
-                localStorage.setItem(key, JSON.stringify(value));
-            } catch (e) {
-                console.error(`Lỗi khi lưu dữ liệu vào localStorage với key "${key}":`, e);
-            }
+    // --- Core Functions ---
+    function renderItems() {
+        itemListDiv.innerHTML = '';
+        if (inspectionItems.length === 0) {
+            itemListDiv.innerHTML = '<p style="text-align: center; color: #888;">Chưa có hạng mục nào.</p>';
+            return;
         }
+        inspectionItems.forEach((item, index) => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item';
+            
+            let actionsHtml = '';
+            const isAnotherRecording = currentlyRecordingIndex !== null && currentlyRecordingIndex !== index;
 
-        // Sự kiện click cho nút toggle menu
-        menuToggle.addEventListener('click', () => {
-            tabContainer.classList.toggle('active');
-            mainContainer.classList.toggle('active');
+            switch (item.status) {
+                case 'recording':
+                    actionsHtml = `<button class="btn-stop" data-index="${index}">Dừng</button>`;
+                    break;
+                case 'done':
+                    actionsHtml = `<a class="btn btn-download" href="${item.videoUrl}" download="${sanitizeFileName(item.name)}.${item.fileExtension}">Tải Lại</a>`;
+                    break;
+                default:
+                    actionsHtml = `<button class="btn-record" data-index="${index}" ${isAnotherRecording ? 'disabled' : ''}>Quay</button>`;
+            }
+
+            itemDiv.innerHTML = `
+                <span class="item-name">${item.name}</span>
+                <div class="item-actions">
+                    ${actionsHtml}
+                    <button class="btn-delete-item" data-index="${index}">Xóa</button>
+                </div>
+            `;
+            itemListDiv.appendChild(itemDiv);
         });
+    }
 
-        // Sự kiện click cho nút bật/tắt chế độ chỉnh sửa
-        editModeToggle.addEventListener('click', () => {
-            const isEditing = tabContainer.classList.toggle('edit-mode');
-            editModeToggle.textContent = isEditing ? 'Lưu & Thoát' : 'Chỉnh sửa';
-            editModeToggle.classList.toggle('editing', isEditing);
+    async function startRecording(index) {
+        currentlyRecordingIndex = index;
+        const item = inspectionItems[index];
+        item.status = 'recording';
+        renderItems();
+        
+        const preset = compressionPresets[compressionSelect.value];
+        const mediaConstraints = {
+            video: {
+                width: preset.width,
+                height: preset.height,
+                facingMode: { exact: "environment" }
+            },
+            // YÊU CẦU MỚI: Tắt âm thanh bằng cách đặt audio: false
+            audio: false 
+        };
 
-            // Kích hoạt/Vô hiệu hóa tính năng kéo thả
-            const tabButtons = tabButtonsList.querySelectorAll('.tab-button');
-            tabButtons.forEach(button => {
-                button.draggable = isEditing;
-            });
-        });
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+            videoEl.srcObject = stream;
+            videoEl.style.display = 'block';
+            
+            statusBar.textContent = `Đang quay: ${item.name} (Không có âm thanh)`;
+            statusBar.className = 'status-bar status-recording';
+            statusBar.style.display = 'block';
 
-        // Lấy dữ liệu và dựng giao diện
-        fetch(apiUrl)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Lỗi mạng: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(files => {
-                let htmlFiles = files.filter(file => file.name.endsWith('.html') && file.name !== 'index.html');
-                
-                if (htmlFiles.length === 0) {
-                    console.warn("Không tìm thấy file HTML nào trong kho chứa.");
-                    return;
-                }
+            let mimeType = 'video/mp4';
+            if (!MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/webm';
+            
+            mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: preset.bitrate });
+            mediaRecorder.ondataavailable = e => e.data.size > 0 && recordedChunks.push(e.data);
+            mediaRecorder.onstop = () => handleStop(index);
+            mediaRecorder.start();
 
-                const savedOrder = loadData(TAB_ORDER_KEY) || [];
-                const savedNames = loadData(TAB_NAMES_KEY) || {};
+        } catch (err) {
+            statusBar.textContent = 'LỖI: Không thể truy cập camera sau. Vui lòng kiểm tra quyền và thiết bị.';
+            statusBar.className = 'status-bar status-error';
+            statusBar.style.display = 'block';
+            videoEl.style.display = 'none';
+            item.status = 'new';
+            currentlyRecordingIndex = null;
+            renderItems();
+        }
+    }
 
-                // Sắp xếp các file theo thứ tự đã lưu
-                htmlFiles.sort((a, b) => {
-                    const indexA = savedOrder.indexOf(a.name);
-                    const indexB = savedOrder.indexOf(b.name);
-                    if (indexA === -1 && indexB === -1) return 0; // Cả hai đều là file mới
-                    if (indexA === -1) return 1; // a là file mới, đẩy xuống cuối
-                    if (indexB === -1) return -1; // b là file mới, đẩy xuống cuối
-                    return indexA - indexB; // Sắp xếp theo thứ tự đã lưu
-                });
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+    }
 
-                // Tạo tab và nội dung tương ứng
-                htmlFiles.forEach((file, index) => {
-                    const fileName = file.name;
-                    const defaultName = fileName.replace('.html', '');
-                    const displayName = savedNames[fileName] || defaultName;
+    function handleStop(index) {
+        const fileExtension = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const videoBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+        recordedChunks = [];
 
-                    // 1. Tạo nút Tab phức hợp
-                    const tabButton = document.createElement('button');
-                    tabButton.className = 'tab-button';
-                    tabButton.dataset.fileName = fileName; // Lưu trữ tên file gốc
+        const item = inspectionItems[index];
+        const fileName = sanitizeFileName(item.name);
 
-                    // Tên hiển thị
-                    const tabNameSpan = document.createElement('span');
-                    tabNameSpan.className = 'tab-name';
-                    tabNameSpan.textContent = displayName;
+        autoDownloadBackup(videoBlob, `${fileName}_BACKUP.${fileExtension}`);
+        
+        item.status = 'done';
+        item.videoUrl = URL.createObjectURL(videoBlob);
+        item.fileExtension = fileExtension;
 
-                    // Ô nhập liệu để đổi tên (ẩn)
-                    const renameInput = document.createElement('input');
-                    renameInput.type = 'text';
-                    renameInput.className = 'rename-input';
-                    renameInput.value = displayName;
+        currentlyRecordingIndex = null;
+        stream.getTracks().forEach(track => track.stop());
+        videoEl.style.display = 'none';
+        
+        statusBar.textContent = `Đã quay xong! File backup (không tiếng) đã được tự động tải về.`;
+        statusBar.className = 'status-bar status-processing';
 
-                    // Các nút điều khiển (ẩn)
-                    const editControls = document.createElement('div');
-                    editControls.className = 'edit-controls';
-                    
-                    const renameIcon = document.createElement('span');
-                    renameIcon.className = 'rename-icon';
-                    renameIcon.innerHTML = '✏️';
-                    
-                    const dragHandle = document.createElement('span');
-                    dragHandle.className = 'drag-handle';
-                    dragHandle.innerHTML = '⠿';
+        saveItemsToLocalStorage();
+        renderItems();
+    }
 
-                    editControls.appendChild(renameIcon);
-                    editControls.appendChild(dragHandle);
+    function autoDownloadBackup(blob, fileName) {
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        const url = window.URL.createObjectURL(blob);
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    }
+    
+    function sanitizeFileName(name) {
+        return name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '');
+    }
 
-                    tabButton.appendChild(tabNameSpan);
-                    tabButton.appendChild(renameInput);
-                    tabButton.appendChild(editControls);
-                    tabButtonsList.appendChild(tabButton);
+    // --- Event Listeners ---
+    addItemBtn.addEventListener('click', () => {
+        const name = itemNameInput.value.trim();
+        if (name) {
+            inspectionItems.push({ name: name, status: 'new' });
+            itemNameInput.value = '';
+            saveItemsToLocalStorage();
+            renderItems();
+        } else {
+            alert('Vui lòng nhập tên hạng mục.');
+        }
+    });
 
-                    // Gán sự kiện cho nút tab
-                    tabButton.addEventListener('click', (event) => {
-                        // Chỉ mở tab nếu không phải đang trong chế độ chỉnh sửa
-                        if (!tabContainer.classList.contains('edit-mode')) {
-                           openTab(fileName, event.currentTarget);
-                        }
-                    });
+    deleteAllBtn.addEventListener('click', () => {
+        if (confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ danh sách hạng mục không?')) {
+            inspectionItems = [];
+            saveItemsToLocalStorage();
+            renderItems();
+        }
+    });
 
-                    // Sự kiện cho đổi tên
-                    renameIcon.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Ngăn sự kiện click của button cha
-                        tabNameSpan.style.display = 'none';
-                        renameInput.style.display = 'block';
-                        renameInput.focus();
-                        renameInput.select();
-                    });
-
-                    const saveNewName = () => {
-                        const newName = renameInput.value.trim();
-                        if (newName) {
-                            tabNameSpan.textContent = newName;
-                            // Cập nhật vào localStorage
-                            const currentNames = loadData(TAB_NAMES_KEY) || {};
-                            currentNames[fileName] = newName;
-                            saveData(TAB_NAMES_KEY, currentNames);
-                        }
-                        tabNameSpan.style.display = 'block';
-                        renameInput.style.display = 'none';
-                    };
-                    renameInput.addEventListener('blur', saveNewName);
-                    renameInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            saveNewName();
-                        }
-                    });
-
-                    // 2. Tạo nội dung Tab (iframe)
-                    const tabContent = document.createElement('div');
-                    tabContent.className = 'tab-content';
-                    tabContent.id = fileName;
-                    
-                    const iframe = document.createElement('iframe');
-                    iframe.src = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${fileName}`;
-                    tabContent.appendChild(iframe);
-                    contentContainer.appendChild(tabContent);
-
-                    // Mở tab đầu tiên làm mặc định
-                    if (index === 0) {
-                        tabButton.classList.add('active');
-                        tabContent.classList.add('active');
-                    }
-                });
-
-                // Cập nhật lại thứ tự trong localStorage nếu có file mới
-                const currentOrder = htmlFiles.map(f => f.name);
-                saveData(TAB_ORDER_KEY, currentOrder);
-
-                // Tự động mở thanh tab khi có file
-                tabContainer.classList.add('active');
-                mainContainer.classList.add('active');
-
-                // Logic kéo và thả
-                let draggedItem = null;
-                tabButtonsList.addEventListener('dragstart', (e) => {
-                    if(tabContainer.classList.contains('edit-mode')) {
-                        draggedItem = e.target.closest('.tab-button');
-                        setTimeout(() => {
-                            if (draggedItem) draggedItem.classList.add('dragging');
-                        }, 0);
-                    }
-                });
-                tabButtonsList.addEventListener('dragend', () => {
-                     if (draggedItem) {
-                        draggedItem.classList.remove('dragging');
-                        draggedItem = null;
-
-                        // Lưu lại thứ tự mới sau khi thả
-                        const newOrder = Array.from(tabButtonsList.querySelectorAll('.tab-button'))
-                                              .map(btn => btn.dataset.fileName);
-                        saveData(TAB_ORDER_KEY, newOrder);
-                    }
-                });
-                 tabButtonsList.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    if(tabContainer.classList.contains('edit-mode')) {
-                        const targetItem = e.target.closest('.tab-button');
-                        if (targetItem && targetItem !== draggedItem) {
-                            const rect = targetItem.getBoundingClientRect();
-                            const offset = e.clientY - rect.top - rect.height / 2;
-                            if (offset < 0) {
-                                tabButtonsList.insertBefore(draggedItem, targetItem);
-                            } else {
-                                tabButtonsList.insertBefore(draggedItem, targetItem.nextSibling);
-                            }
-                        }
-                    }
-                });
-
-            })
-            .catch(error => console.error('Lỗi khi lấy danh sách file từ GitHub:', error));
-
-        function openTab(fileName, targetButton) {
-            // Ẩn tất cả các tab content
-            const tabContents = document.getElementsByClassName('tab-content');
-            for (let i = 0; i < tabContents.length; i++) {
-                tabContents[i].classList.remove('active');
-            }
-
-            // Xóa trạng thái active của tất cả button
-            const tabButtons = document.getElementsByClassName('tab-button');
-            for (let i = 0; i < tabButtons.length; i++) {
-                tabButtons[i].classList.remove('active');
-            }
-
-            // Hiển thị tab content được chọn và đánh dấu button là active
-            document.getElementById(fileName).classList.add('active');
-            if (targetButton) {
-                targetButton.classList.add('active');
+    itemListDiv.addEventListener('click', (e) => {
+        const target = e.target;
+        const index = parseInt(target.dataset.index, 10);
+        if (target.matches('.btn-record')) startRecording(index);
+        else if (target.matches('.btn-stop')) stopRecording();
+        else if (target.matches('.btn-delete-item')) {
+            if (confirm(`Bạn có muốn xóa hạng mục "${inspectionItems[index].name}"?`)) {
+                inspectionItems.splice(index, 1);
+                saveItemsToLocalStorage();
+                renderItems();
             }
         }
-    </script>
+    });
 
+    // --- Initial Load ---
+    loadItemsFromLocalStorage();
+    renderItems();
+</script>
 </body>
 </html>
