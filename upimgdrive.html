@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quản Lý Ảnh Drive - Chọn Tất Cả</title>
+    <title>Hệ Thống Quản Lý File Drive</title>
     <style>
+        /* ... (CSS giữ nguyên, không cần thay đổi) ... */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ddd; margin: 0; padding: 20px; }
         h2 { text-align: center; color: #fff; margin-bottom: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -31,305 +32,208 @@
         .btn-delete-selected { background: #c0392b; } .btn-delete-selected:hover { background: #e74c3c; }
         .btn-select-all { background: #007bff; } .btn-select-all:hover { background: #0056b3; }
         .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .img-card { background: #2d2d2d; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; display: flex; flex-direction: column; }
-        .img-card:hover { transform: translateY(-3px); }
-        .img-thumb-container { width: 100%; height: 180px; background-color: #000; display: flex; align-items: center; justify-content: center; }
-        .img-thumb { width: 100%; height: 100%; object-fit: contain; display: block; }
-        .img-info { padding: 8px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #333; margin-top: auto; }
+        .file-card { background: #2d2d2d; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; display: flex; flex-direction: column; cursor: pointer; }
+        .file-card:hover { transform: translateY(-3px); }
+        .file-thumb-container { width: 100%; height: 180px; background-color: #252525; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 10px; box-sizing: border-box;}
+        .file-thumb-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .file-icon-svg { width: 60px; height: 75px; }
+        .file-extension { font-weight: bold; color: #fff; background-color: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; margin-top: 10px; font-size: 14px; }
+        .file-info { padding: 8px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #333; margin-top: auto; }
+        /* Thêm style cho link tên file */
+        .file-info a { color: #ddd; text-decoration: none; display: block; }
+        .file-info a:hover { color: #2196F3; }
         .btn-delete { position: absolute; top: 8px; right: 8px; background: rgba(244, 67, 54, 0.8); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; opacity: 0; transition: 0.2s; z-index: 10; }
-        .img-card:hover .btn-delete { opacity: 1; }
+        .file-card:hover .btn-delete { opacity: 1; }
         .btn-delete:hover { background: #d32f2f; transform: scale(1.1); }
-        .img-card.selected { box-shadow: 0 0 0 3px #2196F3; }
-        .img-card.selected::after { content: '✔'; position: absolute; top: 8px; left: 8px; background: #2196F3; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; pointer-events: none; }
+        .file-card.selected { box-shadow: 0 0 0 3px #2196F3; }
+        .file-card.selected::after { content: '✔'; position: absolute; top: 8px; left: 8px; background: #2196F3; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; pointer-events: none; }
         .loading-overlay { text-align: center; padding: 20px; color: #888; font-style: italic; }
     </style>
 </head>
 <body>
-
+    <!-- ... (Phần body HTML giữ nguyên) ... -->
     <div class="container">
         <div style="background: #252525; border-left: 4px solid #f39c12; color: #ccc; padding: 15px; margin: 20px 0; border-radius: 5px;">
-            <h3 style="margin-top: 0; color: #f39c12;">Hệ Thống Quản Lý Ảnh Drive - Chất Lượng Tối Đa</h3>
-            <p><b>Tính năng:</b> Ảnh được hiển thị với chất lượng cao nhất. Bổ sung nút "Chọn tất cả" để xóa ảnh hàng loạt.</p>
+            <h3 style="margin-top: 0; color: #f39c12;">Hệ Thống Quản Lý File Drive</h3>
+            <p><b>Tính năng:</b> Upload và quản lý mọi loại file. Tên file là link để mở/tải về. Click vào ảnh/icon để chọn xóa.</p>
         </div>
-        
-        <h2>Quản Lý Ảnh Drive</h2>
+        <h2>Quản Lý File Drive</h2>
         <div class="upload-box">
-            <div id="paste-area"><span>Ctrl + V để dán ảnh</span><small>Hoặc kéo thả file</small></div>
-            <div class="file-input-wrapper"><label class="btn-select">📂 Chọn file<input type="file" id="file-input" multiple accept="image/*"></label></div>
+            <div id="paste-area"><span>Ctrl + V để dán ảnh</span><small>Hoặc kéo thả file bất kỳ</small></div>
+            <div class="file-input-wrapper"><label class="btn-select">📂 Chọn file<input type="file" id="file-input" multiple></label></div>
             <div class="status-log"></div>
         </div>
         <div class="controls">
-            <h3>Danh sách ảnh</h3>
-            <!-- ================== THÊM NÚT MỚI TẠI ĐÂY ================== -->
+            <h3>Danh sách file</h3>
             <div class="button-group">
                 <button class="btn btn-delete-selected" style="display: none;">🗑️ Xóa đã chọn</button>
                 <button id="btn-select-all" class="btn btn-select-all" style="display: none;">☑️ Chọn tất cả</button>
                 <button class="btn btn-refresh">↻ Cập nhật</button>
             </div>
-            <!-- ========================================================== -->
         </div>
         <div class="gallery"></div>
         <div class="loading-overlay">Đang tải...</div>
     </div>
 
     <script>
-    // ======================================================
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4x825A6wuoIA2jC6LUujtAK7un69P3AsxI645UWUbDmMrUWnxwjlCLNK-aXJlKyS1FA/exec'; 
-    // ======================================================
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpZJEPOf36UU_xqEio-zKvJ46Fa1i6VHEfVor2avEq9WLmD3WBkNve_YTVnyg1dJobGw/exec'; // Thay URL của bạn vào đây
 
     document.addEventListener('DOMContentLoaded', () => {
-        const pasteArea = document.getElementById('paste-area');
-        const fileInput = document.getElementById('file-input');
-        const statusList = document.querySelector('.status-log');
         const galleryArea = document.querySelector('.gallery');
-        const loadingMsg = document.querySelector('.loading-overlay');
-        const btnDeleteSelected = document.querySelector('.btn-delete-selected');
-        const btnRefresh = document.querySelector('.btn-refresh');
-        // --- Lấy nút "Chọn tất cả" ---
-        const btnSelectAll = document.getElementById('btn-select-all');
-
-        // --- Gán sự kiện cho các nút ---
-        pasteArea.addEventListener('dragleave', () => pasteArea.classList.remove('active'));
-        pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('active'); });
-        pasteArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            pasteArea.classList.remove('active');
-            handleFiles(e.dataTransfer.files);
-        });
-        pasteArea.addEventListener('click', () => {
-             pasteArea.querySelector('span').textContent = 'Đang chờ dán...';
-             document.onpaste = (e) => {
-                handlePaste(e);
-                pasteArea.querySelector('span').textContent = 'Ctrl + V để dán ảnh';
-             };
-        });
-        fileInput.addEventListener('change', (e) => { 
-            handleFiles(e.target.files); 
-            e.target.value = '';
-        });
-        btnRefresh.addEventListener('click', fetchImages);
-        btnDeleteSelected.addEventListener('click', deleteSelectedImages);
-        // --- Gán sự kiện cho nút "Chọn tất cả" ---
-        btnSelectAll.addEventListener('click', toggleSelectAll);
-
-        // Các hàm xử lý upload
-        function handlePaste(e) { /* ... giữ nguyên ... */ }
-        function handleFiles(files) { /* ... giữ nguyên ... */ }
-        function uploadFile(file) { /* ... giữ nguyên ... */ }
         
-        // Hàm lấy ảnh
-        function fetchImages() {
+        function getIconForFile(mimeType, fileName) { /* ... (hàm này giữ nguyên) ... */
+            const extension = fileName.split('.').pop().toLowerCase();
+            let color = '#555';
+            let iconPath = 'M20 8l-8 8-8-8h16z';
+            if (mimeType.includes('pdf')) { color = '#D32F2F'; iconPath = 'M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H10v-2h8v2zm-4-4H10v-2h4v2zm4-4H10V6h8v2z';
+            } else if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('compressed')) { color = '#F57C00'; iconPath = 'M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-2 6h-2v2h-2v-2h-2v-2h2v-2h2v2h2v2z';
+            } else if (mimeType.includes('word')) { color = '#1976D2'; iconPath = 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 11h-2v-2h2v2zm-1 5.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-2-7h-2v2h2v-2z';
+            } else if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) { color = '#388E3C'; iconPath = 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-2 14h-2v-2h2v2zm-2-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v3z'; }
+            return `<svg class="file-icon-svg" viewBox="0 0 24 24"><path fill="${color}" d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6z" /><path fill="#fff" opacity="0.6" d="${iconPath}" /></svg><span class="file-extension">${extension}</span>`;
+        }
+        
+        // ===============================================
+        // === CẬP NHẬT CHÍNH TRONG HÀM renderGallery ===
+        // ===============================================
+        function renderGallery(files) {
+            galleryArea.innerHTML = '';
+            if (!files || files.length === 0) {
+                galleryArea.innerHTML = '<p style="text-align:center; width:100%; color:#666;">Thư mục trống</p>';
+                return;
+            }
+            files.forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'file-card';
+                div.dataset.fileId = file.id;
+
+                let fileDisplayHTML = '';
+                if (file.mimeType.startsWith('image/')) {
+                    fileDisplayHTML = `<img src="${file.url}&sz=w512" class="file-thumb-img" alt="${file.name}" loading="lazy">`;
+                } else {
+                    fileDisplayHTML = getIconForFile(file.mimeType, file.name);
+                }
+                
+                // Thay thế thẻ div.file-info bằng thẻ a.file-info
+                div.innerHTML = `
+                    <button class="btn-delete" title="Xóa file">×</button>
+                    <div class="file-thumb-container">${fileDisplayHTML}</div>
+                    <div class="file-info" title="Mở file: ${file.name}">
+                        <a href="${file.driveUrl}" target="_blank">${file.name}</a>
+                    </div>
+                `;
+
+                // Sự kiện click vào thẻ (card) để chọn
+                div.addEventListener('click', () => {
+                    div.classList.toggle('selected');
+                    updateSelectionControls();
+                });
+
+                // Ngăn sự kiện click vào link tên file làm thẻ bị chọn theo
+                div.querySelector('.file-info a').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+
+                // Ngăn sự kiện click vào nút xóa làm thẻ bị chọn theo
+                div.querySelector('.btn-delete').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteFile(file.id);
+                });
+                
+                galleryArea.appendChild(div);
+            });
+            updateSelectionControls();
+        }
+
+        // ... (Tất cả các hàm còn lại giữ nguyên không thay đổi) ...
+        const loadingMsg = document.querySelector('.loading-overlay');
+        function fetchFiles() {
             loadingMsg.style.display = 'block';
             galleryArea.innerHTML = '';
-            updateSelectionControls(); // Cập nhật để ẩn các nút khi đang tải
+            updateSelectionControls(); 
             fetch(SCRIPT_URL)
             .then(response => response.json())
             .then(data => {
                 loadingMsg.style.display = 'none';
-                if (data.result === 'success') {
-                    renderGallery(data.images);
-                } else {
-                    loadingMsg.innerHTML = 'Lỗi: ' + data.message;
-                    loadingMsg.style.display = 'block';
-                }
-                updateSelectionControls(); // Cập nhật lại các nút sau khi tải xong
+                if (data.result === 'success') { renderGallery(data.files); } else { loadingMsg.innerHTML = 'Lỗi: ' + data.message; }
+                updateSelectionControls();
             })
-            .catch(err => {
-                loadingMsg.innerHTML = 'Không thể kết nối đến máy chủ.';
-                loadingMsg.style.display = 'block';
-                console.error(err);
-            });
+            .catch(err => { loadingMsg.innerHTML = 'Không thể kết nối đến máy chủ.'; console.error(err); });
         }
-        
-        // Hàm hiển thị ảnh
-        function renderGallery(images) { /* ... giữ nguyên ... */ }
-
-        // ================== HÀM MỚI: CHỌN/BỎ CHỌN TẤT CẢ ==================
+        const btnDeleteSelected = document.querySelector('.btn-delete-selected');
+        const btnSelectAll = document.getElementById('btn-select-all');
+        btnDeleteSelected.addEventListener('click', deleteSelectedFiles);
+        btnSelectAll.addEventListener('click', toggleSelectAll);
         function toggleSelectAll() {
-            const allCards = galleryArea.querySelectorAll('.img-card');
-            const selectedCards = galleryArea.querySelectorAll('.img-card.selected');
-            
-            // Nếu số lượng đã chọn < tổng số lượng -> chọn tất cả
-            // Ngược lại -> bỏ chọn tất cả
-            const shouldSelectAll = selectedCards.length < allCards.length;
-
-            allCards.forEach(card => {
-                // Thêm hoặc xóa class 'selected' dựa trên biến shouldSelectAll
-                card.classList.toggle('selected', shouldSelectAll);
-                const checkbox = card.querySelector('.select-checkbox');
-                if (checkbox) {
-                    checkbox.checked = shouldSelectAll;
-                }
-            });
-
-            updateSelectionControls(); // Cập nhật lại giao diện các nút
+            const allCards = galleryArea.querySelectorAll('.file-card');
+            const shouldSelectAll = galleryArea.querySelectorAll('.file-card.selected').length < allCards.length;
+            allCards.forEach(card => card.classList.toggle('selected', shouldSelectAll));
+            updateSelectionControls();
         }
-        // =================================================================
-
-        // Các hàm xóa ảnh
-        function deleteImage(fileId) { /* ... giữ nguyên ... */ }
-        async function deleteSelectedImages() { /* ... giữ nguyên ... */ }
-
-        // ========== CẬP NHẬT HÀM updateSelectionControls ==========
         function updateSelectionControls() {
-            const allCards = galleryArea.querySelectorAll('.img-card');
-            const selectedCount = galleryArea.querySelectorAll('.img-card.selected').length;
-
-            // Cập nhật nút "Xóa đã chọn"
-            if (selectedCount > 0) {
-                btnDeleteSelected.style.display = 'inline-flex';
-                btnDeleteSelected.textContent = `🗑️ Xóa ${selectedCount} ảnh`;
-            } else {
-                btnDeleteSelected.style.display = 'none';
-            }
-
-            // Cập nhật nút "Chọn tất cả"
-            if (allCards.length > 0) {
-                btnSelectAll.style.display = 'inline-flex';
-                if (selectedCount === allCards.length) {
-                    btnSelectAll.innerHTML = '🔲 Bỏ chọn tất cả';
-                } else {
-                    btnSelectAll.innerHTML = '☑️ Chọn tất cả';
-                }
-            } else {
-                // Ẩn nút nếu không có ảnh nào
-                btnSelectAll.style.display = 'none';
-            }
+            const allCardsCount = galleryArea.querySelectorAll('.file-card').length;
+            const selectedCount = galleryArea.querySelectorAll('.file-card.selected').length;
+            btnDeleteSelected.style.display = selectedCount > 0 ? 'inline-flex' : 'none';
+            btnDeleteSelected.textContent = `🗑️ Xóa ${selectedCount} file`;
+            btnSelectAll.style.display = allCardsCount > 0 ? 'inline-flex' : 'none';
+            btnSelectAll.innerHTML = (selectedCount === allCardsCount && allCardsCount > 0) ? '🔲 Bỏ chọn tất cả' : '☑️ Chọn tất cả';
         }
-        // =========================================================
-        
-        // Hàm ghi log
-        function logStatus(id, name, msg, type) { /* ... giữ nguyên ... */ }
-
-        // Khởi động
-        if (SCRIPT_URL.includes('AKfyc')) {
-            fetchImages();
-        } else {
-             alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
-        }
-
-        // --- Mã nguồn các hàm giữ nguyên ---
-        function handlePaste(e) {
-            const files = [];
-            for (const item of (e.clipboardData || e.originalEvent.clipboardData).items) {
-                if (item.kind === 'file' && item.type.startsWith('image/')) {
-                    files.push(item.getAsFile());
-                }
-            }
-            if (files.length > 0) handleFiles(files);
-            document.onpaste = null;
-        }
-
-        function handleFiles(files) {
-            if (SCRIPT_URL.includes('AKfyc')) {
-                [...files].forEach(uploadFile);
-            } else {
-                 alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
-            }
-        }
-
-        function uploadFile(file) {
-            const rowId = 'log-' + Math.random().toString(36).substr(2, 9);
-            logStatus(rowId, file.name, 'Đang tải lên...', 'log-loading');
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ action: 'upload', base64: e.target.result, name: file.name })
-                })
-                .then(() => {
-                    logStatus(rowId, file.name, '✅ Đã gửi lệnh', 'log-success');
-                    setTimeout(fetchImages, 3000);
-                })
-                .catch(error => { 
-                    logStatus(rowId, file.name, '❌ Lỗi mạng', 'log-error'); 
-                    console.error(error); 
-                });
-            };
-            reader.readAsDataURL(file);
-        }
-        
-        function renderGallery(images) {
-            galleryArea.innerHTML = '';
-            if (images.length === 0) {
-                galleryArea.innerHTML = '<p style="text-align:center; width:100%; color:#666;">Thư mục trống</p>';
-                return;
-            }
-            images.forEach(img => {
-                const div = document.createElement('div');
-                div.className = 'img-card';
-                div.dataset.fileId = img.id;
-                const highResThumbUrl = `https://drive.google.com/thumbnail?id=${img.id}&sz=w2048`;
-                div.innerHTML = `
-                    <button class="btn-delete" title="Xóa ảnh">×</button>
-                    <div class="img-thumb-container">
-                        <img src="${highResThumbUrl}" class="img-thumb" alt="${img.name}">
-                    </div>
-                    <div class="img-info" title="${img.name}">${img.name}</div>
-                `;
-                div.querySelector('.btn-delete').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteImage(img.id);
-                });
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'select-checkbox';
-                checkbox.addEventListener('click', (e) => {
-                    e.stopPropagation(); 
-                    div.classList.toggle('selected', checkbox.checked);
-                    updateSelectionControls();
-                });
-                div.prepend(checkbox);
-                galleryArea.appendChild(div);
-            });
-        }
-        
-        function deleteImage(fileId) {
-             if (!confirm("Bạn có chắc muốn xóa ảnh này không?")) return;
-             const card = document.querySelector(`.img-card[data-file-id="${fileId}"]`);
+        function deleteFile(fileId) {
+             if (!confirm("Bạn có chắc muốn xóa file này không?")) return;
+             const card = document.querySelector(`.file-card[data-file-id="${fileId}"]`);
              if (card) card.style.opacity = '0.3';
              fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'delete', fileId }) })
-             .then(() => { 
-                 if (card) card.remove();
-                 updateSelectionControls();
-             })
-             .catch(() => { 
-                 alert("Lỗi khi xóa ảnh."); 
-                 if (card) card.style.opacity = '1'; 
-             });
+             .then(() => { if (card) card.remove(); updateSelectionControls(); })
+             .catch(() => { alert("Lỗi khi xóa file."); if (card) card.style.opacity = '1'; });
         }
-
-        async function deleteSelectedImages() {
-            const selectedCards = document.querySelectorAll('.img-card.selected');
-            if (selectedCards.length === 0) return;
-            if (!confirm(`Bạn có chắc muốn xóa ${selectedCards.length} ảnh đã chọn?`)) return;
+        async function deleteSelectedFiles() {
+            const selectedCards = document.querySelectorAll('.file-card.selected');
+            if (selectedCards.length === 0 || !confirm(`Bạn có chắc muốn xóa ${selectedCards.length} file đã chọn?`)) return;
             for (const card of selectedCards) {
                 card.style.opacity = '0.3';
                 try {
                     await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'delete', fileId: card.dataset.fileId }) });
                     card.remove();
-                } catch (err) {
-                    card.style.opacity = '1';
-                }
+                } catch (err) { card.style.opacity = '1'; }
             }
             updateSelectionControls();
         }
-        
+        const fileInput = document.getElementById('file-input');
+        const btnRefresh = document.querySelector('.btn-refresh');
+        const pasteArea = document.getElementById('paste-area');
+        const statusList = document.querySelector('.status-log');
+        btnRefresh.addEventListener('click', fetchFiles);
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        pasteArea.addEventListener('dragleave', () => pasteArea.classList.remove('active'));
+        pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('active'); });
+        pasteArea.addEventListener('drop', (e) => { e.preventDefault(); pasteArea.classList.remove('active'); handleFiles(e.dataTransfer.files); });
+        pasteArea.addEventListener('click', () => {
+             pasteArea.querySelector('span').textContent = 'Đang chờ dán...';
+             document.onpaste = (e) => {
+                const files = Array.from((e.clipboardData || e.originalEvent.clipboardData).items).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile());
+                if (files.length > 0) handleFiles(files);
+                document.onpaste = null;
+                pasteArea.querySelector('span').textContent = 'Ctrl + V để dán ảnh';
+             };
+        });
+        function handleFiles(files) { [...files].forEach(uploadFile); }
+        function uploadFile(file) {
+            const rowId = 'log-' + Math.random().toString(36).substr(2, 9);
+            logStatus(rowId, file.name, 'Đang tải lên...', 'log-loading');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'upload', base64: e.target.result, name: file.name }) })
+                .then(() => { logStatus(rowId, file.name, '✅ Đã gửi lệnh', 'log-success'); setTimeout(fetchFiles, 2000); })
+                .catch(error => { logStatus(rowId, file.name, '❌ Lỗi mạng', 'log-error'); console.error(error); });
+            };
+            reader.readAsDataURL(file);
+        }
         function logStatus(id, name, msg, type) {
             let logRow = statusList.querySelector(`#${id}`);
-            const html = `<span>${name}</span> <span class="${type}">${msg}</span>`;
-            if (!logRow) {
-                logRow = document.createElement('div');
-                logRow.id = id;
-                logRow.className = 'log-item';
-                statusList.prepend(logRow);
-            }
-            logRow.innerHTML = html;
+            if (!logRow) { logRow = document.createElement('div'); logRow.id = id; logRow.className = 'log-item'; statusList.prepend(logRow); }
+            logRow.innerHTML = `<span>${name}</span> <span class="${type}">${msg}</span>`;
         }
-
+        if (SCRIPT_URL && SCRIPT_URL.includes('AKfyc')) { fetchFiles(); } else { alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!"); }
     });
     </script>
-
 </body>
 </html>
