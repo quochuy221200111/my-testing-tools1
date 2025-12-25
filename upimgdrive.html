@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quản Lý Ảnh Drive - Sắc nét</title>
+    <title>Hệ Thống Quản Lý Ảnh Drive - Chọn Tất Cả</title>
     <style>
-        /* CSS không thay đổi, giữ nguyên như cũ */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ddd; margin: 0; padding: 20px; }
         h2 { text-align: center; color: #fff; margin-bottom: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -24,34 +23,33 @@
         .status-log { margin-top: 10px; font-size: 13px; text-align: left; max-height: 100px; overflow-y: auto; color: #bbb; }
         .log-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #333; }
         .log-success { color: #4CAF50; } .log-error { color: #f44336; } .log-loading { color: #FF9800; }
-        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+        .controls h3 { margin-right: auto; }
+        .controls .button-group { display: flex; gap: 10px; }
         .btn { color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 5px; transition: background 0.2s; }
         .btn-refresh { background: #444; } .btn-refresh:hover { background: #555; }
         .btn-delete-selected { background: #c0392b; } .btn-delete-selected:hover { background: #e74c3c; }
+        .btn-select-all { background: #007bff; } .btn-select-all:hover { background: #0056b3; }
         .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .img-card { background: #2d2d2d; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .img-card { background: #2d2d2d; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; display: flex; flex-direction: column; }
         .img-card:hover { transform: translateY(-3px); }
-        .img-thumb { width: 100%; height: 180px; object-fit: cover; display: block; cursor: pointer; background-color: #000; }
-        .img-info { padding: 8px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #333; }
+        .img-thumb-container { width: 100%; height: 180px; background-color: #000; display: flex; align-items: center; justify-content: center; }
+        .img-thumb { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .img-info { padding: 8px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #333; margin-top: auto; }
         .btn-delete { position: absolute; top: 8px; right: 8px; background: rgba(244, 67, 54, 0.8); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; opacity: 0; transition: 0.2s; z-index: 10; }
         .img-card:hover .btn-delete { opacity: 1; }
         .btn-delete:hover { background: #d32f2f; transform: scale(1.1); }
         .img-card.selected { box-shadow: 0 0 0 3px #2196F3; }
         .img-card.selected::after { content: '✔'; position: absolute; top: 8px; left: 8px; background: #2196F3; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; pointer-events: none; }
         .loading-overlay { text-align: center; padding: 20px; color: #888; font-style: italic; }
-        .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
-        .lightbox.show { opacity: 1; visibility: visible; }
-        .lightbox-content { max-width: 90%; max-height: 90%; position: relative; }
-        .lightbox-content img { width: 100%; height: 100%; object-fit: contain; }
-        .lightbox-close { position: absolute; top: -40px; right: 0; font-size: 35px; color: #fff; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div style="background: #252525; border-left: 4px solid #f39c12; color: #ccc; padding: 15px; margin: 20px 0; border-radius: 5px;">
-            <h3 style="margin-top: 0; color: #f39c12;">Hệ Thống Quản Lý Ảnh Drive - Hiển thị Sắc nét</h3>
-            <p><b>Cách hoạt động:</b> Tải ảnh thumbnail chất lượng cao (`sz=w400`) để hiển thị sắc nét ngay trên lưới ảnh. Vẫn có thể nhấp vào để xem ảnh với chất lượng đầy đủ.</p>
+            <h3 style="margin-top: 0; color: #f39c12;">Hệ Thống Quản Lý Ảnh Drive - Chất Lượng Tối Đa</h3>
+            <p><b>Tính năng:</b> Ảnh được hiển thị với chất lượng cao nhất. Bổ sung nút "Chọn tất cả" để xóa ảnh hàng loạt.</p>
         </div>
         
         <h2>Quản Lý Ảnh Drive</h2>
@@ -62,25 +60,20 @@
         </div>
         <div class="controls">
             <h3>Danh sách ảnh</h3>
-            <div>
+            <!-- ================== THÊM NÚT MỚI TẠI ĐÂY ================== -->
+            <div class="button-group">
                 <button class="btn btn-delete-selected" style="display: none;">🗑️ Xóa đã chọn</button>
+                <button id="btn-select-all" class="btn btn-select-all" style="display: none;">☑️ Chọn tất cả</button>
                 <button class="btn btn-refresh">↻ Cập nhật</button>
             </div>
+            <!-- ========================================================== -->
         </div>
         <div class="gallery"></div>
         <div class="loading-overlay">Đang tải...</div>
-        
-        <div class="lightbox">
-            <div class="lightbox-content">
-                <span class="lightbox-close">&times;</span>
-                <img src="" alt="Ảnh phóng to">
-            </div>
-        </div>
     </div>
 
     <script>
     // ======================================================
-    // DÁN URL APP SCRIPT CỦA BẠN VÀO ĐÂY
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby4x825A6wuoIA2jC6LUujtAK7un69P3AsxI645UWUbDmMrUWnxwjlCLNK-aXJlKyS1FA/exec'; 
     // ======================================================
 
@@ -92,10 +85,10 @@
         const loadingMsg = document.querySelector('.loading-overlay');
         const btnDeleteSelected = document.querySelector('.btn-delete-selected');
         const btnRefresh = document.querySelector('.btn-refresh');
-        const lightbox = document.querySelector('.lightbox');
-        const lightboxImg = lightbox.querySelector('img');
-        const lightboxClose = lightbox.querySelector('.lightbox-close');
+        // --- Lấy nút "Chọn tất cả" ---
+        const btnSelectAll = document.getElementById('btn-select-all');
 
+        // --- Gán sự kiện cho các nút ---
         pasteArea.addEventListener('dragleave', () => pasteArea.classList.remove('active'));
         pasteArea.addEventListener('dragover', (e) => { e.preventDefault(); pasteArea.classList.add('active'); });
         pasteArea.addEventListener('drop', (e) => {
@@ -116,7 +109,106 @@
         });
         btnRefresh.addEventListener('click', fetchImages);
         btnDeleteSelected.addEventListener('click', deleteSelectedImages);
+        // --- Gán sự kiện cho nút "Chọn tất cả" ---
+        btnSelectAll.addEventListener('click', toggleSelectAll);
 
+        // Các hàm xử lý upload
+        function handlePaste(e) { /* ... giữ nguyên ... */ }
+        function handleFiles(files) { /* ... giữ nguyên ... */ }
+        function uploadFile(file) { /* ... giữ nguyên ... */ }
+        
+        // Hàm lấy ảnh
+        function fetchImages() {
+            loadingMsg.style.display = 'block';
+            galleryArea.innerHTML = '';
+            updateSelectionControls(); // Cập nhật để ẩn các nút khi đang tải
+            fetch(SCRIPT_URL)
+            .then(response => response.json())
+            .then(data => {
+                loadingMsg.style.display = 'none';
+                if (data.result === 'success') {
+                    renderGallery(data.images);
+                } else {
+                    loadingMsg.innerHTML = 'Lỗi: ' + data.message;
+                    loadingMsg.style.display = 'block';
+                }
+                updateSelectionControls(); // Cập nhật lại các nút sau khi tải xong
+            })
+            .catch(err => {
+                loadingMsg.innerHTML = 'Không thể kết nối đến máy chủ.';
+                loadingMsg.style.display = 'block';
+                console.error(err);
+            });
+        }
+        
+        // Hàm hiển thị ảnh
+        function renderGallery(images) { /* ... giữ nguyên ... */ }
+
+        // ================== HÀM MỚI: CHỌN/BỎ CHỌN TẤT CẢ ==================
+        function toggleSelectAll() {
+            const allCards = galleryArea.querySelectorAll('.img-card');
+            const selectedCards = galleryArea.querySelectorAll('.img-card.selected');
+            
+            // Nếu số lượng đã chọn < tổng số lượng -> chọn tất cả
+            // Ngược lại -> bỏ chọn tất cả
+            const shouldSelectAll = selectedCards.length < allCards.length;
+
+            allCards.forEach(card => {
+                // Thêm hoặc xóa class 'selected' dựa trên biến shouldSelectAll
+                card.classList.toggle('selected', shouldSelectAll);
+                const checkbox = card.querySelector('.select-checkbox');
+                if (checkbox) {
+                    checkbox.checked = shouldSelectAll;
+                }
+            });
+
+            updateSelectionControls(); // Cập nhật lại giao diện các nút
+        }
+        // =================================================================
+
+        // Các hàm xóa ảnh
+        function deleteImage(fileId) { /* ... giữ nguyên ... */ }
+        async function deleteSelectedImages() { /* ... giữ nguyên ... */ }
+
+        // ========== CẬP NHẬT HÀM updateSelectionControls ==========
+        function updateSelectionControls() {
+            const allCards = galleryArea.querySelectorAll('.img-card');
+            const selectedCount = galleryArea.querySelectorAll('.img-card.selected').length;
+
+            // Cập nhật nút "Xóa đã chọn"
+            if (selectedCount > 0) {
+                btnDeleteSelected.style.display = 'inline-flex';
+                btnDeleteSelected.textContent = `🗑️ Xóa ${selectedCount} ảnh`;
+            } else {
+                btnDeleteSelected.style.display = 'none';
+            }
+
+            // Cập nhật nút "Chọn tất cả"
+            if (allCards.length > 0) {
+                btnSelectAll.style.display = 'inline-flex';
+                if (selectedCount === allCards.length) {
+                    btnSelectAll.innerHTML = '🔲 Bỏ chọn tất cả';
+                } else {
+                    btnSelectAll.innerHTML = '☑️ Chọn tất cả';
+                }
+            } else {
+                // Ẩn nút nếu không có ảnh nào
+                btnSelectAll.style.display = 'none';
+            }
+        }
+        // =========================================================
+        
+        // Hàm ghi log
+        function logStatus(id, name, msg, type) { /* ... giữ nguyên ... */ }
+
+        // Khởi động
+        if (SCRIPT_URL.includes('AKfyc')) {
+            fetchImages();
+        } else {
+             alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
+        }
+
+        // --- Mã nguồn các hàm giữ nguyên ---
         function handlePaste(e) {
             const files = [];
             for (const item of (e.clipboardData || e.originalEvent.clipboardData).items) {
@@ -157,29 +249,7 @@
             };
             reader.readAsDataURL(file);
         }
-
-        function fetchImages() {
-            loadingMsg.style.display = 'block';
-            galleryArea.innerHTML = '';
-            updateSelectionControls();
-            fetch(SCRIPT_URL)
-            .then(response => response.json())
-            .then(data => {
-                loadingMsg.style.display = 'none';
-                if (data.result === 'success') {
-                    renderGallery(data.images);
-                } else {
-                    loadingMsg.innerHTML = 'Lỗi: ' + data.message;
-                    loadingMsg.style.display = 'block';
-                }
-            })
-            .catch(err => {
-                loadingMsg.innerHTML = 'Không thể kết nối đến máy chủ.';
-                loadingMsg.style.display = 'block';
-                console.error(err);
-            });
-        }
-
+        
         function renderGallery(images) {
             galleryArea.innerHTML = '';
             if (images.length === 0) {
@@ -190,31 +260,18 @@
                 const div = document.createElement('div');
                 div.className = 'img-card';
                 div.dataset.fileId = img.id;
-                
-                // ================== THAY ĐỔI QUAN TRỌNG Ở ĐÂY ==================
-                // Tạo link thumbnail chất lượng cao hơn (w400) để hiển thị trên lưới
-                const sharpThumbUrl = `https://drive.google.com/thumbnail?id=${img.id}&sz=w400`;
-                
-                // Link chất lượng đầy đủ cho lightbox vẫn giữ nguyên
-                const highResUrl = `https://drive.google.com/thumbnail?id=${img.id}&sz=w2048`;
-                // =================================================================
-
+                const highResThumbUrl = `https://drive.google.com/thumbnail?id=${img.id}&sz=w2048`;
                 div.innerHTML = `
                     <button class="btn-delete" title="Xóa ảnh">×</button>
-                    <img src="${sharpThumbUrl}" class="img-thumb" alt="${img.name}">
+                    <div class="img-thumb-container">
+                        <img src="${highResThumbUrl}" class="img-thumb" alt="${img.name}">
+                    </div>
                     <div class="img-info" title="${img.name}">${img.name}</div>
                 `;
-                
                 div.querySelector('.btn-delete').addEventListener('click', (e) => {
                     e.stopPropagation();
                     deleteImage(img.id);
                 });
-
-                // Khi click vào ảnh, vẫn mở lightbox với ảnh chất lượng cao nhất
-                div.querySelector('.img-thumb').addEventListener('click', () => {
-                    openLightbox(highResUrl);
-                });
-
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.className = 'select-checkbox';
@@ -258,14 +315,6 @@
             }
             updateSelectionControls();
         }
-
-        function updateSelectionControls() {
-            const selectedCount = document.querySelectorAll('.img-card.selected').length;
-            btnDeleteSelected.style.display = selectedCount > 0 ? 'inline-flex' : 'none';
-            if (selectedCount > 0) {
-                btnDeleteSelected.textContent = `🗑️ Xóa ${selectedCount} ảnh`;
-            }
-        }
         
         function logStatus(id, name, msg, type) {
             let logRow = statusList.querySelector(`#${id}`);
@@ -279,24 +328,6 @@
             logRow.innerHTML = html;
         }
 
-        function openLightbox(imageUrl) {
-            lightboxImg.src = imageUrl;
-            lightbox.classList.add('show');
-        }
-
-        function closeLightbox() {
-            lightbox.classList.remove('show');
-            lightboxImg.src = '';
-        }
-
-        lightboxClose.addEventListener('click', closeLightbox);
-        lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
-
-        if (SCRIPT_URL.includes('AKfyc')) {
-            fetchImages();
-        } else {
-             alert("Vui lòng sửa SCRIPT_URL trong code HTML thành link Web App của bạn!");
-        }
     });
     </script>
 
