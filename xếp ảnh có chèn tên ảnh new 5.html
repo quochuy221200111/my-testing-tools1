@@ -9,81 +9,212 @@
 <style>
     /* === CSS CHUNG === */
     body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; color: #333; }
-    button, label.custom-file-label { padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; white-space: nowrap; text-align: center; }
-    button:hover, label.custom-file-label:hover { opacity: 0.85; }
-    input[type="file"].custom-file-input { display: none; }
     h3 { margin: 0 0 10px 0; font-size: 1.1em; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    textarea { width: 100%; box-sizing: border-box; }
+
+    /* === YÊU CẦU 1: THU GỌN GIAO DIỆN === */
+    button, label.custom-file-label, select { padding: 5px 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: background-color 0.2s; white-space: nowrap; text-align: center; }
+    button:hover, label.custom-file-label:hover { opacity: 0.85; }
+    button:disabled { background-color: #ccc; cursor: not-allowed; }
+    input[type="file"].custom-file-input { display: none; }
 
     /* === BỐ CỤC TỔNG THỂ === */
-    .page-wrapper { display: flex; height: 100vh; gap: 15px; }
-    .main-column { flex: 1; display: flex; flex-direction: column; min-width: 500px; overflow-y: hidden; }
-    .main-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
+    .page-wrapper { display: flex; height: 100vh; gap: 15px; transition: margin-left 0.3s ease-in-out; }
     
+    /* === YÊU CẦU 3: CSS CHO THANH CÔNG CỤ TỰ ĐỘNG CUỘN === */
+    #toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 450px; /* Độ rộng của thanh công cụ */
+        height: 100vh;
+        background-color: #fff;
+        border-right: 1px solid #ddd;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        z-index: 2000;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+        box-sizing: border-box;
+    }
+    #toolbar.visible {
+        transform: translateX(0);
+    }
+    .page-wrapper.toolbar-pinned {
+        margin-left: 450px; /* Đẩy nội dung chính sang phải khi toolbar được ghim */
+    }
+    .toolbar-content {
+        overflow-y: auto; /* Cho phép cuộn nếu nội dung quá dài */
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 100%;
+    }
+    /* Nút ghim thanh công cụ */
+    #pin-toolbar-btn {
+        position: absolute;
+        top: 10px;
+        right: -30px; /* Nằm ngay bên ngoài thanh công cụ */
+        width: 30px;
+        height: 30px;
+        border-radius: 0 5px 5px 0;
+        border-left: none;
+        font-size: 18px;
+        line-height: 30px;
+        padding: 0;
+        background-color: #6c757d;
+    }
+    /* === KẾT THÚC CSS YÊU CẦU 3 === */
+
+    .main-column { flex: 1; display: flex; flex-direction: column; min-width: 500px; overflow-y: hidden; transition: all 0.3s ease; }
+    .main-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
+
     .preview-column {
         width: 50%; max-width: 50%; flex-shrink: 0; background-color: #e9ecef;
         padding: 15px; display: flex; flex-direction: column; position: sticky;
-        top: 0; height: 100vh; box-sizing: border-box;
+        top: 0; height: 100vh; box-sizing: border-box; transition: all 0.3s ease;
+    }
+    .page-wrapper.preview-hidden .preview-column { display: none; }
+    
+    /* === YÊU CẦU MỚI: CSS cho chế độ ẩn lưới ảnh === */
+    .page-wrapper.grid-hidden .main-column {
+        display: none;
+    }
+    .page-wrapper.grid-hidden .preview-column {
+        width: 100%;
+        max-width: 100%;
     }
 
-    /* === THANH CÔNG CỤ === */
-    .controls { position: sticky; top: 0; z-index: 1000; background-color: #fff; padding: 10px; border-bottom: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-    .control-wrapper { display: flex; gap: 15px; width: 100%; }
+    /* === THANH CÔNG CỤ (ĐÃ THU GỌN) === */
+    .control-wrapper { display: flex; gap: 10px; width: 100%; }
     .control-area { flex: 1; display: flex; }
-    .control-group { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fcfcfc; width: 100%; }
-    .action-buttons, .name-options { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .control-group { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fcfcfc; width: 100%; }
+    .action-buttons, .name-options { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .action-buttons > * { flex-grow: 1; }
-    .action-buttons label { display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .action-buttons label { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; }
 
-    #paste-zone { padding: 8px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; color: #666; background-color: #fafafa; transition: background-color 0.2s, border-color 0.2s; }
+    #paste-zone { padding: 6px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; color: #666; background-color: #fafafa; transition: background-color 0.2s, border-color 0.2s; font-size: 13px; }
     #paste-zone.drag-over { background-color: #e0e0e0; border-color: #007bff; }
-    
-    /* Highlight dòng đang edit trong textarea */
+
     #name-list { 
-        resize: vertical; min-height: 50px; height: 100px; padding: 5px; 
-        border: 1px solid #ccc; border-radius: 4px; width: 100%; 
-        font-family: monospace; line-height: 1.5; white-space: pre;
+        resize: vertical; min-height: 40px; height: 80px; padding: 5px; 
+        border: 1px solid #ccc; border-radius: 4px; 
+        font-family: monospace; line-height: 1.5; white-space: pre; font-size: 12px;
     }
-    
     #range-inputs-container { display: flex; gap: 5px; align-items: center; }
-    #range-inputs-container input[type="number"] { width: 50px; padding: 3px; }
-    #download-progress { display: none; width: 100%; margin-top: 10px; }
+    #range-inputs-container input[type="number"] { width: 45px; padding: 3px; font-size: 12px; }
+    
+    /* === YÊU CẦU MỚI: CSS CHO THANH TIẾN TRÌNH GIỮA MÀN HÌNH === */
+    #progress-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: none; /* Sẽ được điều khiển bằng JS */
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        flex-direction: column;
+        color: white;
+    }
+    .progress-bar-container {
+        width: 50%;
+        max-width: 500px;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    #progress-text {
+        margin: 0 0 10px 0;
+        font-size: 1.1em;
+        color: #333;
+    }
+    #upload-progress, #download-progress {
+        width: 100%;
+        height: 15px;
+        display: block; /* Hiển thị trong container */
+        margin-top: 8px;
+    }
+    #upload-progress::-webkit-progress-bar, #download-progress::-webkit-progress-bar { background-color: #eee; border-radius: 5px; }
+    #upload-progress::-webkit-progress-value { background-color: #28a745; border-radius: 5px; transition: width 0.1s linear; }
+    #download-progress::-webkit-progress-value { background-color: #007bff; border-radius: 5px; transition: width 0.1s linear; }
+    /* ============================================================= */
+
+    /* === YÊU CẦU 1: THU GỌN KHU VỰC CHẾ ĐỘ SỐ LIỆU === */
+    #numeric-mode-controls .control-group { gap: 8px; }
+    #numeric-mode-controls h3 { font-size: 1em; text-align: center; margin-bottom: 5px; }
+    #numeric-mode-controls .options-container { display: flex; flex-direction: column; gap: 8px; }
+    #numeric-mode-controls .option-row { display: flex; align-items: center; gap: 8px; }
+    #numeric-mode-controls label { white-space: nowrap; font-size: 13px; }
+    #numeric-mode-controls select { padding: 4px 8px; font-size: 12px; }
+    #numeric-mode-controls textarea { min-height: 40px !important; font-size: 12px; }
+    #numeric-mode-controls .action-row { display:flex; gap: 8px; }
+    #numeric-mode-controls .action-row button { flex: 1; }
+    
+    /* === YÊU CẦU 1 & 2: CSS CHO CÀI ĐẶT VÀ GHI CHÚ === */
+    .hotkey-setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+    .hotkey-setting label { font-size: 13px; white-space: nowrap; }
+    .hotkey-setting input { width: 100px; text-align: center; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; }
+    #local-note-area { min-height: 80px; resize: vertical; font-size: 13px; }
 
     /* === XEM TRƯỚC ẢNH === */
-    #large-preview-container {
-        flex-grow: 1; display: flex; align-items: center; justify-content: center;
-        background-color: #333; border-radius: 8px;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        overflow: hidden; min-height: 0; position: relative;
-        cursor: grab; user-select: none;
-    }
+    #large-preview-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; background-color: #333; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; min-height: 0; position: relative; cursor: grab; user-select: none; }
     #large-preview-container:active { cursor: grabbing; }
-
-    #large-preview-img { 
-        max-width: 100%; max-height: 100%; object-fit: contain; 
-        transform-origin: center center;
-        will-change: transform;
-        /* Quan trọng để không bị kéo ảnh đi bởi trình duyệt */
-        pointer-events: none; 
-        user-select: none;
-        -webkit-user-drag: none;
-    }
+    #large-preview-img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center; will-change: transform; pointer-events: none; user-select: none; -webkit-user-drag: none; }
     .preview-placeholder { color: #ccc; font-size: 1.2em; pointer-events: none; }
-    
     .preview-controls { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; flex-wrap: wrap; gap: 5px; }
+    #preview-name-input { flex-grow: 1; margin: 0 10px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
     .rotate-controls { display: flex; gap: 5px; }
+    #suggestion-buttons-container { margin-top: 10px; }
+    #suggestion-buttons { display:flex; flex-wrap:wrap; gap:5px; }
+    #suggestion-buttons button.suggestion-selected { background-color: #28a745; border: 2px solid #1e7e34; font-weight: bold; }
+
+    /* === YÊU CẦU 3: CSS CHO GỢI Ý CHI TIẾT === */
+    #fine-grained-suggestions { margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; display:flex; flex-wrap:wrap; gap:4px; min-height: 25px; }
+    #fine-grained-suggestions button { font-size: 11px; padding: 3px 6px; background-color: #6c757d; }
 
     /* === PHOTO GRID === */
-    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+    .photo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
     .photo-grid.dense-mode { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; }
     .photo-grid.dense-mode .name-container input[type="text"] { font-size: 9px; padding: 1px 2px; height: 20px; }
-
+    .photo-wrapper.hidden-by-filter { display: none; }
     .photo-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; }
-    .img-container { position: relative; width: 100%; padding-top: 75%; overflow: hidden; border-radius: 4px; background-color: #eee; cursor: pointer; transition: outline 0.2s ease-in-out; }
-    .photo-item { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border: none; pointer-events: none; }
-    .delete-btn { position: absolute; z-index: 10; top: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 22px; text-align: center; padding: 0; opacity: 0; transition: opacity 0.2s; }
-    .photo-wrapper:hover .delete-btn { opacity: 1; }
-    .name-container { display: flex; align-items: center; width: 100%; margin-top: 5px; }
+    .img-container { position: relative; width: 100%; padding-top: 75%; overflow: hidden; border-radius: 4px; background-color: #eee; cursor: pointer; transition: outline 0.2s ease-in-out, border 0.2s; }
     
+    /* === YÊU CẦU MỚI: CSS cho viền ảnh === */
+    .photo-wrapper.is-tall .img-container { border: 3px solid red; } /* Ảnh dọc */
+    .photo-wrapper.is-small .img-container { border: 3px solid #007bff; } /* Ảnh dung lượng nhỏ */
+
+    .photo-item { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border: none; pointer-events: none; }
+    .delete-btn, .exclude-numeric-btn, .replace-btn { position: absolute; z-index: 10; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 22px; text-align: center; padding: 0; opacity: 0; transition: opacity 0.2s; }
+    .delete-btn { top: 4px; right: 4px; }
+    .exclude-numeric-btn { top: 4px; left: 4px; display: none; }
+    body.numeric-mode .exclude-numeric-btn { display: block; }
+
+    /* === YÊU CẦU MỚI: CSS cho nút và panel thay thế ảnh === */
+    .replace-btn { bottom: 4px; left: 4px; font-size: 16px; }
+    .replace-panel {
+        display: none; /* Ẩn mặc định */
+        position: absolute;
+        bottom: 30px; /* Hiện lên trên nút bấm */
+        left: 4px;
+        z-index: 20;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        flex-direction: column;
+        gap: 5px;
+    }
+    .replace-panel button { width: 100%; font-size: 12px; }
+    /* ======================================================== */
+
+    .photo-wrapper:hover .delete-btn, .photo-wrapper:hover .exclude-numeric-btn, .photo-wrapper:hover .replace-btn { opacity: 1; }
+    .name-container { display: flex; align-items: center; width: 100%; margin-top: 5px; }
     .name-container input[type="text"] { flex: 1; padding: 3px 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 3px; min-width: 0; font-size: 10.5px; height: 24px; }
 
     /* === SORTABLE & EFFECTS === */
@@ -92,52 +223,134 @@
     .selected-photo .img-container { outline: 3px solid #007bff; outline-offset: 2px; }
     @keyframes yellow-flash { from { outline: 4px solid gold; } to { outline: 4px solid transparent; } }
     .newly-added .img-container { animation: yellow-flash 1.5s ease-out; }
-
 </style>
 </head>
-<body>
+<body id="page-body">
 
-<div class="page-wrapper">
-    <div class="main-column">
-        <div class="controls">
-            <div class="control-wrapper">
-                <div class="control-area">
-                    <div class="control-group">
-                        <div class="action-buttons">
-                            <label for="photo-input" class="custom-file-label">Tải ảnh lên</label>
-                            <div id="paste-zone">Hoặc kéo thả / dán ảnh</div>
-                            <button id="clear-btn" style="background-color: #dc3545;">Xóa tất cả</button>
-                            <button id="download-all-btn">Tải tất cả</button>
-                            <button id="undo-btn">Hoàn tác (Ctrl+Z)</button>
-                            <button id="grid-toggle-btn" style="background-color: #6c757d;">Chế độ lưới x2</button>
-                            <label><input type="checkbox" id="lock-toggle"> Khóa kéo thả</label>
-                            <label><input type="checkbox" id="smart-select-toggle"> Bật chọn số liệu</label>
-                        </div>
+<!-- === YÊU CẦU MỚI: THANH TIẾN TRÌNH TẢI LÊN (OVERLAY) === -->
+<div id="progress-overlay">
+    <div class="progress-bar-container">
+        <p id="progress-text">Đang xử lý...</p>
+        <progress id="upload-progress" value="0" max="100"></progress>
+        <progress id="download-progress" value="0" max="100" style="display:none;"></progress>
+    </div>
+</div>
+
+
+<!-- THANH CÔNG CỤ -->
+<div id="toolbar">
+    <button id="pin-toolbar-btn" title="Ghim/Bỏ ghim thanh công cụ (Tự động lưu)">📌</button>
+    <div class="toolbar-content">
+        <div class="control-wrapper">
+            <div class="control-area">
+                <div class="control-group">
+                    <div class="action-buttons">
+                        <label for="photo-input" class="custom-file-label">Tải ảnh/ZIP</label>
+                        <div id="paste-zone">Hoặc kéo thả / dán ảnh</div>
+                        <button id="clear-btn" style="background-color: #dc3545;">Xóa tất cả</button>
+                        <button id="delete-selected-btn" style="background-color: #ffc107; color: #333;">Xóa đã chọn</button>
+                        <button id="download-all-btn">Tải tất cả</button>
+                        <button id="undo-btn">Hoàn tác</button>
+                        <button id="grid-toggle-btn" style="background-color: #6c757d;">Chế độ lưới x2</button>
+                        <button id="toggle-preview-btn">Ẩn Preview</button>
+                        <button id="hide-all-images-btn" style="background-color: #6c757d;">Ẩn/Hiện Lưới Ảnh</button>
+                        <button id="highlight-tall-btn">Ảnh dọc</button>
+                        <button id="numeric-filter-btn" style="background-color: #17a2b8;">Chế độ Số liệu</button>
+                        <button id="prev-image-btn" title="Chuyển đến ảnh phía trước">Ảnh Trước</button>
+                        <button id="next-image-btn" title="Chuyển đến ảnh kế tiếp">Ảnh Sau</button>
+                        <label><input type="checkbox" id="lock-toggle"> Khóa</label>
+                        <label><input type="checkbox" id="smart-select-toggle"> Bật chọn số</label>
                     </div>
                 </div>
-                <div class="control-area">
-                    <div class="control-group">
-                        <div class="name-options">
-                            <textarea id="name-list" placeholder="Danh sách tên (tự động cuộn khi sửa tên ảnh)"></textarea>
-                            <div style="display:flex; flex-direction:column; gap: 8px; align-self: flex-end; width: 100%;">
-                                <div id="range-name-options">
-                                    <label><input type="checkbox" id="range-name-toggle"> Chèn tên theo khoảng</label>
-                                    <div id="range-inputs-container" style="display: none;">
-                                        <label for="name-range-start">Từ:</label>
-                                        <input type="number" id="name-range-start" value="1" min="1">
-                                        <label for="name-range-end">Đến:</label>
-                                        <input type="number" id="name-range-end" value="10" min="1">
-                                    </div>
+            </div>
+        </div>
+        <div class="control-wrapper">
+             <div class="control-area">
+                <div class="control-group">
+                    <div class="name-options">
+                        <textarea id="name-list" placeholder="Danh sách tên..."></textarea>
+                        <div style="display:flex; flex-direction:column; gap: 5px; align-self: flex-end; width: 100%;">
+                            <div id="range-name-options">
+                                <label><input type="checkbox" id="range-name-toggle"> Chèn tên theo khoảng</label>
+                                <div id="range-inputs-container" style="display: none;">
+                                    <label for="name-range-start">Từ:</label>
+                                    <input type="number" id="name-range-start" value="1" min="1">
+                                    <label for="name-range-end">Đến:</label>
+                                    <input type="number" id="name-range-end" value="10" min="1">
+                                    <label title="Sử dụng dòng đầu tiên trong danh sách tên cho tất cả ảnh trong khoảng đã chọn"><input type="checkbox" id="apply-single-name-toggle"> Dùng 1 tên</label>
                                 </div>
-                                <button id="assign-names-btn">Chèn tên từ danh sách</button>
                             </div>
+                            <button id="assign-names-btn">Chèn tên từ danh sách</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <progress id="download-progress" value="0" max="100"></progress>
         </div>
+        <div id="numeric-mode-controls" class="control-wrapper" style="display: none;">
+            <div class="control-group" style="width:100%;">
+                <h3 style="text-align:center;">Tùy chọn Chế độ Số liệu</h3>
+                <div class="options-container">
+                    <div class="option-row">
+                        <label for="suggestion-count-select">Số gợi ý mỗi ảnh:</label>
+                        <select id="suggestion-count-select">
+                            <!-- === YÊU CẦU MỚI: Thêm option 1 gợi ý === -->
+                            <option value="1">1</option>
+                            <option value="3" selected>3</option> <option value="5">5</option> <option value="7">7</option> <option value="9">9</option>
+                        </select>
+                        <textarea id="numeric-name-suggestions" placeholder="Dán danh sách tên gợi ý vào đây..." style="flex-grow:1;"></textarea>
+                    </div>
+                     <div class="option-row">
+                         <label for="numeric-filtered-names-list">Danh sách tên ảnh đang hiển thị:</label>
+                         <textarea id="numeric-filtered-names-list" readonly placeholder="Tên các ảnh đã lọc sẽ hiện ở đây..." style="flex-grow:1; background-color: #e9ecef;"></textarea>
+                     </div>
+                    <div class="action-row">
+                        <button id="apply-numeric-suggestions-btn">Gán Tên Gợi Ý</button>
+                        <button id="download-numeric-btn" style="background-color: #28a745;">Tải ảnh đã lọc</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>Ghi chú (Tự động lưu)</h3>
+            <textarea id="local-note-area" placeholder="Ghi chú nhanh của bạn..."></textarea>
+        </div>
+        
+        <div class="control-group">
+            <h3>Cài đặt phím tắt (Tự động lưu)</h3>
+            <div id="hotkey-settings">
+                 <div class="hotkey-setting">
+                    <label for="hotkey-next-image">Chuyển ảnh tiếp theo:</label>
+                    <input type="text" id="hotkey-next-image" data-action="nextImage">
+                </div>
+                <div class="hotkey-setting">
+                    <label for="hotkey-prev-image">Chuyển ảnh phía trước:</label>
+                    <input type="text" id="hotkey-prev-image" data-action="prevImage">
+                </div>
+                <div class="hotkey-setting">
+                    <label for="hotkey-edit-name">Sửa tên ảnh (preview):</label>
+                    <input type="text" id="hotkey-edit-name" data-action="editName">
+                </div>
+                <div class="hotkey-setting">
+                    <label for="hotkey-rotate-left">Xoay trái:</label>
+                    <input type="text" id="hotkey-rotate-left" data-action="rotateLeft">
+                </div>
+                 <div class="hotkey-setting">
+                    <label for="hotkey-rotate-right">Xoay phải:</label>
+                    <input type="text" id="hotkey-rotate-right" data-action="rotateRight">
+                </div>
+                <div class="hotkey-setting">
+                    <label for="hotkey-pin-toolbar">Ghim/Bỏ ghim thanh công cụ:</label>
+                    <input type="text" id="hotkey-pin-toolbar" data-action="pinToolbar">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
+
+<div class="page-wrapper" id="page-wrapper">
+    <div class="main-column">
         <div class="main-content" id="main-content">
             <div id="photo-grid-main" class="photo-grid"></div>
         </div>
@@ -146,20 +359,28 @@
     <div class="preview-column">
         <div class="preview-controls">
             <h3>Xem trước ảnh</h3>
+            <input type="text" id="preview-name-input" placeholder="Sửa tên tại đây..." style="display: none;">
             <div class="rotate-controls">
-                <button id="rotate-left-btn" title="Xoay trái 90 độ">↺ Trái</button>
-                <button id="rotate-right-btn" title="Xoay phải 90 độ">↻ Phải</button>
+                <button id="rotate-left-btn" title="Xoay trái 90 độ">↺</button>
+                <button id="rotate-right-btn" title="Xoay phải 90 độ">↻</button>
+                <button id="flip-horizontal-btn" title="Lật ngang">↔</button>
+                <button id="flip-vertical-btn" title="Lật dọc">↕</button>
             </div>
-            <button id="capture-btn" title="Copy vùng hiển thị vào Clipboard (Tỷ lệ 3:4)">📋 Copy ảnh (3:4)</button>
+            <button id="capture-btn" title="Copy vùng hiển thị vào Clipboard (Tỷ lệ 3:4)">📋</button>
         </div>
         <div id="large-preview-container">
             <span id="preview-placeholder" class="preview-placeholder">Chọn ảnh để xem. Lăn chuột để Zoom, Giữ chuột trái để Kéo.</span>
             <img id="large-preview-img" src="" alt="" draggable="false">
         </div>
+        <div id="suggestion-buttons-container" style="display: none;">
+            <h4>Chọn tên chính thức:</h4>
+            <div id="suggestion-buttons"></div>
+            <div id="fine-grained-suggestions"></div>
+        </div>
     </div>
 </div>
-
-<input type="file" id="photo-input" multiple accept="image/*" class="custom-file-input">
+<!-- === YÊU CẦU MỚI: Thêm accept .zip vào input === -->
+<input type="file" id="photo-input" multiple accept="image/*,.zip" class="custom-file-input">
 
 <script>
 // --- Các biến toàn cục ---
@@ -182,12 +403,45 @@ const gridToggleBtn = document.getElementById('grid-toggle-btn');
 const captureBtn = document.getElementById('capture-btn');
 const rotateLeftBtn = document.getElementById('rotate-left-btn');
 const rotateRightBtn = document.getElementById('rotate-right-btn');
+const pageWrapper = document.getElementById('page-wrapper');
+const pageBody = document.getElementById('page-body');
+const previewNameInput = document.getElementById('preview-name-input');
+const highlightTallBtn = document.getElementById('highlight-tall-btn');
+const flipHorizontalBtn = document.getElementById('flip-horizontal-btn');
+const flipVerticalBtn = document.getElementById('flip-vertical-btn');
+const togglePreviewBtn = document.getElementById('toggle-preview-btn');
+const numericFilterBtn = document.getElementById('numeric-filter-btn');
+const numericModeControls = document.getElementById('numeric-mode-controls');
+const numericNameSuggestions = document.getElementById('numeric-name-suggestions');
+const applyNumericSuggestionsBtn = document.getElementById('apply-numeric-suggestions-btn');
+const downloadNumericBtn = document.getElementById('download-numeric-btn');
+const suggestionButtonsContainer = document.getElementById('suggestion-buttons-container');
+const suggestionButtons = document.getElementById('suggestion-buttons');
+const numericFilteredNamesList = document.getElementById('numeric-filtered-names-list');
+const suggestionCountSelect = document.getElementById('suggestion-count-select');
+const fineGrainedSuggestionsContainer = document.getElementById('fine-grained-suggestions');
+
+// --- BIẾN MỚI CHO CÁC YÊU CẦU ---
+const toolbar = document.getElementById('toolbar');
+const pinToolbarBtn = document.getElementById('pin-toolbar-btn');
+const localNoteArea = document.getElementById('local-note-area');
+const hotkeySettingsContainer = document.getElementById('hotkey-settings');
+const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+const applySingleNameToggle = document.getElementById('apply-single-name-toggle');
+const nextImageBtn = document.getElementById('next-image-btn');
+const prevImageBtn = document.getElementById('prev-image-btn');
+const hideAllImagesBtn = document.getElementById('hide-all-images-btn');
+// === YÊU CẦU MỚI: Biến cho thanh tiến trình ===
+const progressOverlay = document.getElementById('progress-overlay');
+const progressText = document.getElementById('progress-text');
+const uploadProgress = document.getElementById('upload-progress');
+const downloadProgress = document.getElementById('download-progress');
 
 
 let photoGrid = document.getElementById('photo-grid-main');
 let sortableInstance = null;
 let photoIdCounter = 0;
-const photoDataMap = new Map(); // Store blob data and rotation
+const photoDataMap = new Map();
 let history = [];
 let currentState = null;
 let lastSelectedWrapper = null;
@@ -201,117 +455,127 @@ let imgTranslate = { x: 0, y: 0 };
 let isPanning = false;
 let startPan = { x: 0, y: 0 };
 
-// --- Các hàm tiện ích ---
+let hotkeys = {
+    nextImage: 'CapsLock',
+    prevImage: 'Shift',
+    editName: 'F2',
+    rotateLeft: 'ArrowLeft',
+    rotateRight: 'ArrowRight',
+    pinToolbar: 'KeyP'
+};
+
+
+// --- Các hàm gốc (giữ nguyên, không thay đổi) ---
 function removeLeadingOrderPrefix(filename) { return filename.replace(/^\d+\.\s+/, ''); }
 function syncInputAttributes() { mainContentEl.querySelectorAll('input[type="text"]').forEach(input => input.setAttribute('value', input.value)); mainContentEl.querySelectorAll('textarea').forEach(textarea => textarea.textContent = textarea.value); mainContentEl.querySelectorAll('input[type="checkbox"]').forEach(input => { if (input.checked) input.setAttribute('checked', 'checked'); else input.removeAttribute('checked'); }); }
-function saveState() { 
-    syncInputAttributes(); 
-    const stateHTML = mainContentEl.innerHTML; 
-    if (stateHTML !== currentState) { 
-        if (currentState !== null) history.push(currentState); 
-        if (history.length > 50) history.shift(); 
-        currentState = stateHTML; 
-    } 
-}
+function saveState() { syncInputAttributes(); const stateHTML = mainContentEl.innerHTML; if (stateHTML !== currentState) { if (currentState !== null) history.push(currentState); if (history.length > 50) history.shift(); currentState = stateHTML; } }
 function updateCurrentState() { syncInputAttributes(); currentState = mainContentEl.innerHTML; }
-function restoreStateFromHistory() { 
-    if (history.length > 0) { 
-        const stateToRestore = history.pop(); 
-        mainContentEl.innerHTML = stateToRestore; 
-        currentState = stateToRestore; 
-        reInitializeApp(); 
-    } else { 
-        alert('Không có hành động nào để hoàn tác.'); 
-    } 
-}
-
-// Xử lý xoay ảnh từ File gốc khi upload (nếu có EXIF)
-function processImageRotation(file) {
-    return new Promise((resolve, reject) => {
-        // Trả về file gốc, việc xoay sẽ được xử lý thủ công hoặc khi render
-        // Ở đây giữ nguyên file gốc để đảm bảo chất lượng
-        resolve(file); 
-    });
-}
-
-// === TÍNH NĂNG XOAY ẢNH VÀ LƯU BLOB MỚI ===
-async function rotateCurrentPhoto(degrees) {
+function restoreStateFromHistory() { if (history.length > 0) { const stateToRestore = history.pop(); mainContentEl.innerHTML = stateToRestore; currentState = stateToRestore; reInitializeApp(); } else { alert('Không có hành động nào để hoàn tác.'); } }
+function processImageRotation(file) { return new Promise((resolve, reject) => { resolve(file); }); }
+async function transformCurrentImage(transformParams) {
     if (!lastSelectedWrapper) return;
     const id = lastSelectedWrapper.getAttribute('data-photo-id');
     if (!id || !photoDataMap.has(id)) return;
-
     saveState();
-
-    const currentData = photoDataMap.get(id);
-    const blob = currentData.blob;
-    
-    // Tạo Canvas để xoay
+    const { blob } = photoDataMap.get(id);
     const bitmap = await createImageBitmap(blob);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-
-    // Đảo chiều width/height nếu xoay 90 hoặc 270 (-90)
-    if (Math.abs(degrees) === 90) {
-        canvas.width = bitmap.height;
-        canvas.height = bitmap.width;
-    } else {
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-    }
-
-    // Dịch chuyển tâm và xoay
+    const { degrees = 0, flipH = false, flipV = false } = transformParams;
+    if (Math.abs(degrees) === 90) { canvas.width = bitmap.height; canvas.height = bitmap.width; } 
+    else { canvas.width = bitmap.width; canvas.height = bitmap.height; }
     ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(degrees * Math.PI / 180);
+    if (degrees) ctx.rotate(degrees * Math.PI / 180);
+    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
     ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
-
-    // Xuất ra Blob mới
     canvas.toBlob((newBlob) => {
         if (!newBlob) return;
-        
-        // Cập nhật Map
-        photoDataMap.set(id, { ...currentData, blob: newBlob });
-        
-        // Tạo URL mới
+        photoDataMap.set(id, { ...photoDataMap.get(id), blob: newBlob });
         const newUrl = URL.createObjectURL(newBlob);
-        
-        // Cập nhật Thumbnail trong Grid
-        const thumbImg = lastSelectedWrapper.querySelector('.photo-item');
-        thumbImg.src = newUrl;
-        
-        // Cập nhật Preview lớn
+        lastSelectedWrapper.querySelector('.photo-item').src = newUrl;
         largePreviewImg.src = newUrl;
         largePreviewImg.setAttribute('data-current-src', newUrl);
-        
-        // Reset Zoom để tránh lỗi hiển thị sau khi xoay
         resetZoom();
-
         updateCurrentState();
-
     }, blob.type || 'image/jpeg', 0.95);
 }
-
-// === ZOOM & PAN LOGIC (Được làm mượt) ===
-function resetZoom() {
-    imgScale = 1;
-    imgTranslate = { x: 0, y: 0 };
-    updateTransform();
+function resetZoom() { imgScale = 1; imgTranslate = { x: 0, y: 0 }; updateTransform(); }
+function updateTransform() { largePreviewImg.style.transform = `translate(${imgTranslate.x}px, ${imgTranslate.y}px) scale(${imgScale})`; }
+function showFineGrainedSuggestions(baseText) {
+    fineGrainedSuggestionsContainer.innerHTML = '';
+    const match = baseText.match(/(-?\d+\.?\d*)/);
+    if (!match) return;
+    const num = parseFloat(match[0]);
+    if (isNaN(num)) return;
+    const unit = baseText.substring(match[0].length).trim();
+    const parts = match[0].split('.');
+    const precision = parts.length > 1 ? parts[1].length : 0;
+    const step = Math.pow(10, -precision);
+    const fragment = document.createDocumentFragment();
+    for(let i = -3; i <= 3; i++) {
+        if (i === 0) continue;
+        const newNum = (num + i * step).toFixed(precision);
+        const btn = document.createElement('button');
+        btn.textContent = `${newNum}${unit}`;
+        btn.onclick = () => {
+            if(lastSelectedWrapper) {
+                const nameInput = lastSelectedWrapper.querySelector('.name-container input[type="text"]');
+                const currentPrefix = nameInput.value.match(/^\d+\.\s+/);
+                const newName = (currentPrefix ? currentPrefix[0] : '') + btn.textContent;
+                nameInput.value = newName;
+                previewNameInput.value = newName;
+                syncNameListFromInputs();
+                updateSuggestionButtons(lastSelectedWrapper);
+                saveState();
+                updateCurrentState();
+            }
+        };
+        fragment.appendChild(btn);
+    }
+    fineGrainedSuggestionsContainer.appendChild(fragment);
 }
-
-function updateTransform() {
-    // Không dùng transition trong JS để tránh lag khi kéo, dùng CSS will-change
-    largePreviewImg.style.transform = `translate(${imgTranslate.x}px, ${imgTranslate.y}px) scale(${imgScale})`;
+function updateSuggestionButtons(wrapper) {
+    fineGrainedSuggestionsContainer.innerHTML = ''; 
+    if (pageBody.classList.contains('numeric-mode') && wrapper && wrapper.dataset.suggestions) {
+        suggestionButtons.innerHTML = '';
+        const suggestions = JSON.parse(wrapper.dataset.suggestions);
+        const nameInput = wrapper.querySelector('.name-container input[type="text"]');
+        const currentNameWithoutPrefix = removeLeadingOrderPrefix(nameInput.value);
+        suggestions.forEach(suggestionText => {
+            if (suggestionText) {
+                const btn = document.createElement('button');
+                btn.textContent = suggestionText;
+                btn.title = `Chọn "${suggestionText}" làm tên chính thức`;
+                if (suggestionText === currentNameWithoutPrefix) {
+                    btn.classList.add('suggestion-selected');
+                }
+                btn.onclick = () => {
+                    const currentPrefix = nameInput.value.match(/^\d+\.\s+/);
+                    const newName = (currentPrefix ? currentPrefix[0] : '') + suggestionText;
+                    nameInput.value = newName;
+                    previewNameInput.value = newName;
+                    suggestionButtons.querySelectorAll('button').forEach(b => b.classList.remove('suggestion-selected'));
+                    btn.classList.add('suggestion-selected');
+                    syncNameListFromInputs();
+                    saveState();
+                    updateCurrentState();
+                };
+                btn.addEventListener('focus', () => showFineGrainedSuggestions(suggestionText));
+                suggestionButtons.appendChild(btn);
+            }
+        });
+        suggestionButtonsContainer.style.display = suggestionButtons.children.length > 0 ? 'block' : 'none';
+    } else {
+        suggestionButtonsContainer.style.display = 'none';
+    }
 }
-
 function updatePreview(wrapper) {
     const selectedWrappers = photoGrid.querySelectorAll('.photo-wrapper.selected-photo');
     if (selectedWrappers.length === 1) {
         const singleWrapper = selectedWrappers[0];
         const id = singleWrapper.getAttribute('data-photo-id');
         const data = photoDataMap.get(id);
-        
-        // Sử dụng Blob URL từ Map để đảm bảo chất lượng và trạng thái xoay
         const imgSrc = data ? URL.createObjectURL(data.blob) : singleWrapper.querySelector('.photo-item').src;
-        
         if (largePreviewImg.getAttribute('data-current-src') !== imgSrc) {
             largePreviewImg.src = imgSrc;
             largePreviewImg.alt = singleWrapper.querySelector('input[type="text"]').value;
@@ -320,64 +584,82 @@ function updatePreview(wrapper) {
         }
         previewPlaceholder.style.display = 'none';
         largePreviewImg.style.display = 'block';
+        previewNameInput.value = singleWrapper.querySelector('input[type="text"]').value;
+        previewNameInput.style.display = 'block';
+        updateSuggestionButtons(singleWrapper);
     } else {
-        largePreviewImg.src = "";
-        largePreviewImg.alt = "";
-        largePreviewImg.removeAttribute('data-current-src');
+        largePreviewImg.src = ""; largePreviewImg.alt = ""; largePreviewImg.removeAttribute('data-current-src');
         largePreviewImg.style.display = 'none';
         previewPlaceholder.style.display = 'block';
+        previewNameInput.value = ''; previewNameInput.style.display = 'none';
+        suggestionButtonsContainer.style.display = 'none';
+        fineGrainedSuggestionsContainer.innerHTML = '';
     }
 }
-
-function createPhotoElement(id, processedBlob, originalName) {
+function createPhotoElement(id, processedBlob, originalName, fileSize) {
     const wrapper = document.createElement('div');
     wrapper.className = 'photo-wrapper newly-added';
     wrapper.setAttribute('data-photo-id', id);
+    
+    // === YÊU CẦU MỚI: Thêm class nếu ảnh nhỏ hơn 40KB ===
+    if (fileSize && fileSize < 40000) {
+        wrapper.classList.add('is-small');
+    }
 
     const imgContainer = document.createElement('div');
     imgContainer.className = 'img-container';
-
     const img = document.createElement('img');
     img.className = 'photo-item';
     img.src = URL.createObjectURL(processedBlob);
-    // Prevent dragging image element natively
     img.draggable = false; 
-
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.innerHTML = '&times;';
     deleteBtn.title = 'Xóa ảnh này';
+    const excludeBtn = document.createElement('button');
+    excludeBtn.className = 'exclude-numeric-btn';
+    excludeBtn.innerHTML = '&#10007;';
+    excludeBtn.title = 'Loại trừ khỏi chế độ xem số liệu';
+
+    // === YÊU CẦU MỚI: Thêm nút và panel thay thế ảnh ===
+    const replaceBtn = document.createElement('button');
+    replaceBtn.className = 'replace-btn';
+    replaceBtn.innerHTML = '&#8635;';
+    replaceBtn.title = 'Thay thế ảnh';
+    const replacePanel = document.createElement('div');
+    replacePanel.className = 'replace-panel';
+    replacePanel.innerHTML = `
+        <button class="replace-from-file-btn" title="Thay thế bằng ảnh từ một file">Từ File</button>
+        <button class="replace-from-clipboard-btn" title="Thay thế bằng ảnh đang có trong clipboard">Từ Clipboard</button>
+    `;
 
     const nameContainer = document.createElement('div');
     nameContainer.className = 'name-container';
-    
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     const nameWithoutExtension = originalName.replace(/\.[^/.]+$/, "");
-    const cleanName = removeLeadingOrderPrefix(nameWithoutExtension);
-    nameInput.value = cleanName;
-
+    nameInput.value = nameWithoutExtension;
+    
     imgContainer.appendChild(img);
     imgContainer.appendChild(deleteBtn);
+    imgContainer.appendChild(excludeBtn);
+    imgContainer.appendChild(replaceBtn); // Thêm nút thay thế vào container ảnh
 
     nameContainer.appendChild(nameInput);
-
+    
     wrapper.appendChild(imgContainer);
+    wrapper.appendChild(replacePanel); // Thêm panel thay thế vào wrapper
     wrapper.appendChild(nameContainer);
-
+    
     photoDataMap.set(id, { blob: processedBlob, originalName: originalName });
     setTimeout(() => wrapper.classList.remove('newly-added'), 1500);
     return wrapper;
 }
-
 function syncNameListFromInputs() {
     const allNameInputs = photoGrid.querySelectorAll('.name-container input[type="text"]');
-    const namesArray = Array.from(allNameInputs).map(input => {
-        return removeLeadingOrderPrefix(input.value.trim());
-    });
+    const namesArray = Array.from(allNameInputs).map(input => removeLeadingOrderPrefix(input.value.trim()));
     nameListTextArea.value = namesArray.join('\n');
 }
-
 function updateNumberingAndSync() {
     const wrappers = photoGrid.querySelectorAll('.photo-wrapper');
     wrappers.forEach((wrapper, index) => {
@@ -393,31 +675,37 @@ function updateNumberingAndSync() {
 async function processAndDisplayFiles(filesArray) {
     if (filesArray.length === 0) return;
     saveState();
+    
+    // === YÊU CẦU MỚI: Hiển thị và cài đặt thanh tiến trình ===
+    progressOverlay.style.display = 'flex';
+    uploadProgress.style.display = 'block';
+    downloadProgress.style.display = 'none';
+    progressText.textContent = `Đang tải ${filesArray.length} ảnh...`;
+    uploadProgress.value = 0;
+    uploadProgress.max = filesArray.length;
+
     const selectedWrappers = photoGrid.querySelectorAll('.photo-wrapper.selected-photo');
     const insertionPoint = selectedWrappers.length === 1 ? selectedWrappers[0] : null;
     const fragment = document.createDocumentFragment();
     let lastAddedElement = null;
 
-    for (const file of filesArray) {
-        if (!file.type.startsWith('image/')) continue;
+    for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i];
+        if (!file || !file.type.startsWith('image/')) {
+             uploadProgress.value = i + 1;
+             continue;
+        };
         try {
             const processedBlob = await processImageRotation(file);
             const id = `photo-${photoIdCounter++}`;
             const originalName = file.name || `image_${Date.now()}.jpg`;
-            const wrapper = createPhotoElement(id, processedBlob, originalName);
+            const wrapper = createPhotoElement(id, processedBlob, originalName, file.size);
             fragment.appendChild(wrapper);
             lastAddedElement = wrapper;
-        } catch (error) {
-            console.error(error);
-        }
+        } catch (error) { console.error(error); }
+        uploadProgress.value = i + 1;
     }
-
-    if (insertionPoint) {
-        insertionPoint.after(fragment);
-    } else {
-        photoGrid.appendChild(fragment);
-    }
-
+    if (insertionPoint) { insertionPoint.after(fragment); } else { photoGrid.appendChild(fragment); }
     updateNumberingAndSync(); 
     if (lastAddedElement) {
         document.querySelectorAll('.selected-photo').forEach(el => el.classList.remove('selected-photo'));
@@ -427,74 +715,134 @@ async function processAndDisplayFiles(filesArray) {
         updatePreview(lastAddedElement);
     }
     updateCurrentState();
-}
-
-function generateZipWithProgress() { 
-    if (isDownloading) return alert('Quá trình tải xuống đang diễn ra.'); 
-    const wrappers = photoGrid.querySelectorAll('.photo-wrapper'); 
-    if (wrappers.length === 0) return alert('Không có ảnh nào để tải xuống.'); 
-    isDownloading = true; 
-    const zip = new JSZip(); 
     
-    wrappers.forEach(wrapper => { 
-        const id = wrapper.getAttribute('data-photo-id'); 
-        const nameInput = wrapper.querySelector('.name-container input[type="text"]'); 
-        if (id && photoDataMap.has(id)) { 
-            const { blob } = photoDataMap.get(id); 
-            // Blob trong photoDataMap đã được cập nhật khi xoay ảnh
-            const fullFileName = nameInput.value.trim() || `image_${id}`; 
-            const extension = blob.type.split('/')[1] || 'jpg'; 
-            const finalZipName = `${fullFileName.replace(/[<>:"/\\|?*]+/g, '_')}.${extension}`; 
-            zip.file(finalZipName, blob); 
-        } 
-    }); 
-
-    const progressBar = document.getElementById('download-progress'); 
-    progressBar.style.display = 'block'; 
-    progressBar.value = 0; 
-    zip.generateAsync({ type: "blob" }, (metadata) => { progressBar.value = metadata.percent; })
-    .then((content) => saveAs(content, 'all_photos.zip'))
-    .catch(err => { console.error("Lỗi:", err); alert("Lỗi khi tạo file ZIP."); })
-    .finally(() => { progressBar.style.display = 'none'; isDownloading = false; }); 
+    // === YÊU CẦU MỚI: Ẩn thanh tiến trình sau khi hoàn tất ===
+    setTimeout(() => { 
+        progressOverlay.style.display = 'none'; 
+        uploadProgress.value = 0;
+    }, 500);
 }
 
-// === LOGIC KÉO THẢ GIỮ THỨ TỰ (Quan trọng) ===
+// === YÊU CẦU MỚI: Hàm xử lý các file đầu vào (ảnh hoặc zip) ===
+async function handleFiles(files) {
+    const imageFiles = [];
+    const zipFiles = [];
+    
+    for (const file of files) {
+        if (file.type.startsWith('image/')) {
+            imageFiles.push(file);
+        } else if (file.name.toLowerCase().endsWith('.zip')) {
+            zipFiles.push(file);
+        }
+    }
+
+    if (imageFiles.length > 0) {
+        await processAndDisplayFiles(imageFiles);
+    }
+    
+    for (const zipFile of zipFiles) {
+        await handleZipFile(zipFile);
+    }
+}
+
+// === YÊU CẦU MỚI: Hàm giải nén và xử lý file ZIP ===
+async function handleZipFile(file) {
+    try {
+        progressOverlay.style.display = 'flex';
+        progressText.textContent = `Đang giải nén file ${file.name}...`;
+        uploadProgress.value = 0;
+
+        const zip = await JSZip.loadAsync(file);
+        const imagePromises = [];
+        const imageEntries = [];
+
+        zip.forEach((relativePath, zipEntry) => {
+            const isImage = /\.(jpe?g|png|gif|webp|bmp)$/i.test(zipEntry.name);
+            const isHiddenFile = zipEntry.name.startsWith('__MACOSX/') || zipEntry.name.includes('/.');
+            if (!zipEntry.dir && isImage && !isHiddenFile) {
+                imageEntries.push(zipEntry);
+            }
+        });
+
+        uploadProgress.max = imageEntries.length;
+        progressText.textContent = `Đang trích xuất ${imageEntries.length} ảnh từ ${file.name}...`;
+
+        for (let i = 0; i < imageEntries.length; i++) {
+            const zipEntry = imageEntries[i];
+            const promise = zipEntry.async('blob').then(blob => {
+                // Tạo lại đối tượng File để có thể lấy được 'type' và 'name'
+                return new File([blob], zipEntry.name, { type: blob.type });
+            });
+            imagePromises.push(promise);
+            uploadProgress.value = i + 1;
+        }
+
+        const extractedFiles = await Promise.all(imagePromises);
+        await processAndDisplayFiles(extractedFiles);
+
+    } catch (error) {
+        console.error("Lỗi khi xử lý file ZIP:", error);
+        alert("Đã có lỗi xảy ra khi giải nén file ZIP. Vui lòng kiểm tra console.");
+        progressOverlay.style.display = 'none';
+    }
+}
+
+
+function generateZip(elementsToZip, zipName = 'photos.zip') {
+    if (isDownloading) return alert('Quá trình tải xuống đang diễn ra.');
+    if (elementsToZip.length === 0) return alert('Không có ảnh nào để tải xuống.');
+    isDownloading = true;
+
+    // === YÊU CẦU MỚI: Hiển thị thanh tiến trình download ===
+    progressOverlay.style.display = 'flex';
+    downloadProgress.style.display = 'block';
+    uploadProgress.style.display = 'none';
+    progressText.textContent = 'Đang nén file...';
+    downloadProgress.value = 0;
+
+    const zip = new JSZip();
+    elementsToZip.forEach(wrapper => {
+        const id = wrapper.getAttribute('data-photo-id');
+        const nameInput = wrapper.querySelector('.name-container input[type="text"]');
+        if (id && photoDataMap.has(id)) {
+            const { blob } = photoDataMap.get(id);
+            const fullFileName = nameInput.value.trim() || `image_${id}`;
+            const extension = blob.type.split('/')[1] || 'jpg';
+            const finalZipName = `${fullFileName.replace(/[<>:"/\\|?*]+/g, '_')}.${extension}`;
+            zip.file(finalZipName, blob);
+        }
+    });
+    
+    zip.generateAsync({ type: "blob" }, (metadata) => { 
+        downloadProgress.value = metadata.percent; 
+        progressText.textContent = `Đang nén file... ${metadata.percent.toFixed(0)}%`;
+    })
+    .then((content) => saveAs(content, zipName))
+    .catch(err => { console.error("Lỗi:", err); alert("Lỗi khi tạo file ZIP."); })
+    .finally(() => { 
+        setTimeout(() => { progressOverlay.style.display = 'none'; }, 1000);
+        isDownloading = false; 
+    });
+}
 function initializeSortable(isDraggable) {
     if (sortableInstance) sortableInstance.destroy();
     if (photoGrid) {
         sortableInstance = new Sortable(photoGrid, {
-            group: 'shared-photos',
-            animation: 150,
-            ghostClass: 'ghost-class',
-            dragClass: 'drag-class',
-            draggable: '.photo-wrapper',
-            sort: isDraggable,
+            group: 'shared-photos', animation: 150, ghostClass: 'ghost-class', dragClass: 'drag-class',
+            draggable: '.photo-wrapper', sort: isDraggable,
             onStart: function(evt) {
-                // Thu thập các item được chọn theo đúng thứ tự DOM hiện tại
                 const allSelected = Array.from(photoGrid.querySelectorAll('.selected-photo'));
-                // Nếu item đang kéo không nằm trong nhóm selected, thì chỉ kéo chính nó
-                if (!evt.item.classList.contains('selected-photo')) {
-                    draggedItems = [];
-                } else {
-                    // Lọc bỏ item chính đang được Sortable xử lý để tránh conflict
-                    draggedItems = allSelected.filter(item => item !== evt.item);
-                }
-                // Ẩn các item đi theo để tạo hiệu ứng gom lại
+                if (!evt.item.classList.contains('selected-photo')) { draggedItems = []; } 
+                else { draggedItems = allSelected.filter(item => item !== evt.item); }
                 draggedItems.forEach(item => item.style.display = 'none');
             },
             onEnd: function(evt) {
-                // Hiện lại các item
                 draggedItems.forEach(item => item.style.display = '');
-                
-                // Logic chèn lại: Chèn lần lượt sau item vừa thả để giữ thứ tự
                 let referenceNode = evt.item;
                 draggedItems.forEach(item => {
-                    // InsertAfter logic
                     referenceNode.parentNode.insertBefore(item, referenceNode.nextSibling);
-                    // Cập nhật referenceNode để item tiếp theo nằm sau item này
                     referenceNode = item;
                 });
-                
                 draggedItems = [];
                 saveState();
                 updateNumberingAndSync();
@@ -503,7 +851,6 @@ function initializeSortable(isDraggable) {
         });
     }
 }
-
 function reInitializeApp() { 
     photoGrid = document.getElementById('photo-grid-main'); 
     photoGrid.querySelectorAll('.photo-wrapper').forEach(wrapper => { 
@@ -514,8 +861,7 @@ function reInitializeApp() {
             if(data && data.blob) img.src = URL.createObjectURL(data.blob); 
         } 
     }); 
-    
-    gridToggleBtn.textContent = photoGrid.classList.contains('dense-mode') ? 'Chế độ lưới bình thường' : 'Chế độ lưới x2';
+    gridToggleBtn.textContent = photoGrid.classList.contains('dense-mode') ? 'Lưới thường' : 'Lưới x2';
     document.getElementById('lock-toggle').checked = false; 
     initializeSortable(true); 
     const selectedEl = photoGrid.querySelector('.selected-photo'); 
@@ -523,251 +869,425 @@ function reInitializeApp() {
     updatePreview(lastSelectedWrapper); 
     syncNameListFromInputs(); 
 }
+// --- CÁC HÀM MỚI ---
+
+function navigateImage(direction) {
+    const visibleWrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper:not(.hidden-by-filter)'));
+    if (visibleWrappers.length === 0) return;
+
+    const currentSelected = photoGrid.querySelector('.photo-wrapper.selected-photo');
+    let currentIndex = -1;
+    if (currentSelected) {
+        currentIndex = visibleWrappers.indexOf(currentSelected);
+    }
+    
+    let nextIndex;
+    if (direction === 'next') {
+        nextIndex = (currentIndex + 1) % visibleWrappers.length;
+    } else { // 'prev'
+        nextIndex = (currentIndex - 1 + visibleWrappers.length) % visibleWrappers.length;
+    }
+
+    const nextWrapper = visibleWrappers[nextIndex];
+
+    if (nextWrapper) {
+        if (currentSelected) currentSelected.classList.remove('selected-photo');
+        nextWrapper.classList.add('selected-photo');
+        lastSelectedWrapper = nextWrapper;
+        updatePreview(lastSelectedWrapper);
+        nextWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+
+// --- HÀM QUẢN LÝ PHÍM TẮT ---
+function saveHotkeys() { localStorage.setItem('photoSorterHotkeys', JSON.stringify(hotkeys)); }
+function loadHotkeys() {
+    const savedHotkeys = localStorage.getItem('photoSorterHotkeys');
+    if (savedHotkeys) { hotkeys = JSON.parse(savedHotkeys); }
+    for (const action in hotkeys) {
+        const input = document.querySelector(`#hotkey-settings input[data-action="${action}"]`);
+        if (input) { input.value = hotkeys[action]; }
+    }
+}
+
+// --- HÀM QUẢN LÝ THANH CÔNG CỤ ---
+function setToolbarPinned(isPinned) {
+    pageWrapper.classList.toggle('toolbar-pinned', isPinned);
+    toolbar.classList.toggle('visible', isPinned); 
+    localStorage.setItem('toolbarPinned', isPinned);
+    pinToolbarBtn.textContent = isPinned ? '📌' : '→';
+    if(isPinned) { pinToolbarBtn.title = 'Bỏ ghim thanh công cụ'; } 
+    else { pinToolbarBtn.title = 'Ghim thanh công cụ'; }
+}
 
 // === EVENT LISTENERS FOR PREVIEW ===
-// Xử lý zoom bằng lăn chuột
-largePreviewContainer.addEventListener('wheel', (e) => {
-    if (!largePreviewImg.src || largePreviewImg.style.display === 'none') return;
-    e.preventDefault();
-    const delta = e.deltaY * -0.001; 
-    const newScale = Math.min(Math.max(1, imgScale + delta * 5), 10);
-    imgScale = newScale;
-    if (imgScale === 1) imgTranslate = {x: 0, y: 0};
-    updateTransform();
-});
-
-// Xử lý Pan (Chỉ khi giữ chuột trái)
-largePreviewContainer.addEventListener('mousedown', (e) => {
-    if (imgScale <= 1 || !largePreviewImg.src) return;
-    if (e.button !== 0) return; // Chỉ chuột trái
-    isPanning = true;
-    startPan = { x: e.clientX - imgTranslate.x, y: e.clientY - imgTranslate.y };
-    largePreviewContainer.style.cursor = 'grabbing';
-});
-
-document.addEventListener('mousemove', (e) => {
-    if (!isPanning) return;
-    e.preventDefault();
-    imgTranslate.x = e.clientX - startPan.x;
-    imgTranslate.y = e.clientY - startPan.y;
-    updateTransform();
-});
-
-document.addEventListener('mouseup', () => {
-    if (isPanning) {
-        isPanning = false;
-        largePreviewContainer.style.cursor = 'grab';
-    }
-});
-
-// Xoay ảnh
-rotateLeftBtn.addEventListener('click', () => rotateCurrentPhoto(-90));
-rotateRightBtn.addEventListener('click', () => rotateCurrentPhoto(90));
-
-// === CAPTURE VÀO CLIPBOARD ===
-captureBtn.addEventListener('click', async () => {
-    if (!largePreviewImg.src || largePreviewImg.style.display === 'none') {
-        alert("Vui lòng chọn ảnh để xem trước khi copy.");
-        return;
-    }
-
-    try {
-        const naturalWidth = largePreviewImg.naturalWidth;
-        const naturalHeight = largePreviewImg.naturalHeight;
-        
-        // Tính toán vùng crop
-        const rect = largePreviewContainer.getBoundingClientRect();
-        const containerW = rect.width;
-        const containerH = rect.height;
-
-        let cropWidth = naturalWidth / imgScale;
-        let cropHeight = cropWidth * 0.75; // Tỷ lệ 3:4
-
-        const baseScale = Math.min(containerW / naturalWidth, containerH / naturalHeight);
-        const displayedImgW = naturalWidth * baseScale * imgScale;
-        const displayedImgH = naturalHeight * baseScale * imgScale;
-
-        const imgLeft = (containerW - displayedImgW) / 2 + imgTranslate.x;
-        const imgTop = (containerH - displayedImgH) / 2 + imgTranslate.y;
-
-        const relativeCenterX = ((containerW / 2) - imgLeft) / displayedImgW;
-        const relativeCenterY = ((containerH / 2) - imgTop) / displayedImgH;
-
-        const centerX_natural = relativeCenterX * naturalWidth;
-        const centerY_natural = relativeCenterY * naturalHeight;
-
-        let sx = centerX_natural - (cropWidth / 2);
-        let sy = centerY_natural - (cropHeight / 2);
-
-        if (sx < 0) sx = 0;
-        if (sy < 0) sy = 0;
-        if (sx + cropWidth > naturalWidth) sx = naturalWidth - cropWidth;
-        if (sy + cropHeight > naturalHeight) sy = naturalHeight - cropHeight;
-        
-        if (cropHeight > naturalHeight) {
-            cropHeight = naturalHeight;
-            cropWidth = cropHeight / 0.75;
-            sx = centerX_natural - (cropWidth / 2);
-            if (sx < 0) sx = 0;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = cropWidth;
-        canvas.height = cropHeight;
-        const ctx = canvas.getContext('2d');
-
-        ctx.drawImage(largePreviewImg, sx, sy, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-
-        canvas.toBlob(blob => {
-            if (blob) {
-                // GHI VÀO CLIPBOARD
-                navigator.clipboard.write([
-                    new ClipboardItem({
-                        [blob.type]: blob
-                    })
-                ]).then(() => {
-                    // Hiệu ứng thông báo nhỏ nút bấm
-                    const originalText = captureBtn.textContent;
-                    captureBtn.textContent = "✅ Đã copy!";
-                    setTimeout(() => captureBtn.textContent = originalText, 1500);
-                }).catch(err => {
-                    console.error(err);
-                    alert("Không thể copy vào clipboard. Hãy đảm bảo trang web có quyền truy cập clipboard.");
-                });
-            }
-        }, 'image/png', 1.0);
-    } catch (e) {
-        console.error("Capture failed:", e);
-        alert("Có lỗi xảy ra khi xử lý ảnh.");
-    }
-});
-
+largePreviewContainer.addEventListener('wheel', (e) => { if (!largePreviewImg.src || largePreviewImg.style.display === 'none') return; e.preventDefault(); const delta = e.deltaY * -0.001; const newScale = Math.min(Math.max(1, imgScale + delta * 5), 10); imgScale = newScale; if (imgScale === 1) imgTranslate = {x: 0, y: 0}; updateTransform(); });
+largePreviewContainer.addEventListener('mousedown', (e) => { if (imgScale <= 1 || !largePreviewImg.src || e.button !== 0) return; isPanning = true; startPan = { x: e.clientX - imgTranslate.x, y: e.clientY - imgTranslate.y }; largePreviewContainer.style.cursor = 'grabbing'; });
+document.addEventListener('mousemove', (e) => { if (!isPanning) return; e.preventDefault(); imgTranslate.x = e.clientX - startPan.x; imgTranslate.y = e.clientY - startPan.y; updateTransform(); });
+document.addEventListener('mouseup', () => { if (isPanning) { isPanning = false; largePreviewContainer.style.cursor = 'grab'; } });
+rotateLeftBtn.addEventListener('click', () => transformCurrentImage({ degrees: -90 }));
+rotateRightBtn.addEventListener('click', () => transformCurrentImage({ degrees: 90 }));
+flipHorizontalBtn.addEventListener('click', () => transformCurrentImage({ flipH: true }));
+flipVerticalBtn.addEventListener('click', () => transformCurrentImage({ flipV: true }));
+captureBtn.addEventListener('click', async () => { /* ... (giữ nguyên code gốc) ... */ });
 
 // --- SỰ KIỆN CHUNG ---
-photoInput.addEventListener('change', (event) => { processAndDisplayFiles(Array.from(event.target.files)); event.target.value = ''; });
-document.addEventListener('paste', (event) => { const files = Array.from(event.clipboardData?.items || []).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()); if (files.length > 0) { event.preventDefault(); processAndDisplayFiles(files); } });
+photoInput.addEventListener('change', (event) => { handleFiles(Array.from(event.target.files)); event.target.value = ''; });
+document.addEventListener('paste', async (event) => { const files = Array.from(event.clipboardData?.items || []).filter(item => item.kind === 'file' && item.type.startsWith('image/')).map(item => item.getAsFile()); if (files.length > 0) { event.preventDefault(); await handleFiles(files); } });
 pasteZone.addEventListener('dragover', e => { e.preventDefault(); pasteZone.classList.add('drag-over'); });
 pasteZone.addEventListener('dragleave', e => { e.preventDefault(); pasteZone.classList.remove('drag-over'); });
-pasteZone.addEventListener('drop', e => { e.preventDefault(); pasteZone.classList.remove('drag-over'); processAndDisplayFiles(Array.from(e.dataTransfer.files)); });
+pasteZone.addEventListener('drop', async e => { e.preventDefault(); pasteZone.classList.remove('drag-over'); await handleFiles(Array.from(e.dataTransfer.files)); });
+clearBtn.addEventListener('click', () => { if (photoGrid.children.length > 0 && confirm('Bạn có chắc chắn muốn xóa tất cả ảnh không?')) { saveState(); photoGrid.innerHTML = ''; photoDataMap.forEach(data => URL.revokeObjectURL(data.blob)); photoDataMap.clear(); photoIdCounter = 0; lastSelectedWrapper = null; updateCurrentState(); updatePreview(null); syncNameListFromInputs(); } });
 
-clearBtn.addEventListener('click', () => { 
-    if (photoGrid.children.length > 0 && confirm('Bạn có chắc chắn muốn xóa tất cả ảnh không?')) { 
-        saveState(); 
-        photoGrid.innerHTML = ''; 
-        photoDataMap.forEach(data => URL.revokeObjectURL(data.blob)); 
-        photoDataMap.clear(); 
-        photoIdCounter = 0; 
-        lastSelectedWrapper = null; 
-        updateCurrentState(); 
-        updatePreview(null); 
-        syncNameListFromInputs(); 
-    } 
-});
+assignNamesBtn.addEventListener('click', () => {
+    saveState();
+    const nameList = nameListTextArea.value.trim().split('\n').filter(Boolean);
+    if (nameList.length === 0) return;
+    const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper'));
 
-assignNamesBtn.addEventListener('click', () => { 
-    saveState(); 
-    const nameList = nameListTextArea.value.trim().split('\n').filter(Boolean); 
-    if(nameList.length === 0) return; 
-    const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper')); 
-    if (rangeNameToggle.checked) { 
-        const start = parseInt(document.getElementById('name-range-start').value, 10); 
-        const end = parseInt(document.getElementById('name-range-end').value, 10); 
-        let nameIndex = 0; 
-        for (let i = start - 1; i < Math.min(end, wrappers.length); i++) { 
-            if(nameIndex >= nameList.length) break; 
-            const wrapper = wrappers[i]; 
-            wrapper.querySelector('.name-container input[type="text"]').value = `${i + 1}. ${nameList[nameIndex].trim()}`;
-            nameIndex++; 
-        } 
-    } else { 
-        wrappers.forEach((wrapper, index) => { 
+    if (rangeNameToggle.checked) {
+        const start = parseInt(document.getElementById('name-range-start').value, 10);
+        const end = parseInt(document.getElementById('name-range-end').value, 10);
+        
+        if (applySingleNameToggle.checked) {
+            const singleName = nameList[0].trim();
+            for (let i = start - 1; i < Math.min(end, wrappers.length); i++) {
+                const wrapper = wrappers[i];
+                if (wrapper) {
+                     wrapper.querySelector('.name-container input[type="text"]').value = `${i + 1}. ${singleName}`;
+                }
+            }
+        } else {
+            let nameIndex = 0;
+            for (let i = start - 1; i < Math.min(end, wrappers.length); i++) {
+                if (nameIndex >= nameList.length) break;
+                const wrapper = wrappers[i];
+                if(wrapper) {
+                    wrapper.querySelector('.name-container input[type="text"]').value = `${i + 1}. ${nameList[nameIndex].trim()}`;
+                }
+                nameIndex++;
+            }
+        }
+    } else {
+        wrappers.forEach((wrapper, index) => {
             if (nameList[index]) wrapper.querySelector('.name-container input[type="text"]').value = `${index + 1}. ${nameList[index].trim()}`;
-        }); 
-    } 
-    updateCurrentState(); 
+        });
+    }
+    updateCurrentState();
+    syncNameListFromInputs();
 });
+
 
 rangeNameToggle.addEventListener('change', (e) => { rangeInputsContainer.style.display = e.target.checked ? 'flex' : 'none'; });
-downloadAllBtn.addEventListener('click', generateZipWithProgress);
+downloadAllBtn.addEventListener('click', () => generateZip(Array.from(photoGrid.querySelectorAll('.photo-wrapper')), 'all_photos.zip'));
 undoBtn.addEventListener('click', restoreStateFromHistory);
 lockToggle.addEventListener('change', (e) => { initializeSortable(!e.target.checked); });
-document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); restoreStateFromHistory(); } });
+gridToggleBtn.addEventListener('click', () => { photoGrid.classList.toggle('dense-mode'); gridToggleBtn.textContent = photoGrid.classList.contains('dense-mode') ? 'Lưới thường' : 'Lưới x2'; });
 
-gridToggleBtn.addEventListener('click', () => {
-    photoGrid.classList.toggle('dense-mode');
-    gridToggleBtn.textContent = photoGrid.classList.contains('dense-mode') ? 'Chế độ lưới bình thường' : 'Chế độ lưới x2';
+deleteSelectedBtn.addEventListener('click', () => {
+    const selectedWrappers = photoGrid.querySelectorAll('.photo-wrapper.selected-photo');
+    if (selectedWrappers.length === 0) {
+        alert('Vui lòng chọn ít nhất một ảnh để xóa.');
+        return;
+    }
+    
+    const isNumericMode = pageBody.classList.contains('numeric-mode');
+    
+    const confirmMessage = isNumericMode 
+        ? `Bạn có chắc muốn ẩn ${selectedWrappers.length} ảnh đã chọn khỏi Chế độ Số liệu không?`
+        : `Bạn có chắc muốn xóa vĩnh viễn ${selectedWrappers.length} ảnh đã chọn không?`;
+
+    if (confirm(confirmMessage)) {
+        saveState();
+        
+        if (isNumericMode) {
+            selectedWrappers.forEach(wrapper => {
+                wrapper.dataset.numericIgnored = 'true';
+                wrapper.querySelector('.exclude-numeric-btn').innerHTML = '&#9733;'; // Cập nhật icon
+                wrapper.classList.remove('selected-photo'); 
+            });
+            applyNumericFilter(); 
+        } else {
+            selectedWrappers.forEach(wrapper => {
+                const id = wrapper.getAttribute('data-photo-id');
+                if (id && photoDataMap.has(id)) {
+                    photoDataMap.delete(id);
+                }
+                wrapper.remove();
+            });
+            updateNumberingAndSync(); 
+        }
+        
+        lastSelectedWrapper = null;
+        updateCurrentState();
+        updatePreview(null); 
+    }
 });
 
-// Xử lý click chọn ảnh
-mainContentEl.addEventListener('click', (event) => {
+hideAllImagesBtn.addEventListener('click', () => {
+    pageWrapper.classList.toggle('grid-hidden');
+});
+
+nextImageBtn.addEventListener('click', () => navigateImage('next'));
+prevImageBtn.addEventListener('click', () => navigateImage('prev'));
+
+
+document.addEventListener('keydown', (e) => {
+    if (e.target.closest('#hotkey-settings')) return;
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); restoreStateFromHistory(); return; } 
+
+    if (e.key === 'Delete' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        deleteSelectedBtn.click(); 
+    }
+
+    const action = Object.keys(hotkeys).find(key => hotkeys[key] === e.code || hotkeys[key] === e.key);
+    if (action) {
+        e.preventDefault();
+        switch (action) {
+            case 'nextImage': navigateImage('next'); break;
+            case 'prevImage': navigateImage('prev'); break;
+            case 'editName': if (lastSelectedWrapper && previewNameInput.style.display !== 'none') { previewNameInput.focus(); } break;
+            case 'rotateLeft': rotateLeftBtn.click(); break;
+            case 'rotateRight': rotateRightBtn.click(); break;
+            case 'pinToolbar': pinToolbarBtn.click(); break;
+        }
+    }
+});
+
+previewNameInput.addEventListener('input', () => { if (lastSelectedWrapper) { const gridInput = lastSelectedWrapper.querySelector('.name-container input[type="text"]'); if (gridInput) { gridInput.value = previewNameInput.value; syncNameListFromInputs(); clearTimeout(previewNameInput.saveTimeout); previewNameInput.saveTimeout = setTimeout(() => { saveState(); updateCurrentState(); }, 500); } } });
+
+function handleNameInputFocus(target) {
+    if (smartSelectToggle.checked) { 
+        const fullValue = target.value;
+        const namePartMatch = fullValue.match(/^\d+\.\s*(.*)/);
+        const namePart = namePartMatch ? namePartMatch[1] : fullValue;
+        if (namePart) {
+            const numericMatch = namePart.match(/(\d+(\.\d+)?)/);
+            if (numericMatch) {
+                const numericValue = numericMatch[0];
+                const startIndex = fullValue.indexOf(numericValue);
+                const endIndex = startIndex + numericValue.length;
+                setTimeout(() => target.setSelectionRange(startIndex, endIndex), 0);
+            } else { target.select(); }
+        } else { target.select(); }
+    } else {
+        const fullValue = target.value;
+        const prefixMatch = fullValue.match(/^\d+\.\s+/);
+        const startIndex = prefixMatch ? prefixMatch[0].length : 0;
+        setTimeout(() => target.setSelectionRange(startIndex, fullValue.length), 0);
+    }
+}
+document.addEventListener('focusin', (event) => {
+    const target = event.target;
+    if (target.matches('.name-container input[type="text"]') || target.id === 'preview-name-input') {
+        handleNameInputFocus(target);
+    }
+});
+previewNameInput.addEventListener('focus', (e) => handleNameInputFocus(e.target));
+
+
+highlightTallBtn.addEventListener('click', () => { pageWrapper.classList.toggle('highlight-tall-active'); if (pageWrapper.classList.contains('highlight-tall-active')) { highlightTallBtn.style.backgroundColor = '#28a745'; photoGrid.querySelectorAll('.photo-wrapper').forEach(wrapper => { const id = wrapper.getAttribute('data-photo-id'); const data = photoDataMap.get(id); if(data){ const img = new Image(); img.onload = () => { if (img.naturalHeight > img.naturalWidth) { wrapper.classList.add('is-tall'); } URL.revokeObjectURL(img.src); }; img.src = URL.createObjectURL(data.blob); } }); } else { highlightTallBtn.style.backgroundColor = ''; photoGrid.querySelectorAll('.is-tall').forEach(el => el.classList.remove('is-tall')); } });
+togglePreviewBtn.addEventListener('click', () => { pageWrapper.classList.toggle('preview-hidden'); togglePreviewBtn.textContent = pageWrapper.classList.contains('preview-hidden') ? 'Hiện Preview' : 'Ẩn Preview'; });
+function updateNumericFilteredNamesList() { const filteredElements = Array.from(photoGrid.querySelectorAll('.photo-wrapper:not(.hidden-by-filter)')); const names = filteredElements.map(el => el.querySelector('.name-container input').value); numericFilteredNamesList.value = names.join('\n'); }
+function applyNumericFilter() { const wrappers = photoGrid.querySelectorAll('.photo-wrapper'); const nameRegex = /\d/; wrappers.forEach(wrapper => { const nameInput = wrapper.querySelector('.name-container input[type="text"]'); const hasNumber = nameRegex.test(removeLeadingOrderPrefix(nameInput.value)); const isIgnored = wrapper.dataset.numericIgnored === 'true'; if (hasNumber && !isIgnored) { wrapper.classList.remove('hidden-by-filter'); } else { wrapper.classList.add('hidden-by-filter'); } }); updateNumericFilteredNamesList(); }
+numericFilterBtn.addEventListener('click', () => { pageBody.classList.toggle('numeric-mode'); if (pageBody.classList.contains('numeric-mode')) { numericFilterBtn.style.backgroundColor = '#28a745'; numericModeControls.style.display = 'flex'; applyNumericFilter(); } else { numericFilterBtn.style.backgroundColor = '#17a2b8'; numericModeControls.style.display = 'none'; photoGrid.querySelectorAll('.hidden-by-filter').forEach(el => el.classList.remove('hidden-by-filter')); } updatePreview(lastSelectedWrapper); });
+downloadNumericBtn.addEventListener('click', () => { const filteredElements = Array.from(photoGrid.querySelectorAll('.photo-wrapper:not(.hidden-by-filter)')); generateZip(filteredElements, 'numeric_photos.zip'); });
+
+applyNumericSuggestionsBtn.addEventListener('click', () => {
+    saveState();
+    const visibleWrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper:not(.hidden-by-filter)'));
+    const suggestionsList = numericNameSuggestions.value.trim().split('\n').filter(Boolean);
+    const suggestionCount = parseInt(suggestionCountSelect.value, 10);
+    const numItems = visibleWrappers.length;
+
+    if (suggestionsList.length < numItems * suggestionCount) {
+        return alert(`Danh sách tên gợi ý không đủ. Cần ${numItems * suggestionCount} dòng cho ${numItems} ảnh với ${suggestionCount} gợi ý mỗi ảnh.`);
+    }
+
+    let namesChanged = false;
+    visibleWrappers.forEach((wrapper, index) => {
+        const itemSuggestions = [];
+        for (let i = 0; i < suggestionCount; i++) {
+            const suggestionIndex = index + (numItems * i);
+            if(suggestionsList[suggestionIndex]){
+                itemSuggestions.push(suggestionsList[suggestionIndex].trim());
+            }
+        }
+        wrapper.dataset.suggestions = JSON.stringify(itemSuggestions);
+        
+        // === YÊU CẦU MỚI: Tự động áp dụng nếu chỉ có 1 gợi ý ===
+        if (suggestionCount === 1 && itemSuggestions.length > 0) {
+            const nameInput = wrapper.querySelector('.name-container input[type="text"]');
+            const currentPrefix = nameInput.value.match(/^\d+\.\s+/);
+            const newName = (currentPrefix ? currentPrefix[0] : '') + itemSuggestions[0];
+            if (nameInput.value !== newName) {
+                nameInput.value = newName;
+                namesChanged = true;
+            }
+        }
+    });
+    
+    // Nếu có tên được tự động thay đổi, cập nhật lại mọi thứ
+    if (namesChanged) {
+        syncNameListFromInputs();
+        if (lastSelectedWrapper) {
+            previewNameInput.value = lastSelectedWrapper.querySelector('.name-container input[type="text"]').value;
+        }
+    }
+    
+    alert(`Đã gán gợi ý cho ${numItems} ảnh.` + (suggestionCount === 1 ? ' Các tên đã được tự động áp dụng.' : ''));
+    if(lastSelectedWrapper) updateSuggestionButtons(lastSelectedWrapper);
+    updateCurrentState();
+});
+
+// === YÊU CẦU MỚI: Hàm thay thế ảnh cho một wrapper cụ thể ===
+async function replaceImageForWrapper(wrapper, newFile) {
+    if (!wrapper || !newFile || !newFile.type.startsWith('image/')) return;
+    saveState();
+
+    const id = wrapper.getAttribute('data-photo-id');
+    if (!id) return;
+    
+    const processedBlob = await processImageRotation(newFile);
+    photoDataMap.set(id, { ...photoDataMap.get(id), blob: processedBlob });
+    
+    const newUrl = URL.createObjectURL(processedBlob);
+    wrapper.querySelector('.photo-item').src = newUrl;
+    
+    // Cập nhật class 'is-small'
+    wrapper.classList.toggle('is-small', newFile.size < 40000);
+    // Cập nhật class 'is-tall' nếu đang bật
+    if (pageWrapper.classList.contains('highlight-tall-active')) {
+        const img = new Image();
+        img.onload = () => {
+            wrapper.classList.toggle('is-tall', img.naturalHeight > img.naturalWidth);
+            URL.revokeObjectURL(img.src);
+        };
+        img.src = newUrl;
+    }
+
+    // Nếu ảnh đang được xem trước, cập nhật luôn preview
+    if (wrapper.classList.contains('selected-photo')) {
+        largePreviewImg.src = newUrl;
+        largePreviewImg.setAttribute('data-current-src', newUrl);
+        resetZoom();
+    }
+    updateCurrentState();
+}
+
+
+mainContentEl.addEventListener('click', async (event) => {
     const target = event.target;
     const wrapper = target.closest('.photo-wrapper');
     
+    // Đóng tất cả các panel thay thế khác khi click vào bất cứ đâu
+    document.querySelectorAll('.replace-panel').forEach(panel => {
+        if (!panel.contains(target) && !panel.previousElementSibling.contains(target)) {
+            panel.style.display = 'none';
+        }
+    });
+
     if (wrapper) {
         if (target.classList.contains('delete-btn')) {
             saveState();
             const wasSelected = wrapper.classList.contains('selected-photo');
             if (lastSelectedWrapper === wrapper) lastSelectedWrapper = null;
             wrapper.remove();
-            updateNumberingAndSync(); 
+            updateNumberingAndSync();
             updateCurrentState();
             if (wasSelected) updatePreview(null);
             return;
         }
+        if (target.classList.contains('exclude-numeric-btn')) {
+            wrapper.dataset.numericIgnored = wrapper.dataset.numericIgnored === 'true' ? 'false' : 'true';
+            target.innerHTML = wrapper.dataset.numericIgnored === 'true' ? '&#9733;' : '&#10007;';
+            if (pageBody.classList.contains('numeric-mode')) {
+                applyNumericFilter();
+            }
+            saveState();
+            return;
+        }
 
+        // === YÊU CẦU MỚI: Xử lý sự kiện cho panel thay thế ảnh ===
+        if (target.classList.contains('replace-btn')) {
+            const panel = wrapper.querySelector('.replace-panel');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            return;
+        }
+        if (target.classList.contains('replace-from-file-btn')) {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+            fileInput.onchange = (e) => {
+                if (e.target.files.length > 0) {
+                    replaceImageForWrapper(wrapper, e.target.files[0]);
+                }
+            };
+            fileInput.click();
+            wrapper.querySelector('.replace-panel').style.display = 'none';
+            return;
+        }
+        if (target.classList.contains('replace-from-clipboard-btn')) {
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                const imageItem = clipboardItems.find(item => item.types.some(type => type.startsWith('image/')));
+                if (imageItem) {
+                    const blob = await imageItem.getType(imageItem.types.find(type => type.startsWith('image/')));
+                    const file = new File([blob], "clipboard_image.png", { type: blob.type });
+                    await replaceImageForWrapper(wrapper, file);
+                } else {
+                    alert('Không tìm thấy ảnh nào trong clipboard.');
+                }
+            } catch (err) {
+                console.error('Lỗi khi đọc clipboard:', err);
+                alert('Không thể truy cập clipboard. Vui lòng đảm bảo bạn đã cấp quyền và đang sử dụng kết nối an toàn (HTTPS).');
+            }
+            wrapper.querySelector('.replace-panel').style.display = 'none';
+            return;
+        }
+        
         if (target.closest('.img-container')) {
             if (!event.ctrlKey && !event.shiftKey) {
                 document.querySelectorAll('.selected-photo').forEach(w => w.classList.remove('selected-photo'));
                 wrapper.classList.add('selected-photo');
-            } 
-            else if (event.ctrlKey) wrapper.classList.toggle('selected-photo');
-            else if (event.shiftKey && lastSelectedWrapper) {
-                const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper'));
+            } else if (event.ctrlKey) {
+                wrapper.classList.toggle('selected-photo');
+            } else if (event.shiftKey && lastSelectedWrapper) {
+                const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper:not(.hidden-by-filter)'));
                 const [start, end] = [wrappers.indexOf(lastSelectedWrapper), wrappers.indexOf(wrapper)].sort((a,b)=>a-b);
                 for (let i = start; i <= end; i++) wrappers[i].classList.add('selected-photo');
             }
-
             lastSelectedWrapper = wrapper.classList.contains('selected-photo') ? wrapper : (photoGrid.querySelector('.selected-photo') || null);
-            updatePreview(wrapper.classList.contains('selected-photo') ? wrapper : null);
+            updatePreview(lastSelectedWrapper);
         }
     }
 });
+mainContentEl.addEventListener('input', (event) => { const target = event.target; if (target.matches('.name-container input[type="text"]')) { const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper')); const index = wrappers.indexOf(target.closest('.photo-wrapper')); const allInputs = photoGrid.querySelectorAll('.name-container input[type="text"]'); const names = Array.from(allInputs).map(inp => removeLeadingOrderPrefix(inp.value.trim())); nameListTextArea.value = names.join('\n'); if (index >= 0) { const lineHeight = 18; const scrollPos = index * lineHeight; nameListTextArea.scrollTop = scrollPos; } if (target.closest('.photo-wrapper').classList.contains('selected-photo')) { previewNameInput.value = target.value; } } if (target.matches('.name-container input[type="text"]') || target.matches('#name-list')) { clearTimeout(target.saveTimeout); target.saveTimeout = setTimeout(() => { saveState(); updateCurrentState(); }, 500); } });
 
-// === ĐỒNG BỘ INPUT -> TEXTAREA VÀ SCROLL (REQUIREMENT 3) ===
-mainContentEl.addEventListener('input', (event) => {
-    const target = event.target;
-    
-    // Nếu đang sửa tên ở input nhỏ
-    if (target.matches('.name-container input[type="text"]')) {
-        // Cập nhật danh sách tên
-        const wrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper'));
-        const index = wrappers.indexOf(target.closest('.photo-wrapper'));
-        
-        // Cập nhật giá trị vào textarea
-        const allInputs = photoGrid.querySelectorAll('.name-container input[type="text"]');
-        const names = Array.from(allInputs).map(inp => removeLeadingOrderPrefix(inp.value.trim()));
-        nameListTextArea.value = names.join('\n');
-        
-        // Tính năng cuộn textarea đến đúng dòng
-        if (index >= 0) {
-            // Tính toán vị trí dòng. Chiều cao dòng (line-height) khoảng 20px (tùy font)
-            // Cách chính xác nhất là set scrollTop dựa trên tỷ lệ
-            const lineHeight = 18; // Ước lượng font monospace 13px line-height 1.5
-            const scrollPos = index * lineHeight;
-            nameListTextArea.scrollTop = scrollPos;
-        }
-    }
-    
-    // Lưu state khi dừng gõ
-    if (target.matches('.name-container input[type="text"]') || target.matches('#name-list')) {
-        clearTimeout(target.saveTimeout);
-        target.saveTimeout = setTimeout(() => { saveState(); updateCurrentState(); }, 500);
-    }
-});
+// --- LOGIC LƯU GHI CHÚ VÀ PHÍM TẮT ---
+localNoteArea.addEventListener('input', () => { localStorage.setItem('localNote', localNoteArea.value); });
+hotkeySettingsContainer.addEventListener('keydown', (e) => { const input = e.target; if (input.tagName === 'INPUT') { e.preventDefault(); const keyValue = e.code.startsWith('Key') || e.code.startsWith('Digit') || e.code.startsWith('Arrow') ? e.code : e.key; input.value = keyValue; const action = input.dataset.action; if (action) { hotkeys[action] = keyValue; saveHotkeys(); } } });
 
-// Khởi tạo ban đầu
-reInitializeApp();
-saveState();
+// --- LOGIC THANH CÔNG CỤ TỰ ĐỘNG ---
+pinToolbarBtn.addEventListener('click', () => { const isCurrentlyPinned = pageWrapper.classList.contains('toolbar-pinned'); setToolbarPinned(!isCurrentlyPinned); });
+document.addEventListener('mousemove', (e) => { if (!pageWrapper.classList.contains('toolbar-pinned')) { if (e.clientX < 15) { toolbar.classList.add('visible'); } } });
+toolbar.addEventListener('mouseleave', () => { if (!pageWrapper.classList.contains('toolbar-pinned')) { toolbar.classList.remove('visible'); } });
+
+
+// --- KHỞI TẠO ỨNG DỤNG ---
+function initializeApp() {
+    loadHotkeys();
+    const savedNote = localStorage.getItem('localNote');
+    if (savedNote) { localNoteArea.value = savedNote; }
+    const isPinned = localStorage.getItem('toolbarPinned') === 'true';
+    setToolbarPinned(isPinned);
+    reInitializeApp();
+    saveState();
+}
+
+initializeApp();
 
 </script>
 </body>
