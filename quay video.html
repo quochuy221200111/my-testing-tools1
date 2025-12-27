@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -75,10 +74,11 @@
     let mediaRecorder, stream, recordedChunks = [];
     let currentlyRecordingIndex = null;
 
+    // CẬP NHẬT: Thêm giá trị width/height thực tế để tính toán tỷ lệ khung hình
     const compressionPresets = {
-        high: { width: { ideal: 1280 }, height: { ideal: 720 }, bitrate: 2500000 },
-        medium: { width: { ideal: 854 }, height: { ideal: 480 }, bitrate: 1000000 },
-        max: { width: { ideal: 640 }, height: { ideal: 360 }, bitrate: 500000 }
+        high: { width: { ideal: 1280 }, height: { ideal: 720 }, bitrate: 2500000, rawWidth: 1280, rawHeight: 720 },
+        medium: { width: { ideal: 854 }, height: { ideal: 480 }, bitrate: 1000000, rawWidth: 854, rawHeight: 480 },
+        max: { width: { ideal: 640 }, height: { ideal: 360 }, bitrate: 500000, rawWidth: 640, rawHeight: 360 }
     };
 
     // --- Persistence Functions ---
@@ -132,24 +132,50 @@
     }
 
     async function startRecording(index) {
+        if (currentlyRecordingIndex !== null) return;
+
         currentlyRecordingIndex = index;
         const item = inspectionItems[index];
         item.status = 'recording';
         renderItems();
         
         const preset = compressionPresets[compressionSelect.value];
+        
+        // CẬP NHẬT: Thêm ràng buộc aspectRatio để yêu cầu video ngang
         const mediaConstraints = {
             video: {
                 width: preset.width,
                 height: preset.height,
+                aspectRatio: { ideal: preset.rawWidth / preset.rawHeight }, // Yêu cầu tỷ lệ ngang
                 facingMode: { exact: "environment" }
             },
-            // YÊU CẦU MỚI: Tắt âm thanh bằng cách đặt audio: false
             audio: false 
         };
 
         try {
             stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+
+            // CẬP NHẬT MỚI: Kiểm tra hướng của video sau khi được cấp phép
+            const videoTrack = stream.getVideoTracks()[0];
+            const trackSettings = videoTrack.getSettings();
+
+            if (trackSettings.width < trackSettings.height) {
+                // Nếu video trả về là dạng dọc, dừng lại và cảnh báo người dùng
+                stream.getTracks().forEach(track => track.stop()); // Tắt stream
+                
+                alert('Vui lòng xoay ngang thiết bị của bạn và thử lại. Video bắt buộc phải ở chế độ ngang.');
+                
+                // Đặt lại trạng thái
+                item.status = 'new';
+                currentlyRecordingIndex = null;
+                renderItems();
+                statusBar.textContent = 'Lỗi: Video phải là video ngang.';
+                statusBar.className = 'status-bar status-error';
+                statusBar.style.display = 'block';
+                return; // Dừng hàm tại đây
+            }
+            // Kết thúc phần kiểm tra
+
             videoEl.srcObject = stream;
             videoEl.style.display = 'block';
             
@@ -166,7 +192,8 @@
             mediaRecorder.start();
 
         } catch (err) {
-            statusBar.textContent = 'LỖI: Không thể truy cập camera sau. Vui lòng kiểm tra quyền và thiết bị.';
+            console.error("Lỗi khi truy cập camera:", err);
+            statusBar.textContent = 'LỖI: Không thể truy cập camera. Vui lòng kiểm tra quyền và xoay ngang thiết bị.';
             statusBar.className = 'status-bar status-error';
             statusBar.style.display = 'block';
             videoEl.style.display = 'none';
@@ -181,6 +208,8 @@
     }
 
     function handleStop(index) {
+        if (index === null || index >= inspectionItems.length) return;
+
         const fileExtension = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
         const videoBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
         recordedChunks = [];
@@ -195,7 +224,9 @@
         item.fileExtension = fileExtension;
 
         currentlyRecordingIndex = null;
-        stream.getTracks().forEach(track => track.stop());
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
         videoEl.style.display = 'none';
         
         statusBar.textContent = `Đã quay xong! File backup (không tiếng) đã được tự động tải về.`;
@@ -244,7 +275,10 @@
 
     itemListDiv.addEventListener('click', (e) => {
         const target = e.target;
+        if (!target.dataset.index) return;
+
         const index = parseInt(target.dataset.index, 10);
+
         if (target.matches('.btn-record')) startRecording(index);
         else if (target.matches('.btn-stop')) stopRecording();
         else if (target.matches('.btn-delete-item')) {
