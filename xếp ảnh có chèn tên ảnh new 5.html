@@ -347,6 +347,11 @@
                     <label for="hotkey-voice-input">Nhập liệu bằng giọng nói:</label>
                     <input type="text" id="hotkey-voice-input" data-action="voiceInput">
                 </div>
+                 <!-- === TÍNH NĂNG MỚI: PHÍM TẮT DỊCH VĂN BẢN === -->
+                <div class="hotkey-setting">
+                    <label for="hotkey-translate-name">Dịch tên sang Tiếng Anh:</label>
+                    <input type="text" id="hotkey-translate-name" data-action="translateName">
+                </div>
             </div>
         </div>
     </div>
@@ -465,7 +470,8 @@ let hotkeys = {
     rotateLeft: 'ArrowLeft',
     rotateRight: 'ArrowRight',
     pinToolbar: 'KeyP',
-    voiceInput: 'Backquote'
+    voiceInput: 'Backquote',
+    translateName: 'KeyT' // Phím T cho Translate
 };
 
 // --- Các hàm tiện ích ---
@@ -496,39 +502,87 @@ function saveHotkeys() { localStorage.setItem('photoSorterHotkeys', JSON.stringi
 function loadHotkeys() { const savedHotkeys = localStorage.getItem('photoSorterHotkeys'); if (savedHotkeys) { hotkeys = JSON.parse(savedHotkeys); } for (const action in hotkeys) { const input = document.querySelector(`#hotkey-settings input[data-action="${action}"]`); if (input) { input.value = hotkeys[action]; } } }
 function setToolbarPinned(isPinned) { pageWrapper.classList.toggle('toolbar-pinned', isPinned); toolbar.classList.toggle('visible', isPinned); localStorage.setItem('toolbarPinned', isPinned); pinToolbarBtn.textContent = isPinned ? '📌' : '→'; if(isPinned) { pinToolbarBtn.title = 'Bỏ ghim thanh công cụ'; } else { pinToolbarBtn.title = 'Ghim thanh công cụ'; } }
 
-// === HÀM CHUYỂN ĐỔI SỐ TỪ CHỮ (MỚI) ===
-/**
- * Chuyển đổi các từ tiếng Việt chỉ số thành chữ số trong một chuỗi.
- * Lưu ý: Chỉ xử lý các số đơn và từ "phẩy". Không xử lý số phức hợp như "hai mươi lăm".
- * @param {string} text - Chuỗi văn bản đầu vào.
- * @returns {string} - Chuỗi văn bản đã được xử lý.
- */
+// === HÀM DỊCH VĂN BẢN (MỚI) ===
+async function translateFocusedInput() {
+    const activeInput = document.activeElement;
+    if (!activeInput || !activeInput.matches('.name-container input[type="text"], #preview-name-input')) {
+        alert('Vui lòng chọn một ô tên ảnh để dịch.');
+        return;
+    }
+
+    const originalValue = activeInput.value;
+    // Regex để tách (1. prefix)(nội dung cần dịch)( suffix 5kg)
+    const partsRegex = /^(\d+\.\s*)(.*?)([\s\d.,]+[a-zA-Z%°]*)?$/;
+    const match = originalValue.match(partsRegex);
+
+    let prefix = '';
+    let textToTranslate = '';
+    let suffix = '';
+
+    if (match) {
+        prefix = match[1] || '';
+        textToTranslate = match[2] || '';
+        suffix = match[3] || '';
+    } else {
+        // Fallback nếu regex không khớp, chỉ tách prefix đơn giản
+        const simplePrefixMatch = originalValue.match(/^(\d+\.\s*)/);
+        if (simplePrefixMatch) {
+            prefix = simplePrefixMatch[0];
+            textToTranslate = originalValue.substring(prefix.length);
+        } else {
+            textToTranslate = originalValue;
+        }
+    }
+
+    if (!textToTranslate.trim()) {
+        alert('Không có nội dung để dịch.');
+        return;
+    }
+
+    const sourceLang = 'vi';
+    const targetLang = 'en';
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(textToTranslate)}`;
+
+    activeInput.value = 'Đang dịch...';
+    activeInput.disabled = true;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Lỗi mạng khi dịch.');
+        }
+        const data = await response.json();
+        const translatedText = data?.[0]?.[0]?.[0];
+
+        if (translatedText) {
+            const finalValue = `${prefix}${translatedText}${suffix}`.replace(/\s+/g, ' ').trim();
+            activeInput.value = finalValue;
+            activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            throw new Error('Không nhận được kết quả dịch hợp lệ.');
+        }
+    } catch (error) {
+        console.error('Lỗi dịch:', error);
+        alert('Đã xảy ra lỗi khi dịch. Vui lòng thử lại.');
+        activeInput.value = originalValue; // Khôi phục giá trị cũ nếu lỗi
+    } finally {
+        activeInput.disabled = false;
+        activeInput.focus();
+    }
+}
+
+
+// === HÀM CHUYỂN ĐỔI SỐ TỪ CHỮ ===
 function convertVietnameseNumberWordsToDigits(text) {
-    const numberMap = {
-        'không': '0', 'linh': '0', 'lẻ': '0',
-        'một': '1', 'mốt': '1',
-        'hai': '2',
-        'ba': '3',
-        'bốn': '4', 'tư': '4',
-        'năm': '5', 'lăm': '5',
-        'sáu': '6',
-        'bảy': '7', 'bẩy': '7',
-        'tám': '8',
-        'chín': '9',
-        'mười': '10',
-    };
-
-    let processedText = ` ${text.toLowerCase()} `;
-    processedText = processedText.replace(/ phẩy /g, '.');
-
+    const numberMap = { 'không': '0', 'linh': '0', 'lẻ': '0', 'một': '1', 'mốt': '1', 'hai': '2', 'ba': '3', 'bốn': '4', 'tư': '4', 'năm': '5', 'lăm': '5', 'sáu': '6', 'bảy': '7', 'bẩy': '7', 'tám': '8', 'chín': '9', 'mười': '10', };
+    let processedText = ` ${text.toLowerCase()} `.replace(/ phẩy /g, '.');
     const words = processedText.split(' ');
     const resultWords = words.map(word => numberMap[word] || word);
-    
     return resultWords.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 
-// === NHẬP LIỆU GIỌNG NÓI (ĐÃ CẬP NHẬT) ===
+// === NHẬP LIỆU GIỌNG NÓI ===
 function initializeSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -539,79 +593,39 @@ function initializeSpeechRecognition() {
         if(voiceHotkeyInput) voiceHotkeyInput.disabled = true;
         return;
     }
-
     recognition = new SpeechRecognition();
-    recognition.continuous = false; // <-- THAY ĐỔI: Quay lại chế độ không liên tục
+    recognition.continuous = false;
     recognition.lang = 'vi-VN';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-        isRecognizing = true;
-        voiceInputBtn.textContent = '🔴';
-        voiceInputBtn.style.backgroundColor = '#dc3545';
-        voiceInputBtn.title = 'Đang lắng nghe...';
-    };
-
+    recognition.onstart = () => { isRecognizing = true; voiceInputBtn.textContent = '🔴'; voiceInputBtn.style.backgroundColor = '#dc3545'; voiceInputBtn.title = 'Đang lắng nghe...'; };
     recognition.onresult = (event) => {
         const rawTranscript = event.results[0][0].transcript;
-        // THAY ĐỔI: Xử lý văn bản để chuyển đổi số
         const processedTranscript = convertVietnameseNumberWordsToDigits(rawTranscript);
-
         if (lastFocusedInputForVoice && processedTranscript) {
             const target = lastFocusedInputForVoice;
             const start = target.selectionStart;
             const end = target.selectionEnd;
             const currentValue = target.value;
-
-            // THAY ĐỔI: Logic chèn/thay thế văn bản
             const newValue = currentValue.substring(0, start) + processedTranscript + currentValue.substring(end);
             target.value = newValue;
-            
-            // Di chuyển con trỏ đến cuối đoạn văn bản vừa chèn
             const newCursorPos = start + processedTranscript.length;
             target.setSelectionRange(newCursorPos, newCursorPos);
-
-            // Kích hoạt sự kiện input để các listener khác (như auto-save) có thể bắt được
             target.dispatchEvent(new Event('input', { bubbles: true }));
             target.focus();
         }
     };
-
-    // THAY ĐỔI: Tự động dừng khi có khoảng lặng
-    recognition.onspeechend = () => {
-        recognition.stop();
-    };
-
-    recognition.onend = () => {
-        isRecognizing = false;
-        voiceInputBtn.textContent = '🎤';
-        voiceInputBtn.style.backgroundColor = '';
-        voiceInputBtn.title = 'Kích hoạt nhập liệu giọng nói (dùng phím tắt)';
-    };
-
-    recognition.onerror = (event) => {
-        console.error('Lỗi nhận dạng giọng nói:', event.error);
-        if (event.error === 'no-speech') {
-            // Lỗi này là bình thường khi người dùng không nói gì, không cần thông báo
-        } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            alert('Quyền truy cập micro đã bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt và sử dụng trang web qua HTTPS.');
-        }
-    };
+    recognition.onspeechend = () => { recognition.stop(); };
+    recognition.onend = () => { isRecognizing = false; voiceInputBtn.textContent = '🎤'; voiceInputBtn.style.backgroundColor = ''; voiceInputBtn.title = 'Kích hoạt nhập liệu giọng nói (dùng phím tắt)'; };
+    recognition.onerror = (event) => { console.error('Lỗi nhận dạng giọng nói:', event.error); if (event.error === 'not-allowed' || event.error === 'service-not-allowed') { alert('Quyền truy cập micro đã bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt và sử dụng trang web qua HTTPS.'); } };
 }
 
-// THAY ĐỔI: Giờ đây hàm này chỉ BẮT ĐẦU, không phải Bật/Tắt
 function startVoiceRecognition() {
-    if (!recognition || isRecognizing) {
-        return;
-    }
-    
+    if (!recognition || isRecognizing) { return; }
     if (document.activeElement && (document.activeElement.matches('input[type="text"]') || document.activeElement.tagName === 'TEXTAREA')) {
          lastFocusedInputForVoice = document.activeElement;
          recognition.start();
-    } else {
-        alert('Vui lòng chọn một ô nhập tên hoặc ô ghi chú để bắt đầu nhập liệu bằng giọng nói.');
-    }
+    } else { alert('Vui lòng chọn một ô nhập tên hoặc ô ghi chú để bắt đầu nhập liệu bằng giọng nói.'); }
 }
 
 // === EVENT LISTENERS ===
@@ -663,6 +677,7 @@ document.addEventListener('keydown', (e) => {
             case 'rotateRight': rotateRightBtn.click(); break;
             case 'pinToolbar': pinToolbarBtn.click(); break;
             case 'voiceInput': startVoiceRecognition(); break;
+            case 'translateName': translateFocusedInput(); break; // <-- Kích hoạt dịch
             default: actionHandled = false;
         }
         if(actionHandled) { e.preventDefault(); }
