@@ -3,195 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ghi Chú Đám Mây Cá Nhân</title>
+    <title>Ghi Chú Đám Mây An Toàn</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f5f5f7;
-            color: #1d1d1f;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #0071e3;
-            margin-top: 0;
-        }
-        .config-warning {
-            background-color: #fff3cd;
-            border-left: 5px solid #ffc107;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
-        textarea {
-            width: 100%;
-            height: 60vh;
-            padding: 15px;
-            border: 1px solid #dcdcdc;
-            border-radius: 8px;
-            font-size: 16px;
-            line-height: 1.6;
-            box-sizing: border-box;
-            resize: vertical;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: #0071e3;
-            box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
-        }
-        .status-bar {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #6e6e73;
-            text-align: center;
-        }
-        .button-container {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        button {
-            background-color: #0071e3;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 500;
-        }
-        button:hover {
-            background-color: #0077ed;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f5f5f7; color: #1d1d1f; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 20px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #0071e3; margin-top: 0; }
+        .config-section { background-color: #eef7ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #cce5ff; }
+        .config-section p { margin-top: 0; }
+        .config-section label { display: block; margin-bottom: 10px; font-weight: 500; }
+        .config-section input { width: 95%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 15px; font-family: monospace; }
+        textarea { width: 100%; height: 60vh; padding: 15px; border: 1px solid #dcdcdc; border-radius: 8px; font-size: 16px; line-height: 1.6; box-sizing: border-box; resize: vertical; }
+        .status-bar { margin-top: 15px; font-size: 14px; color: #6e6e73; text-align: center; }
+        .button-container { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        button { background-color: #0071e3; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 500; }
+        button:hover { background-color: #0077ed; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-
     <div class="container">
         <h1>Ghi Chú Đám Mây</h1>
-        
-        <div id="config-warning" class="config-warning" style="display: none;">
-            <strong>Lưu ý:</strong> Vui lòng điền thông tin GIST_ID và GITHUB_TOKEN vào trong file HTML để bắt đầu.
+        <div id="config-section" class="config-section">
+            <p>Lần đầu sử dụng, hãy dán Token và Gist ID của bạn vào đây. Thông tin sẽ được lưu an toàn trên trình duyệt này.</p>
+            <label for="gist-id-input">GIST_ID:</label>
+            <input type="text" id="gist-id-input" placeholder="Dán Gist ID của bạn vào đây">
+            <label for="token-input">GITHUB_TOKEN:</label>
+            <input type="password" id="token-input" placeholder="Dán GitHub Token (ghp_...) vào đây">
+            <button onclick="saveConfig()">Lưu Cấu Hình và Bắt Đầu</button>
         </div>
-        
-        <textarea id="editor" placeholder="Đang tải ghi chú từ đám mây..."></textarea>
-        
-        <div class="button-container">
-            <button onclick="saveNote()">Lưu Ngay Lên Đám Mây</button>
-            <button onclick="loadNote()">Kiểm Tra Cập Nhật</button>
+        <div id="editor-section" class="hidden">
+            <textarea id="editor" placeholder="Đang tải ghi chú..."></textarea>
+            <div class="button-container">
+                <button onclick="saveNote()">Lưu Ngay</button>
+                <button onclick="loadNote()">Tải Lại</button>
+                <button onclick="clearConfig()" style="background-color:#6e6e73;">Xóa Cấu Hình</button>
+            </div>
+            <div id="status" class="status-bar">Sẵn sàng.</div>
         </div>
-
-        <div id="status" class="status-bar">Sẵn sàng.</div>
     </div>
 
     <script>
-        // --- CẤU HÌNH BẮT BUỘC ---
-        // Dán thông tin Gist và Token của bạn vào đây.
-        const CONFIG = {
-            GIST_ID: '062e846483e9eaba30d08e8ed9a5ba59', // Ví dụ: '1a2b3c4d5e6f7g8h9i0j'
-            GITHUB_TOKEN: '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', // Ví dụ: 'ghp_xxxxxxxxxxxxxxxxxxxx'
-            FILENAME: 'note.txt' // Tên file bạn đã tạo trong Gist.
-        };
-
-        // --- TÙY CHỈNH THÊM (KHÔNG BẮT BUỘC) ---
-        const AUTO_CHECK_INTERVAL_MINUTES = 60; // Tự động kiểm tra cập nhật mỗi 60 phút.
-
-        // --- PHẦN MÃ NGUỒN XỬ LÝ ---
         const editor = document.getElementById('editor');
         const statusDiv = document.getElementById('status');
-        const warningDiv = document.getElementById('config-warning');
+        const configSection = document.getElementById('config-section');
+        const editorSection = document.getElementById('editor-section');
+        const gistIdInput = document.getElementById('gist-id-input');
+        const tokenInput = document.getElementById('token-input');
+        
+        const FILENAME = 'note.txt';
+        let GIST_ID = '';
+        let GITHUB_TOKEN = '';
 
-        const GIST_API_URL = `https://api.github.com/gists/${CONFIG.GIST_ID}`;
+        function updateStatus(message, isError = false) { statusDiv.textContent = message; statusDiv.style.color = isError ? '#d93025' : '#6e6e73'; }
 
-        function updateStatus(message, isError = false) {
-            statusDiv.textContent = message;
-            statusDiv.style.color = isError ? '#d93025' : '#6e6e73';
+        function saveConfig() {
+            const gistId = gistIdInput.value.trim();
+            const token = tokenInput.value.trim();
+            if (!gistId || !token) { alert('Vui lòng nhập cả Gist ID và GitHub Token.'); return; }
+            localStorage.setItem('githubNoteGistId', gistId);
+            localStorage.setItem('githubNoteToken', token);
+            initializeApp();
+        }
+
+        function clearConfig() {
+            if (confirm('Bạn có chắc muốn xóa cấu hình khỏi trình duyệt này không?')) {
+                localStorage.removeItem('githubNoteGistId');
+                localStorage.removeItem('githubNoteToken');
+                location.reload();
+            }
         }
 
         async function loadNote() {
-            updateStatus('Đang kiểm tra cập nhật...');
+            updateStatus('Đang tải ghi chú...');
             try {
-                const response = await fetch(GIST_API_URL, {
-                    headers: { 'Authorization': `Bearer ${CONFIG.GITHUB_TOKEN}` }
-                });
+                const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, { headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` } });
+                if (response.status === 401) throw new Error('Token không hợp lệ hoặc đã hết hạn.');
                 if (!response.ok) throw new Error(`Lỗi mạng: ${response.status}`);
                 const data = await response.json();
-                const content = data.files[CONFIG.FILENAME]?.content;
-                
-                if (content !== undefined) {
-                    // Chỉ cập nhật nếu nội dung trên máy khác với nội dung trên cloud
-                    if (editor.value !== content) {
-                         editor.value = content;
-                    }
-                    const now = new Date().toLocaleTimeString();
-                    updateStatus(`Cập nhật lần cuối lúc ${now}.`);
-                } else {
-                    throw new Error(`Không tìm thấy file "${CONFIG.FILENAME}" trong Gist.`);
-                }
-            } catch (error) {
-                console.error('Lỗi khi tải ghi chú:', error);
-                updateStatus(`Lỗi khi tải ghi chú: ${error.message}`, true);
-            }
+                editor.value = data.files[FILENAME]?.content || '';
+                updateStatus(`Cập nhật lần cuối lúc ${new Date().toLocaleTimeString()}.`);
+            } catch (error) { updateStatus(`Lỗi khi tải: ${error.message}`, true); }
         }
 
         async function saveNote() {
-            updateStatus('Đang lưu lên đám mây...');
+            updateStatus('Đang lưu...');
             try {
-                const contentToSave = editor.value;
-                const response = await fetch(GIST_API_URL, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${CONFIG.GITHUB_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        files: {
-                            [CONFIG.FILENAME]: {
-                                content: contentToSave
-                            }
-                        }
-                    })
-                });
-
+                const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ files: { [FILENAME]: { content: editor.value } } }) });
+                if (response.status === 401) throw new Error('Token không hợp lệ hoặc đã hết hạn.');
                 if (!response.ok) throw new Error(`Lỗi mạng: ${response.status}`);
-                
-                const now = new Date().toLocaleTimeString();
-                updateStatus(`Đã lưu thành công lúc ${now}.`, false);
-
-            } catch (error) {
-                console.error('Lỗi khi lưu ghi chú:', error);
-                updateStatus(`Lỗi khi lưu ghi chú: ${error.message}`, true);
+                updateStatus(`Đã lưu thành công lúc ${new Date().toLocaleTimeString()}.`);
+            } catch (error) { updateStatus(`Lỗi khi lưu: ${error.message}`, true); }
+        }
+        
+        function initializeApp() {
+            GIST_ID = localStorage.getItem('githubNoteGistId');
+            GITHUB_TOKEN = localStorage.getItem('githubNoteToken');
+            if (GIST_ID && GITHUB_TOKEN) {
+                configSection.classList.add('hidden');
+                editorSection.classList.remove('hidden');
+                loadNote();
+                let debounceTimer;
+                editor.addEventListener('input', () => {
+                    updateStatus('Nội dung đã thay đổi...');
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(saveNote, 3000);
+                });
+            } else {
+                configSection.classList.remove('hidden');
+                editorSection.classList.add('hidden');
             }
         }
-
-        let debounceTimer;
-        editor.addEventListener('input', () => {
-            updateStatus('Nội dung đã thay đổi, đang chờ lưu...');
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(saveNote, 3000); // Tự động lưu sau 3 giây không gõ
-        });
-        
-        window.onload = () => {
-            if (CONFIG.GIST_ID === 'DÁN_GIST_ID_CỦA_BẠN_VÀO_ĐÂY' || CONFIG.GITHUB_TOKEN === 'DÁN_GITHUB_TOKEN_CỦA_BẠN_VÀO_ĐÂY') {
-                warningDiv.style.display = 'block';
-                editor.disabled = true;
-                return;
-            }
-            loadNote();
-            if (AUTO_CHECK_INTERVAL_MINUTES > 0) {
-                setInterval(loadNote, AUTO_CHECK_INTERVAL_MINUTES * 60 * 1000);
-            }
-        };
+        initializeApp();
     </script>
 </body>
 </html>
