@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình phát nhạc YouTube ngẫu nhiên</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 16px;
+            color: #606770;
+            margin-bottom: 25px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px; /* Giảm chiều cao để có không gian cho các điều khiển mới */
+            padding: 12px;
+            border: 1px solid #dddfe2;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #1877f2;
+        }
+        button {
+            background-color: #1877f2;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, opacity 0.3s ease;
+        }
+        button:hover {
+            background-color: #166fe5;
+        }
+        button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        #now-playing {
+            margin-top: 25px;
+            font-size: 14px;
+            color: #606770;
+            font-weight: bold;
+            min-height: 20px;
+        }
+        #error-message {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #d93025;
+            font-weight: 500;
+        }
+        #player {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+        .controls-container {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dddfe2;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            font-size: 14px;
+            color: #606770;
+            margin-right: 15px;
+            width: 80px;
+            text-align: left;
+        }
+        .control-group input[type="range"] {
+            -webkit-appearance: none;
+            width: 60%;
+            height: 8px;
+            background: #ddd;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+            cursor: pointer;
+        }
+        .control-group input[type="range"]:hover {
+            opacity: 1;
+        }
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #1877f2;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #1877f2;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .disabled-info {
+            font-size: 12px;
+            color: #90949c;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Trình phát nhạc YouTube ngẫu nhiên</h1>
+        <p>Dán danh sách link video YouTube hoặc ID vào ô bên dưới (mỗi link một dòng).</p>
+        <textarea id="music-links" placeholder="GK-XGBDl5k4&#10;..."></textarea>
+        <button id="play-button">Đang tải trình phát...</button>
+        
+        <!-- Khu vực điều khiển âm thanh -->
+        <div class="controls-container">
+            <div class="control-group">
+                <label for="volume-slider">Âm lượng</label>
+                <input type="range" id="volume-slider" min="0" max="100" value="100">
+            </div>
+             <div class="control-group">
+                <label>Cao độ</label>
+                <input type="range" disabled>
+            </div>
+             <div class="control-group">
+                <label>Độ vang</label>
+                <input type="range" disabled>
+            </div>
+            <p class="disabled-info">Lưu ý: Các điều khiển Cao độ, Độ vang, Tần số không được hỗ trợ do giới hạn kỹ thuật của trình phát YouTube nhúng.</p>
+        </div>
+
+        <div id="now-playing">Chưa phát gì...</div>
+        <div id="error-message"></div>
+    </div>
+
+    <div id="player"></div>
+
+    <script>
+        // Biến để kiểm tra xem API đã sẵn sàng hay chưa, tránh lỗi.
+        let isApiReady = false;
+
+        // Đặt một bộ đếm thời gian. Nếu sau 8 giây mà API vẫn chưa sẵn sàng,
+        // chúng ta sẽ hiển thị một thông báo lỗi thay vì để trang bị treo.
+        const apiLoadTimeout = setTimeout(() => {
+            if (!isApiReady) {
+                console.error("Lỗi: Không thể tải YouTube IFrame API.");
+                const playButton = document.getElementById('play-button');
+                const errorMessageDiv = document.getElementById('error-message');
+                playButton.textContent = "Lỗi tải API";
+                playButton.disabled = true;
+                errorMessageDiv.textContent = "Không thể tải trình phát. Vui lòng kiểm tra kết nối mạng và thử tải lại trang.";
+            }
+        }, 8000);
+
+        // 1. TẠO THẺ SCRIPT ĐỂ TẢI API
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        let player;
+        let musicLinks = [];
+
+        // 2. HÀM NÀY SẼ ĐƯỢC API TỰ ĐỘNG GỌI
+        function onYouTubeIframeAPIReady() {
+            isApiReady = true;
+            clearTimeout(apiLoadTimeout);
+            
+            player = new YT.Player('player', {
+                height: '1',
+                width: '1',
+                playerVars: { 'autoplay': 0, 'controls': 0 },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            const playButton = document.getElementById('play-button');
+            const volumeSlider = document.getElementById('volume-slider');
+            
+            playButton.disabled = false;
+            playButton.textContent = "Phát nhạc ngẫu nhiên";
+
+            // Cập nhật giá trị thanh trượt với âm lượng hiện tại của trình phát
+            volumeSlider.value = player.getVolume();
+
+            // Thêm sự kiện để thay đổi âm lượng khi kéo thanh trượt
+            volumeSlider.addEventListener('input', () => {
+                player.setVolume(volumeSlider.value);
+            });
+        }
+
+        // 4. THEO DÕI TRẠNG THÁI KHI KẾT THÚC
+        function onPlayerStateChange(event) {
+            const nowPlayingDiv = document.getElementById('now-playing');
+            if (event.data == YT.PlayerState.ENDED) {
+                playRandomSong();
+            }
+            if (event.data == YT.PlayerState.PLAYING) {
+                const videoData = player.getVideoData();
+                nowPlayingDiv.textContent = `Đang phát: ${videoData.title}`;
+                // Đảm bảo âm lượng được đặt đúng khi video mới bắt đầu
+                player.setVolume(document.getElementById('volume-slider').value);
+            }
+        }
+        
+        function extractVideoID(url) {
+            if (!url) return null;
+            if (url.length === 11 && !url.includes('.')) return url;
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+
+        function playRandomSong() {
+            const musicLinksTextarea = document.getElementById('music-links');
+            const nowPlayingDiv = document.getElementById('now-playing');
+            
+            musicLinks = musicLinksTextarea.value
+                .split('\n')
+                .map(link => link.trim())
+                .filter(link => link !== '');
+
+            if (musicLinks.length === 0) {
+                alert('Vui lòng nhập ít nhất một link YouTube!');
+                nowPlayingDiv.textContent = "Vui lòng nhập link để bắt đầu.";
+                return;
+            }
+
+            const randomIndex = Math.floor(Math.random() * musicLinks.length);
+            const randomLink = musicLinks[randomIndex];
+            const videoId = extractVideoID(randomLink);
+
+            if (videoId) {
+                player.loadVideoById(videoId);
+                nowPlayingDiv.textContent = "Đang tải...";
+            } else {
+                console.warn("Link không hợp lệ, đang thử link khác:", randomLink);
+                playRandomSong();
+            }
+        }
+
+        document.getElementById('play-button').addEventListener('click', playRandomSong);
+        document.getElementById('play-button').disabled = true;
+
+    </script>
+
+</body>
+</html>
