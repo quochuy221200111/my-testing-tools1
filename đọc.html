@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chuyên gia Chuyển văn bản thành Giọng nói (Đa Engine)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+        h1 {
+            color: #1877f2;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dddfe2;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 150px;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        button {
+            background-color: #1877f2;
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        #stop-button {
+            background-color: #f56c6c;
+        }
+        button:hover:not(:disabled) {
+            filter: brightness(95%);
+        }
+        button:disabled {
+            background-color: #a0bdf5;
+            cursor: not-allowed;
+        }
+        #stop-button:disabled {
+            background-color: #fab6b6;
+        }
+        .controls {
+            margin-top: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label, .select-label {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #606770;
+        }
+        select {
+             width: 100%;
+             padding: 10px;
+             border: 1px solid #dddfe2;
+             border-radius: 8px;
+             font-size: 16px;
+             margin-bottom: 1rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        .control-group[disabled] {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        #status {
+            margin-top: 1rem;
+            text-align: center;
+            color: #606770;
+            font-style: italic;
+            min-height: 20px;
+        }
+        #download-link {
+            display: block;
+            margin-top: 1rem;
+            text-align: center;
+            color: #1877f2;
+            font-weight: bold;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Trình Chuyển Đổi Giọng Nói Toàn Năng</h1>
+    <textarea id="text-input" placeholder="Nhập văn bản của bạn vào đây...">Xin chào, đây là một thử nghiệm kết hợp nhiều công nghệ chuyển văn bản thành giọng nói khác nhau. Hãy chọn một giọng từ danh sách bên dưới.</textarea>
+    
+    <div class="control-group">
+        <label for="voice-select" class="select-label">Chọn Engine và Giọng đọc:</label>
+        <select id="voice-select">
+            <option value="google" data-engine="google">Google Translate (Tiếng Việt)</option>
+        </select>
+    </div>
+
+    <div class="button-group">
+        <button id="speak-button">Phát âm</button>
+        <button id="stop-button">Dừng</button>
+    </div>
+
+    <div id="status">Đang tải danh sách giọng nói...</div>
+    <a id="download-link" href="#" style="display: none;">Tải về file WAV</a>
+
+    <div class="controls">
+        <div class="control-group" id="gain-group">
+            <label for="gain">Âm Lượng (Gain): <span id="gain-value">1</span></label>
+            <input type="range" id="gain" min="0" max="2" step="0.1" value="1">
+        </div>
+        <div class="control-group" id="speed-group">
+            <label for="speed">Tốc độ: <span id="speed-value">1</span></label>
+            <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <div class="control-group" id="pitch-group">
+            <label for="pitch">Cao độ: <span id="pitch-value">1</span></label>
+            <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <div class="control-group" id="reverb-group">
+            <label for="reverb">Độ Vang (Reverb): <span id="reverb-value">0</span></label>
+            <input type="range" id="reverb" min="0" max="1" step="0.1" value="0">
+        </div>
+        <div class="control-group" id="eq-low-group">
+            <label for="eq-low">EQ Low (Bass): <span id="eq-low-value">0</span> dB</label>
+            <input type="range" id="eq-low" min="-20" max="20" step="1" value="0">
+        </div>
+        <div class="control-group" id="eq-mid-group">
+            <label for="eq-mid">EQ Mid: <span id="eq-mid-value">0</span> dB</label>
+            <input type="range" id="eq-mid" min="-20" max="20" step="1" value="0">
+        </div>
+        <div class="control-group" id="eq-high-group">
+            <label for="eq-high">EQ High (Treble): <span id="eq-high-value">0</span> dB</label>
+            <input type="range" id="eq-high" min="-20" max="20" step="1" value="0">
+        </div>
+    </div>
+</div>
+
+<!-- Tải thư viện ResponsiveVoice.js -->
+<script src="https://code.responsivevoice.org/responsivevoice.js"></script>
+
+<script>
+    // --- Lấy các phần tử DOM ---
+    const textInput = document.getElementById('text-input');
+    const speakButton = document.getElementById('speak-button');
+    const stopButton = document.getElementById('stop-button');
+    const statusDiv = document.getElementById('status');
+    const downloadLink = document.getElementById('download-link');
+    const voiceSelect = document.getElementById('voice-select');
+    
+    // Các thanh trượt và giá trị
+    const controls = {
+        gain: { control: document.getElementById('gain'), value: document.getElementById('gain-value'), group: document.getElementById('gain-group') },
+        speed: { control: document.getElementById('speed'), value: document.getElementById('speed-value'), group: document.getElementById('speed-group') },
+        pitch: { control: document.getElementById('pitch'), value: document.getElementById('pitch-value'), group: document.getElementById('pitch-group') },
+        reverb: { control: document.getElementById('reverb'), value: document.getElementById('reverb-value'), group: document.getElementById('reverb-group') },
+        eqLow: { control: document.getElementById('eq-low'), value: document.getElementById('eq-low-value'), group: document.getElementById('eq-low-group') },
+        eqMid: { control: document.getElementById('eq-mid'), value: document.getElementById('eq-mid-value'), group: document.getElementById('eq-mid-group') },
+        eqHigh: { control: document.getElementById('eq-high'), value: document.getElementById('eq-high-value'), group: document.getElementById('eq-high-group') }
+    };
+
+    // --- Biến cho Web Audio API (Dùng cho Google) ---
+    let audioContext;
+    let sourceNode;
+    let gainNode, convolverNode, reverbGainNode, dryGainNode;
+    let eqLowNode, eqMidNode, eqHighNode;
+    let audioBuffer;
+    let isSpeaking = false;
+
+    // --- Tải và điền danh sách giọng nói ---
+    function populateVoiceList() {
+        // Web Speech API voices
+        if (typeof speechSynthesis !== 'undefined') {
+            const voices = speechSynthesis.getVoices();
+            if(voices.length > 0) {
+                const webSpeechGroup = document.createElement('optgroup');
+                webSpeechGroup.label = 'Web Speech API (Trình duyệt)';
+                voices.forEach(voice => {
+                    let option = document.createElement('option');
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    option.setAttribute('data-lang', voice.lang);
+                    option.setAttribute('data-name', voice.name);
+                    option.setAttribute('data-engine', 'webspeech');
+                    webSpeechGroup.appendChild(option);
+                });
+                voiceSelect.appendChild(webSpeechGroup);
+            }
+        }
+
+        // ResponsiveVoice voices
+        if (typeof responsiveVoice !== 'undefined' && responsiveVoice.getVoices().length > 0) {
+            const responsiveGroup = document.createElement('optgroup');
+            responsiveGroup.label = 'ResponsiveVoice API';
+            responsiveVoice.getVoices().forEach(voice => {
+                 let option = document.createElement('option');
+                 option.textContent = voice.name;
+                 option.setAttribute('data-name', voice.name);
+                 option.setAttribute('data-engine', 'responsivevoice');
+                 responsiveGroup.appendChild(option);
+            });
+            voiceSelect.appendChild(responsiveGroup);
+        }
+        
+        statusDiv.textContent = 'Sẵn sàng để sử dụng!';
+    }
+
+    // Đợi cả 2 API sẵn sàng
+    let webSpeechReady = false;
+    let responsiveVoiceReady = false;
+
+    if (typeof speechSynthesis !== 'undefined') {
+        speechSynthesis.onvoiceschanged = () => {
+            if(!webSpeechReady) {
+                webSpeechReady = true;
+                if(responsiveVoiceReady) populateVoiceList();
+            }
+        };
+        // Trigger for some browsers
+        speechSynthesis.getVoices();
+    } else {
+        webSpeechReady = true; // Mark as ready if not supported
+    }
+
+    if (typeof responsiveVoice !== 'undefined') {
+         responsiveVoice.OnVoiceReady = () => {
+            if(!responsiveVoiceReady) {
+                responsiveVoiceReady = true;
+                if(webSpeechReady) populateVoiceList();
+            }
+        };
+    } else {
+        responsiveVoiceReady = true; // Mark as ready if not supported
+    }
+
+
+    // --- Cập nhật giao diện dựa trên Engine được chọn ---
+    function updateUIForEngine(engine) {
+        const isGoogle = engine === 'google';
+        
+        // Bật/tắt các slider nâng cao
+        controls.reverb.group.toggleAttribute('disabled', !isGoogle);
+        controls.eqLow.group.toggleAttribute('disabled', !isGoogle);
+        controls.eqMid.group.toggleAttribute('disabled', !isGoogle);
+        controls.eqHigh.group.toggleAttribute('disabled', !isGoogle);
+
+        // Cập nhật phạm vi cho các slider chung
+        if (engine === 'webspeech') {
+            // Web speech: rate(0.1-10), pitch(0-2)
+            controls.gain.control.max = 1;
+            controls.speed.control.min = 0.1;
+            controls.speed.control.max = 3; // Practical max
+            controls.pitch.control.min = 0;
+            controls.pitch.control.max = 2;
+        } else if (engine === 'responsivevoice') {
+            // ResponsiveVoice: volume(0-1), rate(0-1.5), pitch(0-2)
+            controls.gain.control.max = 1;
+            controls.speed.control.min = 0.1;
+            controls.speed.control.max = 1.5;
+            controls.pitch.control.min = 0;
+            controls.pitch.control.max = 2;
+        } else { // Google
+            controls.gain.control.max = 2;
+            controls.speed.control.min = 0.5;
+            controls.speed.control.max = 2;
+            controls.pitch.control.min = 0.5;
+            controls.pitch.control.max = 2;
+        }
+        // Reset giá trị nếu vượt ngưỡng
+        controls.gain.control.value = Math.min(controls.gain.control.value, controls.gain.control.max);
+        controls.speed.control.value = Math.min(Math.max(controls.speed.control.value, controls.speed.control.min), controls.speed.control.max);
+        controls.pitch.control.value = Math.min(Math.max(controls.pitch.control.value, controls.pitch.control.min), controls.pitch.control.max);
+        
+        updateSliderValues();
+        downloadLink.style.display = isGoogle ? 'block' : 'none';
+    }
+
+    voiceSelect.addEventListener('change', () => {
+        const selectedOption = voiceSelect.options[voiceSelect.selectedIndex];
+        const engine = selectedOption.getAttribute('data-engine');
+        updateUIForEngine(engine);
+    });
+
+    // --- Logic Phát âm ---
+    async function speak() {
+        const text = textInput.value.trim();
+        if (!text) {
+            statusDiv.textContent = 'Vui lòng nhập văn bản.';
+            return;
+        }
+
+        stop(); // Dừng bất cứ thứ gì đang phát
+        isSpeaking = true;
+        speakButton.disabled = true;
+        statusDiv.textContent = 'Đang xử lý...';
+
+        const selectedOption = voiceSelect.options[voiceSelect.selectedIndex];
+        const engine = selectedOption.getAttribute('data-engine');
+
+        if (engine === 'google') {
+            await speakWithGoogle(text);
+        } else if (engine === 'webspeech') {
+            speakWithWebSpeech(text, selectedOption.getAttribute('data-name'));
+        } else if (engine === 'responsivevoice') {
+            speakWithResponsiveVoice(text, selectedOption.getAttribute('data-name'));
+        }
+    }
+    
+    function stop() {
+        isSpeaking = false;
+        if (sourceNode) { // Google
+            sourceNode.stop();
+            sourceNode = null;
+        }
+        if (typeof speechSynthesis !== 'undefined' && speechSynthesis.speaking) { // Web Speech
+            speechSynthesis.cancel();
+        }
+        if (typeof responsiveVoice !== 'undefined' && responsiveVoice.isPlaying()) { // ResponsiveVoice
+            responsiveVoice.cancel();
+        }
+        onSpeakEnd();
+    }
+
+    function onSpeakEnd() {
+        isSpeaking = false;
+        speakButton.disabled = false;
+        speakButton.textContent = 'Phát âm';
+        statusDiv.textContent = 'Đã dừng hoặc hoàn thành.';
+    }
+
+    speakButton.addEventListener('click', speak);
+    stopButton.addEventListener('click', stop);
+
+
+    // --- Các hàm cụ thể cho từng Engine ---
+
+    // 1. GOOGLE TRANSLATE
+    async function speakWithGoogle(text) {
+        initAudioContext();
+        if (!audioContext) return;
+        if (audioContext.state === 'suspended') audioContext.resume();
+        
+        downloadLink.style.display = 'none';
+        const chunks = chunkText(text);
+        const audioBuffers = [];
+        let totalLength = 0;
+
+        try {
+            for (let i = 0; i < chunks.length; i++) {
+                if (!isSpeaking) throw new Error("Cancelled");
+                statusDiv.textContent = `Đang tải phần ${i + 1}/${chunks.length}...`;
+                const audioData = await fetchTTS(chunks[i]);
+                if (audioData) {
+                    const decodedBuffer = await audioContext.decodeAudioData(audioData);
+                    audioBuffers.push(decodedBuffer);
+                    totalLength += decodedBuffer.length;
+                } else {
+                    throw new Error("Failed to fetch audio data");
+                }
+            }
+            if (audioBuffers.length === 0) throw new Error("No audio data loaded");
+
+            const finalBuffer = audioContext.createBuffer(audioBuffers[0].numberOfChannels, totalLength, audioBuffers[0].sampleRate);
+            let offset = 0;
+            for (const buffer of audioBuffers) {
+                for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+                    finalBuffer.getChannelData(channel).set(buffer.getChannelData(channel), offset);
+                }
+                offset += buffer.length;
+            }
+            audioBuffer = finalBuffer;
+            playAudio();
+            setupDownloadLink();
+            statusDiv.textContent = 'Đang phát âm...';
+            speakButton.textContent = 'Phát lại';
+
+        } catch (error) {
+            console.error(error);
+            if (error.message !== "Cancelled") {
+                statusDiv.textContent = 'Có lỗi xảy ra khi xử lý âm thanh.';
+            }
+            onSpeakEnd();
+        } finally {
+            speakButton.disabled = false;
+        }
+    }
+
+    // 2. WEB SPEECH API
+    function speakWithWebSpeech(text, voiceName) {
+        if (!('speechSynthesis' in window)) {
+            statusDiv.textContent = 'Trình duyệt không hỗ trợ Web Speech API.';
+            onSpeakEnd();
+            return;
+        }
+        const utterance = new SpeechSynthesisUtterance(text);
+        const voices = speechSynthesis.getVoices();
+        utterance.voice = voices.find(voice => voice.name === voiceName);
+        utterance.volume = parseFloat(controls.gain.control.value);
+        utterance.rate = parseFloat(controls.speed.control.value);
+        utterance.pitch = parseFloat(controls.pitch.control.value);
+        
+        utterance.onstart = () => {
+             statusDiv.textContent = 'Đang phát âm...';
+        };
+        utterance.onend = onSpeakEnd;
+        utterance.onerror = (event) => {
+            console.error('SpeechSynthesisUtterance.onerror', event);
+            statusDiv.textContent = `Lỗi phát âm: ${event.error}`;
+            onSpeakEnd();
+        };
+
+        speechSynthesis.speak(utterance);
+    }
+
+    // 3. RESPONSIVEVOICE
+    function speakWithResponsiveVoice(text, voiceName) {
+         if (typeof responsiveVoice === 'undefined') {
+            statusDiv.textContent = 'Thư viện ResponsiveVoice chưa sẵn sàng.';
+            onSpeakEnd();
+            return;
+        }
+        const parameters = {
+            pitch: parseFloat(controls.pitch.control.value),
+            rate: parseFloat(controls.speed.control.value),
+            volume: parseFloat(controls.gain.control.value),
+            onstart: () => {
+                statusDiv.textContent = 'Đang phát âm...';
+            },
+            onend: onSpeakEnd
+        };
+        responsiveVoice.speak(text, voiceName, parameters);
+    }
+
+    // --- Các hàm hỗ trợ cho GOOGLE (Web Audio API) ---
+    function initAudioContext() { if (!audioContext) { try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); setupAudioNodes(); } catch (e) { statusDiv.textContent = 'Trình duyệt không hỗ trợ Web Audio API.'; console.error(e); } } }
+    function setupAudioNodes() { if (!audioContext) return; gainNode = audioContext.createGain(); eqLowNode = audioContext.createBiquadFilter(); eqLowNode.type = 'lowshelf'; eqLowNode.frequency.value = 320; eqMidNode = audioContext.createBiquadFilter(); eqMidNode.type = 'peaking'; eqMidNode.frequency.value = 1000; eqMidNode.Q.value = 0.5; eqHighNode = audioContext.createBiquadFilter(); eqHighNode.type = 'highshelf'; eqHighNode.frequency.value = 3200; convolverNode = audioContext.createConvolver(); reverbGainNode = audioContext.createGain(); dryGainNode = audioContext.createGain(); createReverbImpulse().then(impulse => { convolverNode.buffer = impulse; }); gainNode.connect(eqLowNode); eqLowNode.connect(eqMidNode); eqMidNode.connect(eqHighNode); eqHighNode.connect(dryGainNode); dryGainNode.connect(audioContext.destination); eqHighNode.connect(reverbGainNode); reverbGainNode.connect(convolverNode); convolverNode.connect(audioContext.destination); updateAudioParams(); }
+    async function createReverbImpulse() { const sampleRate = audioContext.sampleRate; const length = sampleRate * 2; const impulse = audioContext.createBuffer(2, length, sampleRate); const left = impulse.getChannelData(0); const right = impulse.getChannelData(1); for (let i = 0; i < length; i++) { left[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5); right[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5); } return impulse; }
+    function updateAudioParams() { if (!audioContext) return; const params = { gain: parseFloat(controls.gain.control.value), speed: parseFloat(controls.speed.control.value), pitch: parseFloat(controls.pitch.control.value), reverb: parseFloat(controls.reverb.control.value), eqLow: parseInt(controls.eqLow.control.value), eqMid: parseInt(controls.eqMid.control.value), eqHigh: parseInt(controls.eqHigh.control.value) }; gainNode.gain.setValueAtTime(params.gain, audioContext.currentTime); if (sourceNode) { sourceNode.playbackRate.setValueAtTime(params.speed, audioContext.currentTime); sourceNode.detune.setValueAtTime((params.pitch - 1) * 1200, audioContext.currentTime); } dryGainNode.gain.setValueAtTime(1 - params.reverb, audioContext.currentTime); reverbGainNode.gain.setValueAtTime(params.reverb, audioContext.currentTime); eqLowNode.gain.setValueAtTime(params.eqLow, audioContext.currentTime); eqMidNode.gain.setValueAtTime(params.eqMid, audioContext.currentTime); eqHighNode.gain.setValueAtTime(params.eqHigh, audioContext.currentTime); }
+    function playAudio() { if (!audioBuffer || !audioContext) return; stop(); sourceNode = audioContext.createBufferSource(); sourceNode.buffer = audioBuffer; sourceNode.connect(gainNode); updateAudioParams(); sourceNode.start(0); isSpeaking = true; sourceNode.onended = () => { if(isSpeaking) onSpeakEnd(); }; }
+    function setupDownloadLink() { const wavBuffer = bufferToWave(audioBuffer); const originalBlob = new Blob([wavBuffer], { type: 'audio/wav' }); const url = URL.createObjectURL(originalBlob); downloadLink.href = url; downloadLink.download = 'speech.wav'; downloadLink.style.display = 'block'; }
+    async function fetchTTS(text) { const proxyUrl = 'https://api.allorigins.win/raw?url='; const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`; const finalUrl = `${proxyUrl}${encodeURIComponent(googleTtsUrl)}`; try { const response = await fetch(finalUrl); if (!response.ok) { throw new Error(`Lỗi HTTP: ${response.status}`); } return await response.arrayBuffer(); } catch (error) { console.error('Lỗi khi tải âm thanh:', error); return null; } }
+    function chunkText(text, maxLength = 100) { const chunks = []; let currentChunk = ''; const sentences = text.match(/[^.!?]+[.!?]*|[\r\n]+/g) || [text]; for (const sentence of sentences) { if ((currentChunk + sentence).length > maxLength) { if (currentChunk.length > 0) chunks.push(currentChunk.trim()); currentChunk = sentence; } else { currentChunk += sentence; } } if (currentChunk.length > 0) chunks.push(currentChunk.trim()); return chunks; }
+    function bufferToWave(abuffer) { let numOfChan = abuffer.numberOfChannels, length = abuffer.length * numOfChan * 2 + 44, buffer = new ArrayBuffer(length), view = new DataView(buffer), channels = [], i, sample, offset = 0, pos = 0; function setUint16(data) { view.setUint16(pos, data, true); pos += 2; } function setUint32(data) { view.setUint32(pos, data, true); pos += 4; } setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157); setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan); setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan); setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4); for (i = 0; i < abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i)); while (pos < length) { for (i = 0; i < numOfChan; i++) { sample = Math.max(-1, Math.min(1, channels[i][offset])); sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; view.setInt16(pos, sample, true); pos += 2; } offset++; } return buffer; }
+    
+    // --- Cập nhật giá trị hiển thị của slider ---
+    function updateSliderValues() {
+        controls.gain.value.textContent = parseFloat(controls.gain.control.value).toFixed(1);
+        controls.speed.value.textContent = parseFloat(controls.speed.control.value).toFixed(1);
+        controls.pitch.value.textContent = parseFloat(controls.pitch.control.value).toFixed(1);
+        controls.reverb.value.textContent = parseFloat(controls.reverb.control.value).toFixed(1);
+        controls.eqLow.value.textContent = `${controls.eqLow.control.value} dB`;
+        controls.eqMid.value.textContent = `${controls.eqMid.control.value} dB`;
+        controls.eqHigh.value.textContent = `${controls.eqHigh.control.value} dB`;
+    }
+
+    // Gán sự kiện input cho tất cả các slider
+    for (const key in controls) {
+        controls[key].control.addEventListener('input', () => {
+            updateSliderValues();
+            // Chỉ áp dụng thay đổi ngay lập tức cho Google (Web Audio) khi đang phát
+            const engine = voiceSelect.options[voiceSelect.selectedIndex].getAttribute('data-engine');
+            if (isSpeaking && engine === 'google') {
+                updateAudioParams();
+            }
+        });
+    }
+
+    // --- Khởi tạo ---
+    updateUIForEngine('google');
+</script>
+
+</body>
+</html>
