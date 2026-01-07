@@ -733,8 +733,30 @@ mainContentEl.addEventListener('input', (event) => { const target = event.target
 localNoteArea.addEventListener('input', () => { localStorage.setItem('localNote', localNoteArea.value); });
 hotkeySettingsContainer.addEventListener('keydown', (e) => { const input = e.target; if (input.tagName === 'INPUT') { e.preventDefault(); const keyValue = e.code.startsWith('Key') || e.code.startsWith('Digit') || e.code.startsWith('Arrow') ? e.code : e.key; input.value = keyValue; const action = input.dataset.action; if (action) { hotkeys[action] = keyValue; saveHotkeys(); } } });
 pinToolbarBtn.addEventListener('click', () => { const isCurrentlyPinned = pageWrapper.classList.contains('toolbar-pinned'); setToolbarPinned(!isCurrentlyPinned); });
-document.addEventListener('mousemove', (e) => { if (!pageWrapper.classList.contains('toolbar-pinned')) { if (e.clientX < 15) { toolbar.classList.add('visible'); } } });
-toolbar.addEventListener('mouseleave', () => { if (!pageWrapper.classList.contains('toolbar-pinned')) { toolbar.classList.remove('visible'); } });
+
+// ===== PHẦN ĐƯỢC SỬA ĐỔI THEO YÊU CẦU =====
+document.addEventListener('mousemove', (e) => {
+    // Chỉ áp dụng logic này khi thanh công cụ không được ghim
+    if (!pageWrapper.classList.contains('toolbar-pinned')) {
+        // Lấy chiều rộng của thanh công cụ từ CSS (450px)
+        const toolbarWidth = 450;
+        // Ngưỡng để ẩn thanh công cụ: chiều rộng + 200px (khoảng >5cm) để tạo vùng đệm
+        const hideThreshold = toolbarWidth + 200;
+
+        if (e.clientX < 15) {
+            // Khi chuột ở sát mép trái (dưới 15px), hiện thanh công cụ
+            toolbar.classList.add('visible');
+        } else if (e.clientX > hideThreshold) {
+            // Khi chuột di chuyển ra xa hơn vùng đệm, ẩn thanh công cụ
+            toolbar.classList.remove('visible');
+        }
+        // Nếu vị trí chuột nằm giữa 15px và hideThreshold, sẽ không có hành động nào xảy ra.
+        // Điều này tạo ra "vùng an toàn" và giải quyết vấn đề của bạn.
+    }
+});
+// Đã xóa bỏ sự kiện 'mouseleave' cũ để logic mới hoạt động chính xác.
+// ===== KẾT THÚC PHẦN SỬA ĐỔI =====
+
 function initializeApp() {
     loadHotkeys();
     initializeSpeechRecognition();
