@@ -2,14 +2,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Sắp xếp ảnh - Giao diện mới (Đã nâng cấp Pro)</title>
+<title>Sắp xếp ảnh & Bảng tính thông minh - Giao diện mới</title>
 <meta charset="UTF-8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <style>
     /* === CSS CHUNG === */
-    body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; color: #333; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #f4f4f4; color: #333; }
     h3 { margin: 0 0 10px 0; font-size: 1.1em; color: #333; border-bottom: 1px solid #eee; padding-bottom: 5px; }
     textarea { width: 100%; box-sizing: border-box; }
 
@@ -24,71 +24,32 @@
     
     /* === YÊU CẦU 3: CSS CHO THANH CÔNG CỤ TỰ ĐỘNG CUỘN === */
     #toolbar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 450px; /* Độ rộng của thanh công cụ */
-        height: 100vh;
-        background-color: #fff;
-        border-right: 1px solid #ddd;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        z-index: 2000;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
-        display: flex;
-        flex-direction: column;
-        padding: 8px;
-        box-sizing: border-box;
+        position: fixed; top: 0; left: 0; width: 450px; /* Độ rộng của thanh công cụ */
+        height: 100vh; background-color: #fff; border-right: 1px solid #ddd;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 2000;
+        transform: translateX(-100%); transition: transform 0.3s ease-in-out;
+        display: flex; flex-direction: column; padding: 8px; box-sizing: border-box;
     }
-    #toolbar.visible {
-        transform: translateX(0);
-    }
-    .page-wrapper.toolbar-pinned {
-        margin-left: 450px; /* Đẩy nội dung chính sang phải khi toolbar được ghim */
-    }
-    .toolbar-content {
-        overflow-y: auto; /* Cho phép cuộn nếu nội dung quá dài */
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        height: 100%;
-    }
-    /* Nút ghim thanh công cụ */
+    #toolbar.visible { transform: translateX(0); }
+    .page-wrapper.toolbar-pinned { margin-left: 450px; /* Đẩy nội dung chính sang phải khi toolbar được ghim */ }
+    .toolbar-content { overflow-y: auto; /* Cho phép cuộn nếu nội dung quá dài */ display: flex; flex-direction: column; gap: 8px; height: 100%; }
     #pin-toolbar-btn {
-        position: absolute;
-        top: 10px;
-        right: -30px; /* Nằm ngay bên ngoài thanh công cụ */
-        width: 30px;
-        height: 30px;
-        border-radius: 0 5px 5px 0;
-        border-left: none;
-        font-size: 18px;
-        line-height: 30px;
-        padding: 0;
-        background-color: #6c757d;
+        position: absolute; top: 10px; right: -30px; /* Nằm ngay bên ngoài thanh công cụ */
+        width: 30px; height: 30px; border-radius: 0 5px 5px 0; border-left: none;
+        font-size: 18px; line-height: 30px; padding: 0; background-color: #6c757d;
     }
-    /* === KẾT THÚC CSS YÊU CẦU 3 === */
-
+    
     .main-column { flex: 1; display: flex; flex-direction: column; min-width: 500px; overflow-y: hidden; transition: all 0.3s ease; }
     .main-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
-
     .preview-column {
         width: 50%; max-width: 50%; flex-shrink: 0; background-color: #e9ecef;
         padding: 15px; display: flex; flex-direction: column; position: sticky;
         top: 0; height: 100vh; box-sizing: border-box; transition: all 0.3s ease;
     }
     .page-wrapper.preview-hidden .preview-column { display: none; }
-    
-    /* === YÊU CẦU MỚI: CSS cho chế độ ẩn lưới ảnh === */
-    .page-wrapper.grid-hidden .main-column {
-        display: none;
-    }
-    .page-wrapper.grid-hidden .preview-column {
-        width: 100%;
-        max-width: 100%;
-    }
+    .page-wrapper.grid-hidden .main-column { display: none; }
+    .page-wrapper.grid-hidden .preview-column { width: 100%; max-width: 100%; }
 
-    /* === THANH CÔNG CỤ (ĐÃ THU GỌN) === */
     .control-wrapper { display: flex; gap: 10px; width: 100%; }
     .control-area { flex: 1; display: flex; }
     .control-group { display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #fcfcfc; width: 100%; }
@@ -98,137 +59,54 @@
 
     #paste-zone { padding: 6px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; color: #666; background-color: #fafafa; transition: background-color 0.2s, border-color 0.2s; font-size: 13px; }
     #paste-zone.drag-over { background-color: #e0e0e0; border-color: #007bff; }
-
-    #name-list { 
-        resize: vertical; min-height: 40px; height: 80px; padding: 5px; 
-        border: 1px solid #ccc; border-radius: 4px; 
-        font-family: monospace; line-height: 1.5; white-space: pre; font-size: 12px;
-    }
+    #name-list { resize: vertical; min-height: 40px; height: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; line-height: 1.5; white-space: pre; font-size: 12px; }
     #range-inputs-container { display: flex; gap: 5px; align-items: center; }
     #range-inputs-container input[type="number"] { width: 45px; padding: 3px; font-size: 12px; }
     
-    /* === YÊU CẦU MỚI: CSS CHO THANH TIẾN TRÌNH GIỮA MÀN HÌNH === */
-    #progress-overlay {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.6);
-        display: none; /* Sẽ được điều khiển bằng JS */
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        flex-direction: column;
-        color: white;
-    }
-    .progress-bar-container {
-        width: 50%;
-        max-width: 500px;
-        background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        text-align: center;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
-    #progress-text {
-        margin: 0 0 10px 0;
-        font-size: 1.1em;
-        color: #333;
-    }
-    #upload-progress, #download-progress {
-        width: 100%;
-        height: 15px;
-        display: block; /* Hiển thị trong container */
-        margin-top: 8px;
-    }
+    #progress-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: none; /* Sẽ được điều khiển bằng JS */ justify-content: center; align-items: center; z-index: 9999; flex-direction: column; color: white; }
+    .progress-bar-container { width: 50%; max-width: 500px; background: #fff; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    #progress-text { margin: 0 0 10px 0; font-size: 1.1em; color: #333; }
+    #upload-progress, #download-progress { width: 100%; height: 15px; display: block; /* Hiển thị trong container */ margin-top: 8px; }
     #upload-progress::-webkit-progress-bar, #download-progress::-webkit-progress-bar { background-color: #eee; border-radius: 5px; }
     #upload-progress::-webkit-progress-value { background-color: #28a745; border-radius: 5px; transition: width 0.1s linear; }
     #download-progress::-webkit-progress-value { background-color: #007bff; border-radius: 5px; transition: width 0.1s linear; }
-    /* ============================================================= */
-
-    /* === YÊU CẦU 1: THU GỌN KHU VỰC CHẾ ĐỘ SỐ LIỆU === */
-    #numeric-mode-controls .control-group { gap: 8px; }
-    #numeric-mode-controls h3 { font-size: 1em; text-align: center; margin-bottom: 5px; }
-    #numeric-mode-controls .options-container { display: flex; flex-direction: column; gap: 8px; }
-    #numeric-mode-controls .option-row { display: flex; align-items: center; gap: 8px; }
-    #numeric-mode-controls label { white-space: nowrap; font-size: 13px; }
-    #numeric-mode-controls select { padding: 4px 8px; font-size: 12px; }
-    #numeric-mode-controls textarea { min-height: 40px !important; font-size: 12px; }
-    #numeric-mode-controls .action-row { display:flex; gap: 8px; }
-    #numeric-mode-controls .action-row button { flex: 1; }
     
-    /* === YÊU CẦU 1 & 2: CSS CHO CÀI ĐẶT VÀ GHI CHÚ === */
-    .hotkey-setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
-    .hotkey-setting label { font-size: 13px; white-space: nowrap; }
-    .hotkey-setting input { width: 100px; text-align: center; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; }
+    #numeric-mode-controls .control-group { gap: 8px; } #numeric-mode-controls h3 { font-size: 1em; text-align: center; margin-bottom: 5px; } #numeric-mode-controls .options-container { display: flex; flex-direction: column; gap: 8px; } #numeric-mode-controls .option-row { display: flex; align-items: center; gap: 8px; } #numeric-mode-controls label { white-space: nowrap; font-size: 13px; } #numeric-mode-controls select { padding: 4px 8px; font-size: 12px; } #numeric-mode-controls textarea { min-height: 40px !important; font-size: 12px; } #numeric-mode-controls .action-row { display:flex; gap: 8px; } #numeric-mode-controls .action-row button { flex: 1; }
+    
+    .hotkey-setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; } .hotkey-setting label { font-size: 13px; white-space: nowrap; } .hotkey-setting input { width: 100px; text-align: center; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; }
     #local-note-area { min-height: 80px; resize: vertical; font-size: 13px; }
 
-    /* === XEM TRƯỚC ẢNH === */
-    #large-preview-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; background-color: #333; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; min-height: 0; position: relative; cursor: grab; user-select: none; }
-    #large-preview-container:active { cursor: grabbing; }
-    #large-preview-img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center; will-change: transform; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-    .preview-placeholder { color: #ccc; font-size: 1.2em; pointer-events: none; }
-    .preview-controls { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; flex-wrap: wrap; gap: 5px; }
-    #preview-name-input { flex-grow: 1; margin: 0 10px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
-    .rotate-controls { display: flex; gap: 5px; }
-    #suggestion-buttons-container { margin-top: 10px; }
-    #suggestion-buttons { display:flex; flex-wrap:wrap; gap:5px; }
-    #suggestion-buttons button.suggestion-selected { background-color: #28a745; border: 2px solid #1e7e34; font-weight: bold; }
-
-    /* === YÊU CẦU 3: CSS CHO GỢI Ý CHI TIẾT === */
-    #fine-grained-suggestions { margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; display:flex; flex-wrap:wrap; gap:4px; min-height: 25px; }
-    #fine-grained-suggestions button { font-size: 11px; padding: 3px 6px; background-color: #6c757d; }
-
-    /* === PHOTO GRID === */
-    .photo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
-    .photo-grid.dense-mode { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; }
-    .photo-grid.dense-mode .name-container input[type="text"] { font-size: 9px; padding: 1px 2px; height: 20px; }
-    .photo-wrapper.hidden-by-filter { display: none; }
-    .photo-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; }
-    .img-container { position: relative; width: 100%; padding-top: 75%; overflow: hidden; border-radius: 4px; background-color: #eee; cursor: pointer; transition: outline 0.2s ease-in-out, border 0.2s; }
+    #large-preview-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; background-color: #333; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; min-height: 0; position: relative; cursor: grab; user-select: none; } #large-preview-container:active { cursor: grabbing; } #large-preview-img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center; will-change: transform; pointer-events: none; user-select: none; -webkit-user-drag: none; } .preview-placeholder { color: #ccc; font-size: 1.2em; pointer-events: none; } .preview-controls { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; flex-wrap: wrap; gap: 5px; } #preview-name-input { flex-grow: 1; margin: 0 10px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; } .rotate-controls { display: flex; gap: 5px; } #suggestion-buttons-container { margin-top: 10px; } #suggestion-buttons { display:flex; flex-wrap:wrap; gap:5px; } #suggestion-buttons button.suggestion-selected { background-color: #28a745; border: 2px solid #1e7e34; font-weight: bold; }
+    #fine-grained-suggestions { margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; display:flex; flex-wrap:wrap; gap:4px; min-height: 25px; } #fine-grained-suggestions button { font-size: 11px; padding: 3px 6px; background-color: #6c757d; }
     
-    /* === YÊU CẦU MỚI: CSS cho viền ảnh === */
-    .photo-wrapper.is-tall .img-container { border: 3px solid red; } /* Ảnh dọc */
-    .photo-wrapper.is-small .img-container { border: 3px solid #007bff; } /* Ảnh dung lượng nhỏ */
-
-    .photo-item { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border: none; pointer-events: none; }
-    .delete-btn, .exclude-numeric-btn, .replace-btn { position: absolute; z-index: 10; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 22px; text-align: center; padding: 0; opacity: 0; transition: opacity 0.2s; }
-    .delete-btn { top: 4px; right: 4px; }
-    .exclude-numeric-btn { top: 4px; left: 4px; display: none; }
-    body.numeric-mode .exclude-numeric-btn { display: block; }
-
-    /* === YÊU CẦU MỚI: CSS cho nút và panel thay thế ảnh === */
+    .photo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; } .photo-grid.dense-mode { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 8px; } .photo-grid.dense-mode .name-container input[type="text"] { font-size: 9px; padding: 1px 2px; height: 20px; } .photo-wrapper.hidden-by-filter { display: none; } .photo-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; } .img-container { position: relative; width: 100%; padding-top: 75%; overflow: hidden; border-radius: 4px; background-color: #eee; cursor: pointer; transition: outline 0.2s ease-in-out, border 0.2s; }
+    .photo-wrapper.is-tall .img-container { border: 3px solid red; } .photo-wrapper.is-small .img-container { border: 3px solid #007bff; }
+    .photo-item { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border: none; pointer-events: none; } .delete-btn, .exclude-numeric-btn, .replace-btn { position: absolute; z-index: 10; width: 22px; height: 22px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 22px; text-align: center; padding: 0; opacity: 0; transition: opacity 0.2s; } .delete-btn { top: 4px; right: 4px; } .exclude-numeric-btn { top: 4px; left: 4px; display: none; } body.numeric-mode .exclude-numeric-btn { display: block; }
     .replace-btn { bottom: 4px; left: 4px; font-size: 16px; }
-    .replace-panel {
-        display: none; /* Ẩn mặc định */
-        position: absolute;
-        bottom: 30px; /* Hiện lên trên nút bấm */
-        left: 4px;
-        z-index: 20;
-        background: white;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        padding: 5px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        flex-direction: column;
-        gap: 5px;
-    }
-    .replace-panel button { width: 100%; font-size: 12px; }
-    /* ======================================================== */
+    .replace-panel { display: none; position: absolute; bottom: 30px; left: 4px; z-index: 20; background: white; border: 1px solid #ccc; border-radius: 4px; padding: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); flex-direction: column; gap: 5px; } .replace-panel button { width: 100%; font-size: 12px; }
+    .photo-wrapper:hover .delete-btn, .photo-wrapper:hover .exclude-numeric-btn, .photo-wrapper:hover .replace-btn { opacity: 1; } .name-container { display: flex; align-items: center; width: 100%; margin-top: 5px; } .name-container input[type="text"] { flex: 1; padding: 3px 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 3px; min-width: 0; font-size: 10.5px; height: 24px; }
 
-    .photo-wrapper:hover .delete-btn, .photo-wrapper:hover .exclude-numeric-btn, .photo-wrapper:hover .replace-btn { opacity: 1; }
-    .name-container { display: flex; align-items: center; width: 100%; margin-top: 5px; }
-    .name-container input[type="text"] { flex: 1; padding: 3px 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 3px; min-width: 0; font-size: 10.5px; height: 24px; }
+    .ghost-class { opacity: 0.4; background-color: #c0e0ff; border: 2px dashed #007bff; } .drag-class { opacity: 0.8; transform: scale(1.05); } .selected-photo .img-container { outline: 3px solid #007bff; outline-offset: 2px; } @keyframes yellow-flash { from { outline: 4px solid gold; } to { outline: 4px solid transparent; } } .newly-added .img-container { animation: yellow-flash 1.5s ease-out; }
 
-    /* === SORTABLE & EFFECTS === */
-    .ghost-class { opacity: 0.4; background-color: #c0e0ff; border: 2px dashed #007bff; }
-    .drag-class { opacity: 0.8; transform: scale(1.05); } 
-    .selected-photo .img-container { outline: 3px solid #007bff; outline-offset: 2px; }
-    @keyframes yellow-flash { from { outline: 4px solid gold; } to { outline: 4px solid transparent; } }
-    .newly-added .img-container { animation: yellow-flash 1.5s ease-out; }
+    /* === CSS CHO BẢNG TÍNH THÔNG MINH (ĐÃ TÍCH HỢP) === */
+    #smart-grid-panel .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center; }
+    #smart-grid-panel .controls input[type="number"] { padding: 4px; border: 1px solid #ccc; border-radius: 4px; width: 60px; font-size: 12px; }
+    #smart-grid-panel .controls button { padding: 5px 10px; font-size: 13px; }
+    #smart-grid-panel #mic-button { background: none; border: none; font-size: 22px; cursor: pointer; padding: 0; color: #42526e; }
+    #smart-grid-panel #mic-button.recording { color: red; }
+    #smart-grid-panel .info { margin-left: auto; color: #5e6c84; font-size: 11px; }
+    #smart-grid-panel #grid-container { width: 100%; max-height: 400px; overflow: auto; border: 1px solid #dfe1e6; }
+    #smart-grid-panel table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    #smart-grid-panel th, #smart-grid-panel td { border: 1px solid #dfe1e6; padding: 6px; text-align: left; min-width: 80px; height: 22px; box-sizing: border-box; outline: none; font-size: 12px; }
+    #smart-grid-panel th { background-color: #f4f5f7; font-weight: 600; text-align: center; }
+    #smart-grid-panel td.selected { background-color: #e9f2ff !important; border: 2px solid #0052cc; }
+    #smart-grid-panel .highlight-number { font-weight: bold; }
+    #smart-grid-panel .cluster-focus { font-weight: bold; outline: 2px solid #0065ff; background-color: #e9f2ff; border-radius: 3px; }
+
 </style>
 </head>
 <body id="page-body">
 
-<!-- === YÊU CẦU MỚI: THANH TIẾN TRÌNH TẢI LÊN (OVERLAY) === -->
 <div id="progress-overlay">
     <div class="progress-bar-container">
         <p id="progress-text">Đang xử lý...</p>
@@ -237,8 +115,6 @@
     </div>
 </div>
 
-
-<!-- THANH CÔNG CỤ -->
 <div id="toolbar">
     <button id="pin-toolbar-btn" title="Ghim/Bỏ ghim thanh công cụ (Tự động lưu)">📌</button>
     <div class="toolbar-content">
@@ -257,6 +133,8 @@
                         <button id="hide-all-images-btn" style="background-color: #6c757d;">Ẩn/Hiện Lưới Ảnh</button>
                         <button id="highlight-tall-btn">Ảnh dọc</button>
                         <button id="numeric-filter-btn" style="background-color: #17a2b8;">Chế độ Số liệu</button>
+                         <!-- Nút Bật/Tắt Bảng Tính -->
+                        <button id="toggle-smart-grid-btn" style="background-color: #17a2b8;">Bảng tính</button>
                         <button id="prev-image-btn" title="Chuyển đến ảnh phía trước">Ảnh Trước</button>
                         <button id="next-image-btn" title="Chuyển đến ảnh kế tiếp">Ảnh Sau</button>
                         <label><input type="checkbox" id="lock-toggle"> Khóa</label>
@@ -294,8 +172,7 @@
                     <div class="option-row">
                         <label for="suggestion-count-select">Số gợi ý mỗi ảnh:</label>
                         <select id="suggestion-count-select">
-                            <option value="1">1</option>
-                            <option value="3" selected>3</option> <option value="5">5</option> <option value="7">7</option> <option value="9">9</option>
+                            <option value="1">1</option> <option value="3" selected>3</option> <option value="5">5</option> <option value="7">7</option> <option value="9">9</option>
                         </select>
                         <textarea id="numeric-name-suggestions" placeholder="Dán danh sách tên gợi ý vào đây..." style="flex-grow:1;"></textarea>
                     </div>
@@ -311,6 +188,24 @@
             </div>
         </div>
         
+        <!-- === PANEL BẢNG TÍNH THÔNG MINH (MỚI) === -->
+        <div class="control-group" id="smart-grid-panel" style="display: none;">
+            <h3>Bảng Tính Thông Minh</h3>
+            <div class="controls">
+                <label for="sg-rows">Hàng:</label>
+                <input type="number" id="sg-rows" value="50" min="1">
+                <label for="sg-cols">Cột:</label>
+                <input type="number" id="sg-cols" value="5" min="1">
+                <button id="sg-create-grid">Tạo Bảng</button>
+                <button id="sg-undo-btn" title="Hoàn tác">↶</button>
+                <button id="sg-redo-btn" title="Làm lại">↷</button>
+                <button id="mic-button" title="Nhập liệu bằng giọng nói">🎤</button>
+                <div class="info">Dùng phím tắt để ghi âm & chuyển ô</div>
+            </div>
+            <div id="grid-container"></div>
+        </div>
+        <!-- === KẾT THÚC PANEL === -->
+
         <div class="control-group">
             <h3>Ghi chú (Tự động lưu)</h3>
             <textarea id="local-note-area" placeholder="Ghi chú nhanh của bạn..."></textarea>
@@ -319,44 +214,21 @@
         <div class="control-group">
             <h3>Cài đặt phím tắt (Tự động lưu)</h3>
             <div id="hotkey-settings">
-                 <div class="hotkey-setting">
-                    <label for="hotkey-next-image">Chuyển ảnh tiếp theo:</label>
-                    <input type="text" id="hotkey-next-image" data-action="nextImage">
-                </div>
-                <div class="hotkey-setting">
-                    <label for="hotkey-prev-image">Chuyển ảnh phía trước:</label>
-                    <input type="text" id="hotkey-prev-image" data-action="prevImage">
-                </div>
-                <div class="hotkey-setting">
-                    <label for="hotkey-edit-name">Sửa tên ảnh (preview):</label>
-                    <input type="text" id="hotkey-edit-name" data-action="editName">
-                </div>
-                <div class="hotkey-setting">
-                    <label for="hotkey-rotate-left">Xoay trái:</label>
-                    <input type="text" id="hotkey-rotate-left" data-action="rotateLeft">
-                </div>
-                 <div class="hotkey-setting">
-                    <label for="hotkey-rotate-right">Xoay phải:</label>
-                    <input type="text" id="hotkey-rotate-right" data-action="rotateRight">
-                </div>
-                <div class="hotkey-setting">
-                    <label for="hotkey-pin-toolbar">Ghim/Bỏ ghim thanh công cụ:</label>
-                    <input type="text" id="hotkey-pin-toolbar" data-action="pinToolbar">
-                </div>
-                <div class="hotkey-setting">
-                    <label for="hotkey-voice-input">Nhập liệu bằng giọng nói:</label>
-                    <input type="text" id="hotkey-voice-input" data-action="voiceInput">
-                </div>
-                 <!-- === TÍNH NĂNG MỚI: PHÍM TẮT DỊCH VĂN BẢN === -->
-                <div class="hotkey-setting">
-                    <label for="hotkey-translate-name">Dịch tên sang Tiếng Anh:</label>
-                    <input type="text" id="hotkey-translate-name" data-action="translateName">
-                </div>
+                 <div class="hotkey-setting"><label for="hotkey-next-image">Chuyển ảnh tiếp theo:</label><input type="text" id="hotkey-next-image" data-action="nextImage"></div>
+                <div class="hotkey-setting"><label for="hotkey-prev-image">Chuyển ảnh phía trước:</label><input type="text" id="hotkey-prev-image" data-action="prevImage"></div>
+                <div class="hotkey-setting"><label for="hotkey-edit-name">Sửa tên ảnh (preview):</label><input type="text" id="hotkey-edit-name" data-action="editName"></div>
+                <div class="hotkey-setting"><label for="hotkey-rotate-left">Xoay trái:</label><input type="text" id="hotkey-rotate-left" data-action="rotateLeft"></div>
+                 <div class="hotkey-setting"><label for="hotkey-rotate-right">Xoay phải:</label><input type="text" id="hotkey-rotate-right" data-action="rotateRight"></div>
+                <div class="hotkey-setting"><label for="hotkey-pin-toolbar">Ghim/Bỏ ghim thanh công cụ:</label><input type="text" id="hotkey-pin-toolbar" data-action="pinToolbar"></div>
+                <div class="hotkey-setting"><label for="hotkey-voice-input">Nhập giọng nói (Ảnh):</label><input type="text" id="hotkey-voice-input" data-action="voiceInput"></div>
+                <div class="hotkey-setting"><label for="hotkey-translate-name">Dịch tên sang Tiếng Anh:</label><input type="text" id="hotkey-translate-name" data-action="translateName"></div>
+                <!-- PHÍM TẮT CHO BẢNG TÍNH (MỚI) -->
+                <div class="hotkey-setting" style="border-top: 1px solid #ddd; padding-top: 5px; margin-top: 5px;"><label for="hotkey-sg-voice">Ghi âm (Bảng tính):</label><input type="text" id="hotkey-sg-voice" data-action="smartGridVoice"></div>
+                <div class="hotkey-setting"><label for="hotkey-sg-next">Chọn số tiếp (Bảng tính):</label><input type="text" id="hotkey-sg-next" data-action="smartGridNext"></div>
             </div>
         </div>
     </div>
 </div>
-
 
 <div class="page-wrapper" id="page-wrapper">
     <div class="main-column">
@@ -364,7 +236,6 @@
             <div id="photo-grid-main" class="photo-grid"></div>
         </div>
     </div>
-
     <div class="preview-column">
         <div class="preview-controls">
             <h3>Xem trước ảnh</h3>
@@ -392,7 +263,7 @@
 <input type="file" id="photo-input" multiple accept="image/*,.zip,application/octet-stream" class="custom-file-input">
 
 <script>
-// --- Các biến toàn cục ---
+// --- Các biến toàn cục (Sắp xếp ảnh) ---
 const photoInput = document.getElementById('photo-input');
 const clearBtn = document.getElementById('clear-btn');
 const assignNamesBtn = document.getElementById('assign-names-btn');
@@ -443,10 +314,12 @@ const progressText = document.getElementById('progress-text');
 const uploadProgress = document.getElementById('upload-progress');
 const downloadProgress = document.getElementById('download-progress');
 const voiceInputBtn = document.getElementById('voice-input-btn');
+const toggleSmartGridBtn = document.getElementById('toggle-smart-grid-btn');
+const smartGridPanel = document.getElementById('smart-grid-panel');
+
 let recognition = null;
 let isRecognizing = false;
 let lastFocusedInputForVoice = null;
-
 
 let photoGrid = document.getElementById('photo-grid-main');
 let sortableInstance = null;
@@ -471,10 +344,13 @@ let hotkeys = {
     rotateRight: 'ArrowRight',
     pinToolbar: 'KeyP',
     voiceInput: 'Backquote',
-    translateName: 'KeyT' // Phím T cho Translate
+    translateName: 'KeyT',
+    // Phím tắt mặc định cho Bảng tính
+    smartGridVoice: 'Backquote', // Trùng với voice ảnh, sẽ được xử lý theo ngữ cảnh
+    smartGridNext: 'Tab'
 };
 
-// --- Các hàm tiện ích ---
+// --- Các hàm tiện ích (Sắp xếp ảnh) ---
 function removeLeadingOrderPrefix(filename) { return filename.replace(/^\d+\.\s+/, ''); }
 function getMimeTypeFromName(name, originalType) { if (!name) return originalType; const lowerName = name.toLowerCase(); if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg'; if (lowerName.endsWith('.png')) return 'image/png'; if (lowerName.endsWith('.gif')) return 'image/gif'; if (lowerName.endsWith('.webp')) return 'image/webp'; if (lowerName.endsWith('.bmp')) return 'image/bmp'; return originalType; }
 function syncInputAttributes() { mainContentEl.querySelectorAll('input[type="text"]').forEach(input => input.setAttribute('value', input.value)); mainContentEl.querySelectorAll('textarea').forEach(textarea => textarea.textContent = textarea.value); mainContentEl.querySelectorAll('input[type="checkbox"]').forEach(input => { if (input.checked) input.setAttribute('checked', 'checked'); else input.removeAttribute('checked'); }); }
@@ -499,136 +375,152 @@ function initializeSortable(isDraggable) { if (sortableInstance) sortableInstanc
 function reInitializeApp() { photoGrid = document.getElementById('photo-grid-main'); photoGrid.querySelectorAll('.photo-item').forEach(img => { if (img.src && img.src.startsWith('blob:')) { URL.revokeObjectURL(img.src); } }); photoGrid.querySelectorAll('.photo-wrapper').forEach(wrapper => { const id = wrapper.getAttribute('data-photo-id'); const img = wrapper.querySelector('.photo-item'); if (id && img && photoDataMap.has(id)) { const data = photoDataMap.get(id); if(data && data.blob) { img.src = URL.createObjectURL(data.blob); } } }); gridToggleBtn.textContent = photoGrid.classList.contains('dense-mode') ? 'Lưới thường' : 'Lưới x2'; document.getElementById('lock-toggle').checked = false; initializeSortable(true); const selectedEl = photoGrid.querySelector('.selected-photo'); lastSelectedWrapper = selectedEl || null; updatePreview(lastSelectedWrapper); syncNameListFromInputs(); }
 function navigateImage(direction) { const visibleWrappers = Array.from(photoGrid.querySelectorAll('.photo-wrapper:not(.hidden-by-filter)')); if (visibleWrappers.length === 0) return; const currentSelected = photoGrid.querySelector('.photo-wrapper.selected-photo'); let currentIndex = -1; if (currentSelected) { currentIndex = visibleWrappers.indexOf(currentSelected); } let nextIndex; if (direction === 'next') { nextIndex = (currentIndex + 1) % visibleWrappers.length; } else { nextIndex = (currentIndex - 1 + visibleWrappers.length) % visibleWrappers.length; } const nextWrapper = visibleWrappers[nextIndex]; if (nextWrapper) { if (currentSelected) currentSelected.classList.remove('selected-photo'); nextWrapper.classList.add('selected-photo'); lastSelectedWrapper = nextWrapper; updatePreview(lastSelectedWrapper); nextWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }
 function saveHotkeys() { localStorage.setItem('photoSorterHotkeys', JSON.stringify(hotkeys)); }
-function loadHotkeys() { const savedHotkeys = localStorage.getItem('photoSorterHotkeys'); if (savedHotkeys) { hotkeys = JSON.parse(savedHotkeys); } for (const action in hotkeys) { const input = document.querySelector(`#hotkey-settings input[data-action="${action}"]`); if (input) { input.value = hotkeys[action]; } } }
+function loadHotkeys() { const savedHotkeys = localStorage.getItem('photoSorterHotkeys'); if (savedHotkeys) { try { const parsed = JSON.parse(savedHotkeys); hotkeys = {...hotkeys, ...parsed }; } catch(e) { console.error("Could not parse saved hotkeys", e); } } for (const action in hotkeys) { const input = document.querySelector(`#hotkey-settings input[data-action="${action}"]`); if (input) { input.value = hotkeys[action]; } } }
 function setToolbarPinned(isPinned) { pageWrapper.classList.toggle('toolbar-pinned', isPinned); toolbar.classList.toggle('visible', isPinned); localStorage.setItem('toolbarPinned', isPinned); pinToolbarBtn.textContent = isPinned ? '📌' : '→'; if(isPinned) { pinToolbarBtn.title = 'Bỏ ghim thanh công cụ'; } else { pinToolbarBtn.title = 'Ghim thanh công cụ'; } }
+async function translateFocusedInput() { const activeInput = document.activeElement; if (!activeInput || !activeInput.matches('.name-container input[type="text"], #preview-name-input')) { alert('Vui lòng chọn một ô tên ảnh để dịch.'); return; } const originalValue = activeInput.value; const partsRegex = /^(\d+\.\s*)(.*?)([\s\d.,]+[a-zA-Z%°]*)?$/; const match = originalValue.match(partsRegex); let prefix = ''; let textToTranslate = ''; let suffix = ''; if (match) { prefix = match[1] || ''; textToTranslate = match[2] || ''; suffix = match[3] || ''; } else { const simplePrefixMatch = originalValue.match(/^(\d+\.\s*)/); if (simplePrefixMatch) { prefix = simplePrefixMatch[0]; textToTranslate = originalValue.substring(prefix.length); } else { textToTranslate = originalValue; } } if (!textToTranslate.trim()) { alert('Không có nội dung để dịch.'); return; } const sourceLang = 'vi'; const targetLang = 'en'; const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(textToTranslate)}`; activeInput.value = 'Đang dịch...'; activeInput.disabled = true; try { const response = await fetch(url); if (!response.ok) { throw new Error('Lỗi mạng khi dịch.'); } const data = await response.json(); const translatedText = data?.[0]?.[0]?.[0]; if (translatedText) { const finalValue = `${prefix}${translatedText}${suffix}`.replace(/\s+/g, ' ').trim(); activeInput.value = finalValue; activeInput.dispatchEvent(new Event('input', { bubbles: true })); } else { throw new Error('Không nhận được kết quả dịch hợp lệ.'); } } catch (error) { console.error('Lỗi dịch:', error); alert('Đã xảy ra lỗi khi dịch. Vui lòng thử lại.'); activeInput.value = originalValue; } finally { activeInput.disabled = false; activeInput.focus(); } }
+function convertVietnameseNumberWordsToDigits(text) { const numberMap = { 'không': '0', 'linh': '0', 'lẻ': '0', 'một': '1', 'mốt': '1', 'hai': '2', 'ba': '3', 'bốn': '4', 'tư': '4', 'năm': '5', 'lăm': '5', 'sáu': '6', 'bảy': '7', 'bẩy': '7', 'tám': '8', 'chín': '9', 'mười': '10', }; let processedText = ` ${text.toLowerCase()} `.replace(/ phẩy /g, '.'); const words = processedText.split(' '); const resultWords = words.map(word => numberMap[word] || word); return resultWords.join(' ').replace(/\s+/g, ' ').trim(); }
+function initializeSpeechRecognition() { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRecognition) { console.warn("Trình duyệt của bạn không hỗ trợ Web Speech API."); voiceInputBtn.disabled = true; voiceInputBtn.title = "Trình duyệt không hỗ trợ tính năng này."; const voiceHotkeyInput = document.getElementById('hotkey-voice-input'); if(voiceHotkeyInput) voiceHotkeyInput.disabled = true; return; } recognition = new SpeechRecognition(); recognition.continuous = false; recognition.lang = 'vi-VN'; recognition.interimResults = false; recognition.maxAlternatives = 1; recognition.onstart = () => { isRecognizing = true; voiceInputBtn.textContent = '🔴'; voiceInputBtn.style.backgroundColor = '#dc3545'; voiceInputBtn.title = 'Đang lắng nghe...'; }; recognition.onresult = (event) => { const rawTranscript = event.results[0][0].transcript; const processedTranscript = convertVietnameseNumberWordsToDigits(rawTranscript); if (lastFocusedInputForVoice && processedTranscript) { const target = lastFocusedInputForVoice; const start = target.selectionStart; const end = target.selectionEnd; const currentValue = target.value; const newValue = currentValue.substring(0, start) + processedTranscript + currentValue.substring(end); target.value = newValue; const newCursorPos = start + processedTranscript.length; target.setSelectionRange(newCursorPos, newCursorPos); target.dispatchEvent(new Event('input', { bubbles: true })); target.focus(); } }; recognition.onspeechend = () => { recognition.stop(); }; recognition.onend = () => { isRecognizing = false; voiceInputBtn.textContent = '🎤'; voiceInputBtn.style.backgroundColor = ''; voiceInputBtn.title = 'Kích hoạt nhập liệu giọng nói (dùng phím tắt)'; }; recognition.onerror = (event) => { console.error('Lỗi nhận dạng giọng nói:', event.error); if (event.error === 'not-allowed' || event.error === 'service-not-allowed') { alert('Quyền truy cập micro đã bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt và sử dụng trang web qua HTTPS.'); } }; }
+function startVoiceRecognition() { if (!recognition || isRecognizing) { return; } if (document.activeElement && (document.activeElement.matches('input[type="text"]') || document.activeElement.tagName === 'TEXTAREA')) { lastFocusedInputForVoice = document.activeElement; recognition.start(); } else { alert('Vui lòng chọn một ô nhập tên hoặc ô ghi chú để bắt đầu nhập liệu bằng giọng nói.'); } }
 
-// === HÀM DỊCH VĂN BẢN (MỚI) ===
-async function translateFocusedInput() {
-    const activeInput = document.activeElement;
-    if (!activeInput || !activeInput.matches('.name-container input[type="text"], #preview-name-input')) {
-        alert('Vui lòng chọn một ô tên ảnh để dịch.');
-        return;
+// --- LOGIC CHO BẢNG TÍNH THÔNG MINH (Smart Grid) ---
+// Module được gói trong IIFE để tránh xung đột biến toàn cục
+const smartGrid = (() => {
+    // DOM Elements
+    const rowsInput = document.getElementById('sg-rows');
+    const colsInput = document.getElementById('sg-cols');
+    const createGridBtn = document.getElementById('sg-create-grid');
+    const gridContainer = document.getElementById('grid-container');
+    const micButton = document.getElementById('mic-button');
+    const undoBtn = document.getElementById('sg-undo-btn');
+    const redoBtn = document.getElementById('sg-redo-btn');
+
+    // State
+    let grid, startCell = null, isSelecting = false;
+    let history = [];
+    let historyIndex = -1;
+    let dataClusters = [];
+    let currentClusterIndex = -1;
+    let recognition;
+
+    function saveState() {
+        if (!grid) return;
+        const gridData = Array.from(grid.querySelectorAll('tbody tr')).map(row =>
+            Array.from(row.querySelectorAll('td')).map(cell => cell.innerHTML)
+        );
+        history = history.slice(0, historyIndex + 1);
+        history.push(gridData);
+        historyIndex++;
+        updateUndoRedoButtons();
     }
 
-    const originalValue = activeInput.value;
-    // Regex để tách (1. prefix)(nội dung cần dịch)( suffix 5kg)
-    const partsRegex = /^(\d+\.\s*)(.*?)([\s\d.,]+[a-zA-Z%°]*)?$/;
-    const match = originalValue.match(partsRegex);
+    function restoreState(index) {
+        if (!grid || index < 0 || index >= history.length) return;
+        const gridData = history[index];
+        grid.querySelectorAll('tbody tr').forEach((row, i) => {
+            row.querySelectorAll('td').forEach((cell, j) => {
+                cell.innerHTML = gridData[i][j];
+            });
+        });
+        findAllClusters();
+    }
 
-    let prefix = '';
-    let textToTranslate = '';
-    let suffix = '';
+    function undo() { if (historyIndex > 0) { historyIndex--; restoreState(historyIndex); updateUndoRedoButtons(); } }
+    function redo() { if (historyIndex < history.length - 1) { historyIndex++; restoreState(historyIndex); updateUndoRedoButtons(); } }
+    
+    function updateUndoRedoButtons() {
+        undoBtn.disabled = historyIndex <= 0;
+        redoBtn.disabled = historyIndex >= history.length - 1;
+    }
 
-    if (match) {
-        prefix = match[1] || '';
-        textToTranslate = match[2] || '';
-        suffix = match[3] || '';
-    } else {
-        // Fallback nếu regex không khớp, chỉ tách prefix đơn giản
-        const simplePrefixMatch = originalValue.match(/^(\d+\.\s*)/);
-        if (simplePrefixMatch) {
-            prefix = simplePrefixMatch[0];
-            textToTranslate = originalValue.substring(prefix.length);
-        } else {
-            textToTranslate = originalValue;
+    function createGrid() {
+        const rows = parseInt(rowsInput.value, 10);
+        const cols = parseInt(colsInput.value, 10);
+        let tableHtml = '<table><thead><tr><th></th>';
+        for (let j = 0; j < cols; j++) tableHtml += `<th>${String.fromCharCode(65 + j)}</th>`;
+        tableHtml += '</tr></thead><tbody>';
+        for (let i = 0; i < rows; i++) {
+            tableHtml += `<tr><th>${i + 1}</th>`;
+            for (let j = 0; j < cols; j++) tableHtml += `<td contenteditable="true" data-row="${i}" data-col="${j}"></td>`;
+            tableHtml += '</tr>';
         }
+        tableHtml += '</tbody></table>';
+        gridContainer.innerHTML = tableHtml;
+        grid = gridContainer.querySelector('table');
+        grid.addEventListener('mousedown', handleMouseDown);
+        grid.addEventListener('mouseover', handleMouseOver);
+        document.addEventListener('mouseup', handleMouseUp);
+        grid.addEventListener('paste', handlePaste);
+        grid.addEventListener('input', handleInput);
+        document.addEventListener('copy', handleCopy);
+        saveState();
+        findAllClusters();
     }
 
-    if (!textToTranslate.trim()) {
-        alert('Không có nội dung để dịch.');
-        return;
+    function getCursorPosition(element) { let position = 0; const selection = window.getSelection(); if (selection.rangeCount > 0) { const range = selection.getRangeAt(0); const preCaretRange = range.cloneRange(); preCaretRange.selectNodeContents(element); preCaretRange.setEnd(range.endContainer, range.endOffset); position = preCaretRange.toString().length; } return position; }
+    function setCursorPosition(element, position) { let charCount = 0, targetNode = null, targetOffset = 0; function findNodeAndOffset(node) { if (node.nodeType === Node.TEXT_NODE) { const nextCharCount = charCount + node.length; if (position <= nextCharCount) { targetNode = node; targetOffset = position - charCount; return true; } charCount = nextCharCount; } else if (node.nodeType === Node.ELEMENT_NODE) { for (let i = 0; i < node.childNodes.length; i++) if (findNodeAndOffset(node.childNodes[i])) return true; } return false; } findNodeAndOffset(element); if (targetNode) { const range = document.createRange(); const sel = window.getSelection(); range.setStart(targetNode, Math.min(targetOffset, targetNode.length)); range.collapse(true); sel.removeAllRanges(); sel.addRange(range); } }
+    
+    function handleInput(e) { if (e.target.tagName === 'TD') { const cursorPosition = getCursorPosition(e.target); highlightNumbersInCell(e.target); setCursorPosition(e.target, cursorPosition); clearTimeout(e.target.debounce); e.target.debounce = setTimeout(() => { saveState(); findAllClusters(); }, 500); } }
+    function highlightNumbersInText(text) { return text.replace(/(?<!<[^>]*?)(\b\d+(\.\d+)?\b)/g, '<span class="highlight-number">$1</span>'); }
+    function highlightNumbersInCell(cell) { const text = cell.textContent || ''; cell.innerHTML = highlightNumbersInText(text); }
+    function clearSelection() { grid.querySelectorAll('.selected').forEach(cell => cell.classList.remove('selected')); }
+    function handleMouseDown(e) { if (e.target.tagName !== 'TD') return; removeClusterFocus(); isSelecting = true; if (!e.shiftKey) { clearSelection(); startCell = e.target; } selectCells(startCell, e.target); }
+    function handleMouseOver(e) { if (isSelecting && e.target.tagName === 'TD') selectCells(startCell, e.target); }
+    function handleMouseUp() { isSelecting = false; }
+
+    function selectCells(start, end) { clearSelection(); const startRow = Math.min(parseInt(start.dataset.row), parseInt(end.dataset.row)); const endRow = Math.max(parseInt(start.dataset.row), parseInt(end.dataset.row)); const startCol = Math.min(parseInt(start.dataset.col), parseInt(end.dataset.col)); const endCol = Math.max(parseInt(start.dataset.col), parseInt(end.dataset.col)); for (let i = startRow; i <= endRow; i++) for (let j = startCol; j <= endCol; j++) { const cell = grid.querySelector(`td[data-row="${i}"][data-col="${j}"]`); if (cell) cell.classList.add('selected'); } }
+    
+    function handleCopy(e) { if (!document.activeElement.closest('#smart-grid-panel')) return; const selectedCells = grid.querySelectorAll('.selected'); if (selectedCells.length === 0) return; e.preventDefault(); const rows = {}; selectedCells.forEach(cell => { const r = cell.dataset.row; const c = cell.dataset.col; if (!rows[r]) rows[r] = {}; rows[r][c] = cell.textContent; }); const rowKeys = Object.keys(rows).sort((a, b) => a - b); const copyString = rowKeys.map(r => { const colKeys = Object.keys(rows[r]).sort((a, b) => a - b); return colKeys.map(c => rows[r][c]).join('\t'); }).join('\r\n'); e.clipboardData.setData('text/plain', copyString); }
+    function handlePaste(e) { e.preventDefault(); const pasteData = (e.clipboardData || window.clipboardData).getData('text'); const dataRows = pasteData.split('\n').map(row => row.split('\t')); const activeCell = startCell || grid.querySelector('.selected'); if (!activeCell) return; const startRow = parseInt(activeCell.dataset.row); const startCol = parseInt(activeCell.dataset.col); dataRows.forEach((row, i) => { row.forEach((cellData, j) => { const targetCell = grid.querySelector(`td[data-row="${startRow + i}"][data-col="${startCol + j}"]`); if (targetCell) { targetCell.textContent = cellData.replace(/\r$/, ''); highlightNumbersInCell(targetCell); } }); }); saveState(); findAllClusters(); }
+    
+    function findAllClusters() { dataClusters = []; const regex = /(\d+(\.\d+)?)/g; grid.querySelectorAll('td').forEach(cell => { const text = cell.textContent || ''; let match; while ((match = regex.exec(text)) !== null) { dataClusters.push({ cell, value: match[0], index: match.index }); } }); }
+    function removeClusterFocus() { const focused = document.querySelector('.cluster-focus'); if (focused) { const parentCell = focused.closest('td'); if (parentCell) { const text = parentCell.textContent; parentCell.textContent = text; highlightNumbersInCell(parentCell); } } }
+
+    function focusNextCluster() { removeClusterFocus(); if (dataClusters.length === 0) { currentClusterIndex = -1; return; } currentClusterIndex++; if (currentClusterIndex >= dataClusters.length) currentClusterIndex = 0; const cluster = dataClusters[currentClusterIndex]; const cell = cluster.cell; const text = cell.textContent || ''; const before = text.substring(0, cluster.index); const inside = `<span class="cluster-focus">${cluster.value}</span>`; const after = text.substring(cluster.index + cluster.value.length); cell.innerHTML = highlightNumbersInText(before) + inside + highlightNumbersInText(after); cell.querySelector('.cluster-focus')?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); }
+
+    function setupSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) { micButton.disabled = true; return; }
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = 'vi-VN';
+        recognition.interimResults = true;
+        recognition.onstart = () => { micButton.classList.add('recording'); micButton.textContent = '🔴'; };
+        recognition.onend = () => { micButton.classList.remove('recording'); micButton.textContent = '🎤'; };
+        let finalTranscript = '';
+        recognition.onresult = (event) => { let interimTranscript = ''; for (let i = event.resultIndex; i < event.results.length; ++i) { if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript; else interimTranscript += event.results[i][0].transcript; } if (event.results[event.results.length - 1].isFinal) { const resultText = finalTranscript.trim(); if (resultText) { const number = vietnameseTextToNumber(resultText); updateCellWithVoiceData(number); } finalTranscript = ''; } };
+        recognition.onerror = (event) => console.error('Lỗi nhận dạng giọng nói (Bảng tính): ', event.error);
     }
 
-    const sourceLang = 'vi';
-    const targetLang = 'en';
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(textToTranslate)}`;
+    function toggleVoiceRecognition() { if (!recognition) return; if (micButton.classList.contains('recording')) recognition.stop(); else recognition.start(); }
 
-    activeInput.value = 'Đang dịch...';
-    activeInput.disabled = true;
+    function updateCellWithVoiceData(data) { const focusedCluster = document.querySelector('.cluster-focus'); if (focusedCluster) { const parentCell = focusedCluster.closest('td'); const oldHTML = parentCell.innerHTML; const newHTML = oldHTML.replace(focusedCluster.outerHTML, String(data)); parentCell.innerHTML = newHTML; highlightNumbersInCell(parentCell); } else { const selectedCells = grid.querySelectorAll('.selected'); if (selectedCells.length > 0) { selectedCells.forEach(cell => { cell.textContent = data; highlightNumbersInCell(cell); }); } } saveState(); findAllClusters(); }
 
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('Lỗi mạng khi dịch.');
-        }
-        const data = await response.json();
-        const translatedText = data?.[0]?.[0]?.[0];
+    const simpleNum = {'không':0,'một':1,'hai':2,'ba':3,'bốn':4,'tư':4,'năm':5,'sáu':6,'bảy':7,'tám':8,'chín':9}; const tenNum = {'mười':10,'một':1,'hai':2,'ba':3,'bốn':4,'tư':4,'năm':5,'lăm':5,'sáu':6,'bảy':7,'tám':8,'chín':9,'mốt':1};
+    function parseVietnameseChunk(chunkStr) { let total = 0; const words = chunkStr.trim().split(/\s+/).filter(w => w); if (words.length === 0) return 0; const tramIndex = words.indexOf("trăm"); if (tramIndex !== -1) { const hundredsWord = words[tramIndex - 1]; total += (simpleNum[hundredsWord] || 1) * 100; words.splice(0, tramIndex + 1); } if (words.length > 0) { if (words.includes('mươi')) { const muoiIndex = words.indexOf('mươi'); const tensWord = words[muoiIndex - 1]; total += (simpleNum[tensWord] || 0) * 10; if (words[muoiIndex + 1]) total += tenNum[words[muoiIndex + 1]] || 0; } else if (words[0] === 'mười') { total += 10; if (words[1]) total += tenNum[words[1]] || 0; } else if (words[0] === 'linh' || words[0] === 'lẻ') { if (words[1]) total += tenNum[words[1]] || 0; } else { total += simpleNum[words[0]] || 0; } } return total; }
+    function vietnameseTextToNumber(text) { text = text.toLowerCase().trim().replace(/,/g, ''); const singleWords = text.split(/\s+/); if (singleWords.every(word => simpleNum[word] !== undefined)) { return singleWords.map(word => simpleNum[word]).join(' '); } if (text.includes('phẩy')) { const parts = text.split('phẩy'); const integerPart = vietnameseTextToNumber(parts[0].trim()); let decimalPartStr = ''; parts[1].trim().split(/\s+/).forEach(word => { if (simpleNum[word] !== undefined) decimalPartStr += simpleNum[word]; }); if (String(integerPart).includes(' ')) return text; return parseFloat(`${integerPart}.${decimalPartStr}`); } const mega = { 'tỷ': 1000000000, 'triệu': 1000000, 'nghìn': 1000, 'ngàn': 1000 }; let grandTotal = 0; let currentChunk = ''; for (const word of text.split(/\s+/)) { if (mega[word] !== undefined) { let chunkVal = (currentChunk.trim() === '') ? 1 : parseVietnameseChunk(currentChunk); grandTotal += chunkVal * mega[word]; currentChunk = ''; } else { currentChunk += word + ' '; } } if (currentChunk.trim() !== '') { grandTotal += parseVietnameseChunk(currentChunk); } if (grandTotal === 0 && text.trim() !== 'không' && text.trim() !== 'linh') { const numberWords = {'không':0,'một':1,'hai':2,'ba':3,'bốn':4,'năm':5,'sáu':6,'bảy':7,'tám':8,'chín':9,'mười':10}; const regex = new RegExp('\\b(' + Object.keys(numberWords).join('|') + ')\\b', 'gi'); return text.replace(regex, (match) => numberWords[match.toLowerCase()]); } return grandTotal; }
 
-        if (translatedText) {
-            const finalValue = `${prefix}${translatedText}${suffix}`.replace(/\s+/g, ' ').trim();
-            activeInput.value = finalValue;
-            activeInput.dispatchEvent(new Event('input', { bubbles: true }));
-        } else {
-            throw new Error('Không nhận được kết quả dịch hợp lệ.');
-        }
-    } catch (error) {
-        console.error('Lỗi dịch:', error);
-        alert('Đã xảy ra lỗi khi dịch. Vui lòng thử lại.');
-        activeInput.value = originalValue; // Khôi phục giá trị cũ nếu lỗi
-    } finally {
-        activeInput.disabled = false;
-        activeInput.focus();
+    // Init function
+    function init() {
+        createGridBtn.addEventListener('click', createGrid);
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        micButton.addEventListener('click', toggleVoiceRecognition);
+        setupSpeechRecognition();
+        createGrid();
     }
-}
-
-
-// === HÀM CHUYỂN ĐỔI SỐ TỪ CHỮ ===
-function convertVietnameseNumberWordsToDigits(text) {
-    const numberMap = { 'không': '0', 'linh': '0', 'lẻ': '0', 'một': '1', 'mốt': '1', 'hai': '2', 'ba': '3', 'bốn': '4', 'tư': '4', 'năm': '5', 'lăm': '5', 'sáu': '6', 'bảy': '7', 'bẩy': '7', 'tám': '8', 'chín': '9', 'mười': '10', };
-    let processedText = ` ${text.toLowerCase()} `.replace(/ phẩy /g, '.');
-    const words = processedText.split(' ');
-    const resultWords = words.map(word => numberMap[word] || word);
-    return resultWords.join(' ').replace(/\s+/g, ' ').trim();
-}
-
-
-// === NHẬP LIỆU GIỌNG NÓI ===
-function initializeSpeechRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        console.warn("Trình duyệt của bạn không hỗ trợ Web Speech API.");
-        voiceInputBtn.disabled = true;
-        voiceInputBtn.title = "Trình duyệt không hỗ trợ tính năng này.";
-        const voiceHotkeyInput = document.getElementById('hotkey-voice-input');
-        if(voiceHotkeyInput) voiceHotkeyInput.disabled = true;
-        return;
-    }
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.lang = 'vi-VN';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onstart = () => { isRecognizing = true; voiceInputBtn.textContent = '🔴'; voiceInputBtn.style.backgroundColor = '#dc3545'; voiceInputBtn.title = 'Đang lắng nghe...'; };
-    recognition.onresult = (event) => {
-        const rawTranscript = event.results[0][0].transcript;
-        const processedTranscript = convertVietnameseNumberWordsToDigits(rawTranscript);
-        if (lastFocusedInputForVoice && processedTranscript) {
-            const target = lastFocusedInputForVoice;
-            const start = target.selectionStart;
-            const end = target.selectionEnd;
-            const currentValue = target.value;
-            const newValue = currentValue.substring(0, start) + processedTranscript + currentValue.substring(end);
-            target.value = newValue;
-            const newCursorPos = start + processedTranscript.length;
-            target.setSelectionRange(newCursorPos, newCursorPos);
-            target.dispatchEvent(new Event('input', { bubbles: true }));
-            target.focus();
-        }
+    
+    // Public API
+    return {
+        init,
+        undo,
+        redo,
+        focusNextCluster,
+        toggleVoiceRecognition
     };
-    recognition.onspeechend = () => { recognition.stop(); };
-    recognition.onend = () => { isRecognizing = false; voiceInputBtn.textContent = '🎤'; voiceInputBtn.style.backgroundColor = ''; voiceInputBtn.title = 'Kích hoạt nhập liệu giọng nói (dùng phím tắt)'; };
-    recognition.onerror = (event) => { console.error('Lỗi nhận dạng giọng nói:', event.error); if (event.error === 'not-allowed' || event.error === 'service-not-allowed') { alert('Quyền truy cập micro đã bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt và sử dụng trang web qua HTTPS.'); } };
-}
+})();
 
-function startVoiceRecognition() {
-    if (!recognition || isRecognizing) { return; }
-    if (document.activeElement && (document.activeElement.matches('input[type="text"]') || document.activeElement.tagName === 'TEXTAREA')) {
-         lastFocusedInputForVoice = document.activeElement;
-         recognition.start();
-    } else { alert('Vui lòng chọn một ô nhập tên hoặc ô ghi chú để bắt đầu nhập liệu bằng giọng nói.'); }
-}
 
-// === EVENT LISTENERS ===
+// --- EVENT LISTENERS CHUNG ---
 largePreviewContainer.addEventListener('wheel', (e) => { if (!largePreviewImg.src || largePreviewImg.style.display === 'none') return; e.preventDefault(); const delta = e.deltaY * -0.001; const newScale = Math.min(Math.max(1, imgScale + delta * 5), 10); imgScale = newScale; if (imgScale === 1) imgTranslate = {x: 0, y: 0}; updateTransform(); });
 largePreviewContainer.addEventListener('mousedown', (e) => { if (imgScale <= 1 || !largePreviewImg.src || e.button !== 0) return; isPanning = true; startPan = { x: e.clientX - imgTranslate.x, y: e.clientY - imgTranslate.y }; largePreviewContainer.style.cursor = 'grabbing'; });
 document.addEventListener('mousemove', (e) => { if (!isPanning) return; e.preventDefault(); imgTranslate.x = e.clientX - startPan.x; imgTranslate.y = e.clientY - startPan.y; updateTransform(); });
@@ -655,11 +547,21 @@ hideAllImagesBtn.addEventListener('click', () => { pageWrapper.classList.toggle(
 nextImageBtn.addEventListener('click', () => navigateImage('next'));
 prevImageBtn.addEventListener('click', () => navigateImage('prev'));
 voiceInputBtn.addEventListener('click', startVoiceRecognition);
+toggleSmartGridBtn.addEventListener('click', () => {
+    const isVisible = smartGridPanel.style.display === 'block';
+    smartGridPanel.style.display = isVisible ? 'none' : 'block';
+    toggleSmartGridBtn.style.backgroundColor = isVisible ? '#17a2b8' : '#28a745';
+});
 
 document.addEventListener('keydown', (e) => {
     if (e.target.closest('#hotkey-settings')) return;
-    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); restoreStateFromHistory(); return; } 
-    if (e.key === 'Delete' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) { e.preventDefault(); deleteSelectedBtn.click(); }
+
+    // Phân luồng Undo/Redo dựa trên ngữ cảnh
+    const isSmartGridActive = document.activeElement && document.activeElement.closest('#smart-grid-panel');
+    if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); if (isSmartGridActive) { smartGrid.undo(); } else { restoreStateFromHistory(); } return; }
+    if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); if (isSmartGridActive) { smartGrid.redo(); } /* Sắp xếp ảnh chưa có redo */ return; }
+
+    if (e.key === 'Delete' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) && !isSmartGridActive) { e.preventDefault(); deleteSelectedBtn.click(); }
 
     const action = Object.keys(hotkeys).find(key => hotkeys[key] === e.code || hotkeys[key] === e.key);
     if (action) {
@@ -667,17 +569,15 @@ document.addEventListener('keydown', (e) => {
         switch (action) {
             case 'nextImage': navigateImage('next'); break;
             case 'prevImage': navigateImage('prev'); break;
-            case 'editName': 
-                if (lastSelectedWrapper && previewNameInput.style.display !== 'none') {
-                    previewNameInput.focus();
-                    handleNameInputFocus(previewNameInput);
-                }
-                break;
+            case 'editName': if (lastSelectedWrapper && previewNameInput.style.display !== 'none') { previewNameInput.focus(); handleNameInputFocus(previewNameInput); } break;
             case 'rotateLeft': rotateLeftBtn.click(); break;
             case 'rotateRight': rotateRightBtn.click(); break;
             case 'pinToolbar': pinToolbarBtn.click(); break;
-            case 'voiceInput': startVoiceRecognition(); break;
-            case 'translateName': translateFocusedInput(); break; // <-- Kích hoạt dịch
+            case 'translateName': translateFocusedInput(); break;
+            // Xử lý phím tắt theo ngữ cảnh
+            case 'voiceInput': if (!isSmartGridActive) startVoiceRecognition(); break;
+            case 'smartGridVoice': if (isSmartGridActive) smartGrid.toggleVoiceRecognition(); break;
+            case 'smartGridNext': if (isSmartGridActive) smartGrid.focusNextCluster(); break;
             default: actionHandled = false;
         }
         if(actionHandled) { e.preventDefault(); }
@@ -686,40 +586,8 @@ document.addEventListener('keydown', (e) => {
 
 previewNameInput.addEventListener('input', () => { if (lastSelectedWrapper) { const gridInput = lastSelectedWrapper.querySelector('.name-container input[type="text"]'); if (gridInput) { gridInput.value = previewNameInput.value; syncNameListFromInputs(); clearTimeout(previewNameInput.saveTimeout); previewNameInput.saveTimeout = setTimeout(() => { saveState(); updateCurrentState(); }, 500); } } });
 
-function handleNameInputFocus(target) {
-    if (!smartSelectToggle.checked) {
-        const fullValue = target.value;
-        const prefixMatch = fullValue.match(/^\d+\.\s+/);
-        const startIndex = prefixMatch ? prefixMatch[0].length : 0;
-        setTimeout(() => target.setSelectionRange(startIndex, fullValue.length), 0);
-        return;
-    }
-    const fullValue = target.value;
-    const prefixMatch = fullValue.match(/^\d+\.\s*/);
-    const prefixLength = prefixMatch ? prefixMatch[0].length : 0;
-    const namePart = fullValue.substring(prefixLength);
-    const numericMatch = namePart.match(/-?\d+(\.\d+)?/);
-    if (numericMatch) {
-        const numericValue = numericMatch[0];
-        const startIndexInNamePart = numericMatch.index;
-        const absoluteStartIndex = prefixLength + startIndexInNamePart;
-        const absoluteEndIndex = absoluteStartIndex + numericValue.length;
-        setTimeout(() => target.setSelectionRange(absoluteStartIndex, absoluteEndIndex), 0);
-    } else {
-        setTimeout(() => target.setSelectionRange(prefixLength, fullValue.length), 0);
-    }
-}
-
-document.addEventListener('focusin', (event) => {
-    const target = event.target;
-    if (target.matches('input[type="text"], textarea')) {
-        lastFocusedInputForVoice = target;
-        if (target.matches('.name-container input[type="text"], #preview-name-input')) {
-            handleNameInputFocus(target);
-        }
-    }
-});
-
+function handleNameInputFocus(target) { if (!smartSelectToggle.checked) { const fullValue = target.value; const prefixMatch = fullValue.match(/^\d+\.\s+/); const startIndex = prefixMatch ? prefixMatch[0].length : 0; setTimeout(() => target.setSelectionRange(startIndex, fullValue.length), 0); return; } const fullValue = target.value; const prefixMatch = fullValue.match(/^\d+\.\s*/); const prefixLength = prefixMatch ? prefixMatch[0].length : 0; const namePart = fullValue.substring(prefixLength); const numericMatch = namePart.match(/-?\d+(\.\d+)?/); if (numericMatch) { const numericValue = numericMatch[0]; const startIndexInNamePart = numericMatch.index; const absoluteStartIndex = prefixLength + startIndexInNamePart; const absoluteEndIndex = absoluteStartIndex + numericValue.length; setTimeout(() => target.setSelectionRange(absoluteStartIndex, absoluteEndIndex), 0); } else { setTimeout(() => target.setSelectionRange(prefixLength, fullValue.length), 0); } }
+document.addEventListener('focusin', (event) => { const target = event.target; if (target.matches('input[type="text"], textarea')) { lastFocusedInputForVoice = target; if (target.matches('.name-container input[type="text"], #preview-name-input')) { handleNameInputFocus(target); } } });
 highlightTallBtn.addEventListener('click', () => { pageWrapper.classList.toggle('highlight-tall-active'); if (pageWrapper.classList.contains('highlight-tall-active')) { highlightTallBtn.style.backgroundColor = '#28a745'; photoGrid.querySelectorAll('.photo-wrapper').forEach(wrapper => { const id = wrapper.getAttribute('data-photo-id'); const data = photoDataMap.get(id); if(data){ const img = new Image(); img.onload = () => { if (img.naturalHeight > img.naturalWidth) { wrapper.classList.add('is-tall'); } URL.revokeObjectURL(img.src); }; img.src = URL.createObjectURL(data.blob); } }); } else { highlightTallBtn.style.backgroundColor = ''; photoGrid.querySelectorAll('.is-tall').forEach(el => el.classList.remove('is-tall')); } });
 togglePreviewBtn.addEventListener('click', () => { pageWrapper.classList.toggle('preview-hidden'); togglePreviewBtn.textContent = pageWrapper.classList.contains('preview-hidden') ? 'Hiện Preview' : 'Ẩn Preview'; });
 function updateNumericFilteredNamesList() { const filteredElements = Array.from(photoGrid.querySelectorAll('.photo-wrapper:not(.hidden-by-filter)')); const names = filteredElements.map(el => el.querySelector('.name-container input').value); numericFilteredNamesList.value = names.join('\n'); }
@@ -733,33 +601,12 @@ mainContentEl.addEventListener('input', (event) => { const target = event.target
 localNoteArea.addEventListener('input', () => { localStorage.setItem('localNote', localNoteArea.value); });
 hotkeySettingsContainer.addEventListener('keydown', (e) => { const input = e.target; if (input.tagName === 'INPUT') { e.preventDefault(); const keyValue = e.code.startsWith('Key') || e.code.startsWith('Digit') || e.code.startsWith('Arrow') ? e.code : e.key; input.value = keyValue; const action = input.dataset.action; if (action) { hotkeys[action] = keyValue; saveHotkeys(); } } });
 pinToolbarBtn.addEventListener('click', () => { const isCurrentlyPinned = pageWrapper.classList.contains('toolbar-pinned'); setToolbarPinned(!isCurrentlyPinned); });
-
-// ===== PHẦN ĐƯỢC SỬA ĐỔI THEO YÊU CẦU =====
-document.addEventListener('mousemove', (e) => {
-    // Chỉ áp dụng logic này khi thanh công cụ không được ghim
-    if (!pageWrapper.classList.contains('toolbar-pinned')) {
-        // Lấy chiều rộng của thanh công cụ từ CSS (450px)
-        const toolbarWidth = 450;
-        // Ngưỡng để ẩn thanh công cụ: chiều rộng + 200px (khoảng >5cm) để tạo vùng đệm
-        const hideThreshold = toolbarWidth + 200;
-
-        if (e.clientX < 15) {
-            // Khi chuột ở sát mép trái (dưới 15px), hiện thanh công cụ
-            toolbar.classList.add('visible');
-        } else if (e.clientX > hideThreshold) {
-            // Khi chuột di chuyển ra xa hơn vùng đệm, ẩn thanh công cụ
-            toolbar.classList.remove('visible');
-        }
-        // Nếu vị trí chuột nằm giữa 15px và hideThreshold, sẽ không có hành động nào xảy ra.
-        // Điều này tạo ra "vùng an toàn" và giải quyết vấn đề của bạn.
-    }
-});
-// Đã xóa bỏ sự kiện 'mouseleave' cũ để logic mới hoạt động chính xác.
-// ===== KẾT THÚC PHẦN SỬA ĐỔI =====
+document.addEventListener('mousemove', (e) => { if (!pageWrapper.classList.contains('toolbar-pinned')) { const toolbarWidth = 450; const hideThreshold = toolbarWidth + 200; if (e.clientX < 15) { toolbar.classList.add('visible'); } else if (e.clientX > hideThreshold) { toolbar.classList.remove('visible'); } } });
 
 function initializeApp() {
     loadHotkeys();
     initializeSpeechRecognition();
+    smartGrid.init(); // Khởi tạo module Bảng tính
     const savedNote = localStorage.getItem('localNote');
     if (savedNote) { localNoteArea.value = savedNote; }
     const isPinned = localStorage.getItem('toolbarPinned') === 'true';
@@ -769,7 +616,6 @@ function initializeApp() {
 }
 
 initializeApp();
-
 </script>
 </body>
 </html>
