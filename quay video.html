@@ -4,515 +4,1010 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Kiểm Định Video & Hình Ảnh</title>
-    <!-- Thư viện hỗ trợ tạo file ZIP và lưu file -->
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    <title>Hệ Thống Kiểm Định Video & Hình Ảnh (Ép buộc MP4)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js"></script>
+
     <style>
-        /* --- GLOBAL STYLES --- */
         :root {
             --color-primary: #007bff;
             --color-secondary: #6c757d;
             --color-danger: #dc3545;
             --color-success: #28a745;
+            --color-warning: #ffc107;
+            --color-info: #17a2b8;
             --color-dark: #343a40;
             --color-light-gray: #f8f9fa;
             --color-border: #dee2e6;
         }
+        html { height: 100%; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             line-height: 1.6;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f4f7f9;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+        h1, h2, h3 { color: var(--color-dark); }
+        h1 { text-align: center; color: #0056b3; padding: 15px; margin: 0; background: #fff; border-bottom: 1px solid var(--color-border); }
+        h2 { border-bottom: 2px solid #eef; padding-bottom: 10px; }
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            height: 100%;
+            overflow: hidden;
+        }
+        .tabs {
+            display: flex;
+            background-color: #e9ecef;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+        .tab-button {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--color-secondary);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+        }
+        .tab-content { display: none; }
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            height: 100%;
+            overflow: hidden;
+        }
+        .preview-container {
+            position: sticky;
+            top: 0;
+            background-color: #000;
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            flex-shrink: 0;
+        }
+        .preview-container video {
+            width: 100%;
+            max-width: 600px;
+            max-height: 40vh;
+            background-color: #000;
+        }
+        #close-video-preview-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: 1px solid white;
+        }
+        .scrollable-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 100px;
         }
         .section-container {
-            max-width: 800px;
-            margin: 25px auto;
             background: #fff;
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 6px 25px rgba(0,0,0,0.1);
-            border: 1px solid #eef;
+            margin: 0; /* Adjusted for grid layout */
         }
-        h1, h2, h3 {
-            color: var(--color-dark);
-            border-bottom: 2px solid #eef;
-            padding-bottom: 10px;
-            text-align: center;
-        }
-        h1 { color: #0056b3; }
-
-        /* --- SHARED BUTTON & FORM STYLES --- */
         button, a.btn {
-            padding: 12px 20px;
-            font-size: 15px;
+            padding: 8px 14px; /* Adjusted size */
+            font-size: 14px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             transition: all 0.2s;
             font-weight: 600;
             white-space: nowrap;
-            text-align: center;
             text-decoration: none;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
-
-        /* --- VIDEO RECORDER STYLES (SECTION 1) --- */
-        .video-recorder .form-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .video-recorder input[type="text"], .video-recorder select { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
-        .video-recorder .btn-add { background-color: #28a745; color: white; }
-        .video-recorder .btn-record { background-color: #1a73e8; color: white; }
-        .video-recorder .btn-stop { background-color: #dc3545; color: white; }
-        .video-recorder .btn-download { background-color: #1e8e3e; color: white; }
-        .video-recorder .btn-delete-item { background-color: #6c757d; color: white; }
-        .video-recorder .btn-delete-all { background-color: #c82333; color: white; width: 100%; margin-top: 10px; }
-        .video-recorder video { width: 100%; border-radius: 8px; background-color: #000; margin-bottom: 15px; }
-        .video-recorder .item { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 10px; }
-        .video-recorder .item-name { font-weight: 500; word-break: break-word; }
-        .video-recorder .item-actions { display: flex; gap: 8px; flex-shrink: 0; }
-        .video-recorder .status-bar { text-align: center; font-weight: bold; padding: 10px; border-radius: 5px; margin-top: 15px; display: none; }
-        .video-recorder .status-recording { background-color: #ffe0e3; color: #dc3545; }
-        .video-recorder .status-processing { background-color: #cce5ff; color: #004085; }
-        .video-recorder .status-error { background-color: #fff3cd; color: #856404; }
-
-        /* --- PHOTO CAPTURE STYLES (SECTION 2) --- */
-        .photo-capture .action-button {
-            padding: 15px 25px; font-size: 1.2rem; margin-top: 10px; margin-right: 10px;
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
         }
-        .photo-capture .start-button { background-color: var(--color-success); color: white; }
-        .photo-capture .download-button { background-color: var(--color-primary); color: white; }
-        
-        /* --- CAMERA MODAL STYLES --- */
+        .photo-box {
+            position: relative;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .photo-box:hover { border-color: var(--color-primary); }
+        .photo-box img { width: 100%; height: 100%; object-fit: cover; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+        input[type="text"], select { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        .large-section { border: 1px solid var(--color-border); border-radius: 8px; margin-bottom: 0; } /* Adjusted for grid */
+        .large-section-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background-color: var(--color-light-gray);
+            border-bottom: 1px solid var(--color-border);
+            gap: 15px;
+        }
+        .large-section-header h3 { margin: 0; flex-grow: 1; min-width: 150px; }
+        .large-section-header-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .large-section-content { padding: 15px; }
+        .large-section.disabled { background-color: #f5f5f5; opacity: 0.7; }
+        .large-section.disabled h3 { text-decoration: line-through; }
+        .large-section-items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        .video-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center; gap: 10px; padding: 10px;
+            background: #fff; border: 1px solid var(--color-border);
+            border-radius: 8px;
+        }
+        .video-item-name { font-weight: 500; word-break: break-word; font-size: 14px; }
+        .video-item-actions { display: flex; gap: 5px; }
+        .status-bar { text-align: center; font-weight: bold; padding: 10px; border-radius: 5px; margin-top: 15px; display: none; flex-shrink: 0; }
+        .status-recording { background-color: #ffe0e3; color: var(--color-danger); }
+        .status-processing { background-color: #fff3cd; color: #856404; }
         #camera-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.9); z-index: 10000;
-            display: none; flex-direction: column; justify-content: flex-start;
-            align-items: center; gap: 15px; padding-top: 20px;
-            box-sizing: border-box; overflow-y: auto;
+            display: none; flex-direction: column;
         }
-        #camera-modal #camera-video {
-            width: 90%; max-width: 600px; height: auto;
-            border: 2px solid white; border-radius: 8px;
+        #camera-modal-top {
+            flex-shrink: 0;
+            position: relative;
         }
-        #camera-modal #modal-actions { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
-        #camera-modal #modal-actions button { padding: 12px 25px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; }
-        #camera-modal #capture-btn { background-color: var(--color-primary); color: white; }
-        #camera-modal #close-btn { background-color: var(--color-danger); color: white; }
-        #camera-modal #error-message {
-            color: yellow; background-color: rgba(255, 0, 0, 0.5);
-            padding: 10px; border-radius: 5px; text-align: center;
-            max-width: 90%; display: none;
+        #camera-modal-video { 
+            width: 100%; 
+            max-height: 70vh; /* Increased height */
+            display: block; 
         }
-        #camera-modal #photo-grid-container { width: 100%; max-width: 90%; margin-top: 15px; }
-        #camera-modal #photo-grid-container h3 { color: white; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; }
-        #camera-modal #photo-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 10px; padding-bottom: 20px;
+        #camera-modal-actions { 
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex; 
+            gap: 20px; 
+            justify-content: center;
+            width: 100%;
         }
-        #camera-modal .photo-box {
-            position: relative; border: 2px dashed #aaa; background-color: rgba(255, 255, 255, 0.1);
-            aspect-ratio: 1 / 1; display: flex; align-items: center;
-            justify-content: center; border-radius: 5px; overflow: hidden;
+        #camera-modal-actions button {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: 2px solid white;
         }
-        #camera-modal .photo-box span { font-size: 3rem; color: #888; }
-        #camera-modal .photo-box img { width: 100%; height: 100%; object-fit: cover; }
+        #capture-btn { display: none; }
+        #camera-modal-content { 
+            flex-grow: 1;
+            overflow-y: auto; 
+            padding: 15px; 
+            background-color: #222;
+        }
+        #lightbox-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 20000;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+        #lightbox-img { max-width: 90%; max-height: 80%; object-fit: contain; }
+        #lightbox-actions { margin-top: 20px; display: flex; gap: 20px; }
+        #central-action-button {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background-color: var(--color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 999;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        #central-action-button.recording { background-color: var(--color-danger); }
+        #central-action-button:active { transform: translateX(-50%) scale(0.95); }
+        #central-action-button svg { width: 30px; height: 30px; fill: white; }
+
+        /* Styles for 2-column grid layout */
+        .sections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        #large-sections-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .btn-add { background-color: var(--color-success); color: white; }
+        .btn-record { background-color: var(--color-primary); color: white; }
+        .btn-stop { background-color: var(--color-danger); color: white; }
+        .btn-download { background-color: var(--color-info); color: white; }
+        .btn-delete-item { background-color: var(--color-secondary); color: white; }
+        .btn-danger { background-color: var(--color-danger); color: white; }
+        .btn-warning { background-color: var(--color-warning); color: black; }
+        .btn-primary { background-color: var(--color-primary); color: white; }
+        .btn-secondary { background-color: var(--color-secondary); color: white; }
     </style>
 </head>
 <body>
-    <h1>Hệ Thống Kiểm Định Video & Hình Ảnh</h1>
-
-    <!-- =================================================================== -->
-    <!-- PHẦN 1: HỆ THỐNG QUAY VIDEO                                          -->
-    <!-- =================================================================== -->
-    <div class="section-container video-recorder">
-        <h2>Phần 1: Hệ Thống Quay Video (Không Âm Thanh)</h2>
-        <div class="setup-section">
-            <h3>1. Thiết lập hạng mục</h3>
-            <div class="form-group">
-                <input type="text" id="item-name-input" placeholder="Nhập tên hạng mục (ví dụ: Kiểm tra động cơ)">
-                <button id="add-item-btn" class="btn-add">Thêm</button>
-            </div>
-            <div class="form-group">
-                <label for="compression-level" style="flex-shrink: 0; align-self: center;">Mức nén video:</label>
-                <select id="compression-level">
-                    <option value="high">Chất lượng cao (720p)</option>
-                    <option value="medium" selected>Trung bình (480p)</option>
-                    <option value="max">Nén tối đa (360p)</option>
-                </select>
-            </div>
-            <button id="delete-all-btn" class="btn-delete-all">Xóa Toàn Bộ Dữ Liệu Video</button>
+    <h1>Hệ Thống Kiểm Định (Ép buộc MP4)</h1>
+    <div class="main-container">
+        <div style="padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--color-border); flex-shrink: 0;">
+            <button id="download-all-zip-btn" class="btn-primary">Tải Tất Cả (ZIP)</button>
         </div>
-        <video id="video-preview" playsinline autoplay muted style="display: none;"></video>
-        <div id="status-bar" class="status-bar"></div>
-        <div class="list-section">
-            <h3>2. Danh sách quay</h3>
-            <div id="inspection-list"></div>
+        <div class="tabs">
+            <button class="tab-button active" data-tab="photo">Chụp Ảnh</button>
+            <button class="tab-button" data-tab="video">Quay Video</button>
+        </div>
+        <div id="photo-tab-content" class="tab-content active">
+            <div class="scrollable-content">
+                <div class="section-container" style="max-width: 1200px; margin: 0 auto 25px auto;">
+                    <h2>Hệ Thống Chụp Ảnh</h2>
+                    <p>Nhấn nút máy ảnh ở góc dưới để bắt đầu. Nhấn vào ảnh đã chụp để xem lớn hoặc xóa.</p>
+                    <hr>
+                    <div id="photo-grid" class="photo-grid"></div>
+                </div>
+            </div>
+        </div>
+        <div id="video-tab-content" class="tab-content">
+            <div id="preview-container" class="preview-container">
+                <video id="video-preview" playsinline autoplay muted></video>
+                <button id="close-video-preview-btn" class="btn-secondary">Đóng</button>
+            </div>
+            <div id="status-bar" class="status-bar"></div>
+            <div class="scrollable-content">
+                <div class="sections-grid">
+                    <div class="section-container">
+                        <h2>Video Quay Nhanh</h2>
+                        <p>Các video được quay nhanh bằng nút trôi nổi sẽ xuất hiện ở đây.</p>
+                        <div id="homeless-videos-grid" class="large-section-items-grid"></div>
+                    </div>
+                    <div class="section-container">
+                        <h2>Hệ Thống Quay Video Theo Section</h2>
+                        <div class="form-group">
+                            <input type="text" id="large-section-name-input" placeholder="Nhập tên Section Lớn (ví dụ: Khu vực động cơ)">
+                            <button id="add-large-section-btn" class="btn-add">Thêm Section</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="compression-level">Mức nén:</label>
+                            <select id="compression-level">
+                                <option value="high">Cao (720p)</option>
+                                <option value="medium" selected>Trung bình (480p)</option>
+                                <option value="max">Tối đa (360p)</option>
+                            </select>
+                        </div>
+                        <!-- Start: Mute/Unmute Checkbox -->
+                        <div class="form-group">
+                             <input type="checkbox" id="record-audio-checkbox">
+                             <label for="record-audio-checkbox">Ghi kèm âm thanh (mặc định tắt)</label>
+                        </div>
+                        <!-- End: Mute/Unmute Checkbox -->
+                    </div>
+                </div>
+                 <div id="large-sections-container"></div>
+            </div>
         </div>
     </div>
-
-    <!-- =================================================================== -->
-    <!-- PHẦN 2: HỆ THỐNG CHỤP ẢNH                                             -->
-    <!-- =================================================================== -->
-    <div class="section-container photo-capture">
-        <h2>Phần 2: Hệ Thống Chụp Ảnh</h2>
-        <p>Nhấn "Mở Camera" để mở lớp phủ camera. Bạn có thể chụp liên tục. Nếu không hoạt động, hãy chắc chắn bạn đã cấp quyền và đang dùng HTTPS.</p>
-        <button id="open-btn" class="action-button start-button">Mở Camera Chụp Ảnh</button>
-        <button id="download-zip-btn" class="action-button download-button">Tải Tất Cả Ảnh (ZIP)</button>
-    </div>
-
-    <!-- MODAL CHO CHỨC NĂNG CHỤP ẢNH (NẰM NGOÀI CÙNG) -->
     <div id="camera-modal">
-        <div id="error-message"></div>
-        <video id="camera-video" playsinline></video>
-        <canvas id="camera-canvas" style="display: none;"></canvas>
-        <div id="modal-actions">
-            <button id="capture-btn">Chụp</button>
-            <button id="close-btn">Đóng</button>
-        </div>
-        <div id="photo-grid-container">
-            <h3>Ảnh Đã Chụp</h3>
-            <div id="photo-grid">
-                <!-- Các ô ảnh sẽ được tạo bởi JavaScript -->
+        <div id="camera-modal-top">
+            <video id="camera-modal-video" playsinline></video>
+            <div id="camera-modal-actions">
+                <button id="capture-btn">Chụp</button>
+                <button id="close-camera-btn">Đóng</button>
             </div>
         </div>
+        <div id="camera-modal-content">
+             <!-- Removed h3 "Ảnh Đã Chụp" -->
+             <div id="modal-photo-grid" class="photo-grid"></div>
+        </div>
     </div>
-
+    <canvas id="photo-canvas" style="display: none;"></canvas>
+    <div id="lightbox-modal">
+        <img id="lightbox-img" src="" alt="Ảnh phóng to">
+        <div id="lightbox-actions">
+            <button id="lightbox-delete-btn" class="btn-danger">Xóa Ảnh Này</button>
+            <button id="lightbox-close-btn" class="btn-secondary">Đóng</button>
+        </div>
+    </div>
+    <div id="central-action-button"></div>
 <script>
-    // ====================================================================== //
-    // LOGIC CHO PHẦN 1: HỆ THỐNG QUAY VIDEO                                  //
-    // ====================================================================== //
-    (function() {
-        const STORAGE_KEY = 'inspectionVideoApp_items_muted';
-
-        const itemNameInput = document.getElementById('item-name-input');
-        const addItemBtn = document.getElementById('add-item-btn');
-        const deleteAllBtn = document.getElementById('delete-all-btn');
+document.addEventListener('DOMContentLoaded', () => {
+    const tabs = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const centralActionButton = document.getElementById('central-action-button');
+    const icons = {
+        photo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M149.1 64.8L138.7 96H64C28.7 96 0 124.7 0 160V416c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V160c0-35.3-28.7-64-64-64H373.3L362.9 64.8C356.4 45.2 338.1 32 317.4 32H194.6c-20.7 0-39 13.2-45.5 32.8zM256 192a96 96 0 1 1 0 192 96 96 0 1 1 0-192z"/></svg>`,
+        video: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zM559.1 99.8c10.4 5.6 16.9 16.4 16.9 28.2V384c0 11.8-6.5 22.6-16.9 28.2s-23 5-32.9-1.6l-96-64L416 337.1V174.9l14.2-9.5 96-64c9.8-6.5 22.4-7.2 32.9-1.6z"/></svg>`,
+        stop: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128z"/></svg>`
+    };
+    function updateCentralButton(activeTab, isRecording = false) {
+        if (activeTab === 'photo') {
+            centralActionButton.innerHTML = icons.photo;
+            centralActionButton.classList.remove('recording');
+        } else if (activeTab === 'video') {
+            if (isRecording) {
+                centralActionButton.innerHTML = icons.stop;
+                centralActionButton.classList.add('recording');
+            } else {
+                centralActionButton.innerHTML = icons.video;
+                centralActionButton.classList.remove('recording');
+            }
+        }
+    }
+    centralActionButton.addEventListener('click', () => {
+        const activeTab = document.querySelector('.tab-button.active').dataset.tab;
+        if (activeTab === 'photo') {
+            if (photoModule.isModalOpen()) {
+                photoModule.capturePhoto();
+            } else {
+                photoModule.startCamera();
+            }
+        } else if (activeTab === 'video') {
+            const isPreviewing = videoModule.isPreviewActive();
+            const isRecording = videoModule.isRecording();
+            if (isRecording) {
+                videoModule.stopRecording();
+            } else if (isPreviewing) {
+                videoModule.startHomelessRecording();
+            } else {
+                videoModule.startCameraPreview();
+            }
+        }
+    });
+    const previewContainer = document.getElementById('preview-container');
+    const statusBar = document.getElementById('status-bar');
+    const videoTabContent = document.getElementById('video-tab-content');
+    videoTabContent.prepend(statusBar);
+    videoTabContent.prepend(previewContainer);
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const activeTabId = tab.dataset.tab;
+            tabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById(activeTabId + '-tab-content').classList.add('active');
+            updateCentralButton(activeTabId, videoModule.isRecording());
+        });
+    });
+    updateCentralButton('photo');
+    window.addEventListener('beforeunload', (event) => {
+        if (photoModule.getBlobs().length > 0 || videoModule.hasRecordedData()) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
+    document.getElementById('download-all-zip-btn').addEventListener('click', async () => {
+        const button = document.getElementById('download-all-zip-btn');
+        const photoBlobs = photoModule.getBlobs();
+        const videoData = videoModule.getAllRecordedData();
+        if (photoBlobs.length === 0 && videoData.length === 0) {
+            alert("Không có ảnh hoặc video nào để tải!");
+            return;
+        }
+        button.textContent = 'Đang nén...';
+        button.disabled = true;
+        try {
+            const zip = new JSZip();
+            if (photoBlobs.length > 0) {
+                const photoFolder = zip.folder("photos");
+                photoBlobs.forEach((blob, index) => {
+                    photoFolder.file(`photo_${index + 1}.jpeg`, blob);
+                });
+            }
+            if (videoData.length > 0) {
+                const videoFolder = zip.folder("videos");
+                const fetchPromises = videoData.map(async (data) => {
+                    const response = await fetch(data.url);
+                    const blob = await response.blob();
+                    videoFolder.file(`${data.fileName}.${data.extension}`, blob);
+                });
+                await Promise.all(fetchPromises);
+            }
+            const zipBlob = await zip.generateAsync({ type: "blob" });
+            saveAs(zipBlob, "Tong_hop_media.zip");
+        } catch (err) {
+            console.error("Lỗi khi tạo file ZIP tổng:", err);
+            alert("Đã có lỗi xảy ra khi tạo file ZIP.");
+        } finally {
+            button.textContent = 'Tải Tất Cả (ZIP)';
+            button.disabled = false;
+        }
+    });
+    const photoModule = (function() {
+        const modal = document.getElementById('camera-modal');
+        const closeCameraBtn = document.getElementById('close-camera-btn');
+        const videoEl = document.getElementById('camera-modal-video');
+        const canvas = document.getElementById('photo-canvas');
+        const mainPhotoGrid = document.getElementById('photo-grid');
+        const modalPhotoGrid = document.getElementById('modal-photo-grid');
+        const lightbox = document.getElementById('lightbox-modal');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxDeleteBtn = document.getElementById('lightbox-delete-btn');
+        const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
+        let stream;
+        let capturedImageBlobs = [];
+        let currentDeletingIndex = -1;
+        function initialize() {
+            closeCameraBtn.addEventListener('click', stopCamera);
+            lightboxCloseBtn.addEventListener('click', closeLightbox);
+            lightboxDeleteBtn.addEventListener('click', deleteCurrentImage);
+            const openLightboxHandler = (e) => {
+                if (e.target.tagName === 'IMG') {
+                    const index = parseInt(e.target.dataset.index, 10);
+                    openLightbox(index);
+                }
+            };
+            mainPhotoGrid.addEventListener('click', openLightboxHandler);
+            modalPhotoGrid.addEventListener('click', openLightboxHandler);
+            renderMainGrid();
+        }
+        async function startCamera() {
+            try {
+                if (stream) stopCamera();
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }
+                });
+                videoEl.srcObject = stream;
+                await videoEl.play();
+                modal.style.display = 'flex';
+                centralActionButton.style.zIndex = '10001';
+                renderModalGrid();
+            } catch (err) {
+                alert(`Lỗi camera: ${err.name}. Vui lòng kiểm tra quyền và đảm bảo trang web đang chạy trên HTTPS.`);
+            }
+        }
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            stream = null;
+            videoEl.srcObject = null;
+            modal.style.display = 'none';
+            centralActionButton.style.zIndex = '999';
+        }
+        function capturePhoto() {
+            if (!videoEl.videoWidth) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = videoEl.videoHeight;
+            canvas.height = videoEl.videoWidth;
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(Math.PI / 2);
+            ctx.drawImage(videoEl, -videoEl.videoWidth / 2, -videoEl.videoHeight / 2, videoEl.videoWidth, videoEl.videoHeight);
+            ctx.restore();
+            canvas.toBlob(blob => {
+                capturedImageBlobs.push(blob);
+                renderMainGrid();
+                renderModalGrid();
+            }, 'image/jpeg', 0.92);
+        }
+        function renderGrid(gridElement) {
+            gridElement.innerHTML = '';
+            capturedImageBlobs.forEach((blob, index) => {
+                const box = document.createElement('div');
+                box.className = 'photo-box';
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.dataset.index = index;
+                box.appendChild(img);
+                gridElement.appendChild(box);
+            });
+        }
+        function renderMainGrid() { renderGrid(mainPhotoGrid); }
+        function renderModalGrid() { renderGrid(modalPhotoGrid); }
+        function openLightbox(index) {
+            if (index < 0 || index >= capturedImageBlobs.length) return;
+            currentDeletingIndex = index;
+            const blob = capturedImageBlobs[index];
+            lightboxImg.src = URL.createObjectURL(blob);
+            lightbox.style.display = 'flex';
+        }
+        function closeLightbox() {
+            if (lightboxImg.src) {
+                URL.revokeObjectURL(lightboxImg.src);
+            }
+            lightboxImg.src = '';
+            lightbox.style.display = 'none';
+            currentDeletingIndex = -1;
+        }
+        function deleteCurrentImage() {
+            if (currentDeletingIndex !== -1) {
+                capturedImageBlobs.splice(currentDeletingIndex, 1);
+                closeLightbox();
+                renderMainGrid();
+                renderModalGrid();
+            }
+        }
+        return {
+            init: initialize,
+            startCamera,
+            capturePhoto,
+            isModalOpen: () => modal.style.display === 'flex',
+            getBlobs: () => capturedImageBlobs,
+        };
+    })();
+    const videoModule = (function() {
+        const largeSectionNameInput = document.getElementById('large-section-name-input');
+        const addLargeSectionBtn = document.getElementById('add-large-section-btn');
+        const largeSectionsContainer = document.getElementById('large-sections-container');
         const compressionSelect = document.getElementById('compression-level');
         const videoEl = document.getElementById('video-preview');
-        const itemListDiv = document.getElementById('inspection-list');
+        const previewContainer = document.getElementById('preview-container');
+        const closeVideoPreviewBtn = document.getElementById('close-video-preview-btn');
+        const homelessVideosGrid = document.getElementById('homeless-videos-grid');
         const statusBar = document.getElementById('status-bar');
-
-        let inspectionItems = [];
+        let largeSections = [];
+        let homelessVideos = [];
         let mediaRecorder, stream, recordedChunks = [];
-        let currentlyRecordingIndex = null;
-
+        let currentlyRecording = null;
+        let isRecordingHomeless = false;
+        let templateItems = null;
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        const ffmpeg = createFFmpeg({
+            log: false,
+            corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+        });
         const compressionPresets = {
             high: { width: { ideal: 1280 }, height: { ideal: 720 }, bitrate: 2500000 },
             medium: { width: { ideal: 854 }, height: { ideal: 480 }, bitrate: 1000000 },
             max: { width: { ideal: 640 }, height: { ideal: 360 }, bitrate: 500000 }
         };
-
-        function saveItemsToLocalStorage() {
-            const savableItems = inspectionItems.map(item => ({ name: item.name, status: item.status === 'done' ? 'new' : item.status }));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(savableItems));
+        function initialize() {
+            addLargeSectionBtn.addEventListener('click', addLargeSection);
+            largeSectionsContainer.addEventListener('click', handleContainerClick);
+            closeVideoPreviewBtn.addEventListener('click', stopCameraPreview);
+            homelessVideosGrid.addEventListener('click', handleHomelessGridClick);
+            loadFromLocalStorage();
         }
-
-        function loadItemsFromLocalStorage() {
-            const storedItems = localStorage.getItem(STORAGE_KEY);
-            if (storedItems) {
-                inspectionItems = JSON.parse(storedItems);
-                inspectionItems.forEach(item => { if (item.status === 'recording' || item.status === 'done') item.status = 'new'; });
+        function saveToLocalStorage() {
+            const savable = largeSections.map(section => ({
+                id: section.id,
+                name: section.name,
+                enabled: section.enabled,
+                items: section.items.map(item => ({ id: item.id, name: item.name }))
+            }));
+            localStorage.setItem('videoApp_largeSections', JSON.stringify(savable));
+        }
+        function loadFromLocalStorage() {
+            const stored = localStorage.getItem('videoApp_largeSections');
+            if (stored) {
+                largeSections = JSON.parse(stored).map(section => ({
+                    ...section,
+                    items: section.items.map(item => ({ ...item, status: 'new', videoUrl: null }))
+                }));
+                render();
             }
         }
-
-        function renderItems() {
-            itemListDiv.innerHTML = '';
-            if (inspectionItems.length === 0) {
-                itemListDiv.innerHTML = '<p style="text-align: center; color: #888;">Chưa có hạng mục nào.</p>';
-                return;
-            }
-            inspectionItems.forEach((item, index) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'item';
-                
-                let actionsHtml = '';
-                const isAnotherRecording = currentlyRecordingIndex !== null && currentlyRecordingIndex !== index;
-
-                switch (item.status) {
-                    case 'recording':
-                        actionsHtml = `<button class="btn-stop" data-index="${index}">Dừng</button>`;
-                        break;
-                    case 'done':
-                        actionsHtml = `<a class="btn btn-download" href="${item.videoUrl}" download="${sanitizeFileName(item.name)}.${item.fileExtension}">Tải Lại</a>`;
-                        break;
-                    default:
-                        actionsHtml = `<button class="btn-record" data-index="${index}" ${isAnotherRecording ? 'disabled' : ''}>Quay</button>`;
-                }
-
-                itemDiv.innerHTML = `
-                    <span class="item-name">${item.name}</span>
-                    <div class="item-actions">
-                        ${actionsHtml}
-                        <button class="btn-delete-item" data-index="${index}">Xóa</button>
+        function render() {
+            largeSectionsContainer.innerHTML = '';
+            largeSections.forEach(section => {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = `large-section ${!section.enabled ? 'disabled' : ''}`;
+                sectionDiv.dataset.sectionId = section.id;
+                const isAnotherRecording = (currentlyRecording !== null || isRecordingHomeless);
+                const templateIsSet = templateItems !== null;
+                sectionDiv.innerHTML = `
+                    <div class="large-section-header">
+                        <h3>${section.name}</h3>
+                        <div class="large-section-header-actions">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Bật/Tắt:</label>
+                                <input type="checkbox" class="toggle-section" ${section.enabled ? 'checked' : ''}>
+                            </div>
+                            <button class="btn-primary set-template-btn">Làm Mẫu</button>
+                            <button class="btn-warning apply-template-btn" ${!templateIsSet ? 'disabled' : ''}>Áp Dụng Mẫu</button>
+                            <button class="btn-info download-section-zip-btn">Tải ZIP</button>
+                            <button class="btn-danger delete-section-btn">Xóa Section</button>
+                        </div>
+                    </div>
+                    <div class="large-section-content">
+                        <div class="form-group">
+                            <input type="text" class="small-item-name-input" placeholder="Tên hạng mục nhỏ">
+                            <button class="btn-add add-small-item-btn" ${!section.enabled ? 'disabled' : ''}>Thêm</button>
+                        </div>
+                        <div class="large-section-items-grid">
+                            ${section.items.map(item => `
+                                <div class="video-item">
+                                    <span class="video-item-name">${item.name}</span>
+                                    <div class="video-item-actions">
+                                        ${generateItemActions(section, item, isAnotherRecording)}
+                                        <button class="btn-delete-item delete-small-item-btn" data-item-id="${item.id}">Xóa</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 `;
-                itemListDiv.appendChild(itemDiv);
+                largeSectionsContainer.appendChild(sectionDiv);
             });
         }
-
-        async function startRecording(index) {
-            currentlyRecordingIndex = index;
-            const item = inspectionItems[index];
-            item.status = 'recording';
-            renderItems();
-            
-            const preset = compressionPresets[compressionSelect.value];
-            const mediaConstraints = {
-                video: {
-                    width: preset.width,
-                    height: preset.height,
-                    facingMode: { exact: "environment" }
-                },
-                audio: false
-            };
-
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-                videoEl.srcObject = stream;
-                videoEl.style.display = 'block';
-                
-                statusBar.textContent = `Đang quay: ${item.name} (Không có âm thanh)`;
-                statusBar.className = 'status-bar status-recording';
-                statusBar.style.display = 'block';
-
-                let mimeType = 'video/mp4';
-                if (!MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/webm';
-                
-                mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: preset.bitrate });
-                mediaRecorder.ondataavailable = e => e.data.size > 0 && recordedChunks.push(e.data);
-                mediaRecorder.onstop = () => handleStop(index);
-                mediaRecorder.start();
-
-            } catch (err) {
-                statusBar.textContent = 'LỖI: Không thể truy cập camera sau. Vui lòng kiểm tra quyền và thiết bị.';
-                statusBar.className = 'status-bar status-error';
-                statusBar.style.display = 'block';
-                videoEl.style.display = 'none';
-                item.status = 'new';
-                currentlyRecordingIndex = null;
-                renderItems();
+        function renderHomelessVideos() {
+            homelessVideosGrid.innerHTML = '';
+            homelessVideos.forEach(video => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'video-item';
+                const fileName = `${video.name}_${video.id}.${video.extension}`;
+                itemDiv.innerHTML = `
+                    <span class="video-item-name">${video.name}</span>
+                    <div class="video-item-actions">
+                        <a class="btn btn-download" href="${video.url}" download="${fileName}">Tải Xuống</a>
+                        <button class="btn-danger delete-homeless-video-btn" data-video-id="${video.id}">Xóa</button>
+                    </div>
+                `;
+                homelessVideosGrid.appendChild(itemDiv);
+            });
+        }
+        function generateItemActions(section, item, isAnotherRecording) {
+            const isDisabled = isAnotherRecording || !section.enabled;
+            if (currentlyRecording && currentlyRecording.itemId === item.id) {
+                return `<button class="btn-stop" data-item-id="${item.id}">Dừng</button>`;
+            }
+            if (item.status === 'done' && item.videoUrl) {
+                return `<a class="btn btn-download" href="${item.videoUrl}" download="${sanitizeFileName(item.name)}.${item.fileExtension}">Tải</a>`;
+            }
+            return `<button class="btn-record" data-item-id="${item.id}" ${isDisabled ? 'disabled' : ''}>Quay</button>`;
+        }
+        function handleContainerClick(e) {
+            const target = e.target;
+            const sectionDiv = target.closest('.large-section');
+            if (!sectionDiv) return;
+            const sectionId = sectionDiv.dataset.sectionId;
+            const itemId = target.dataset.itemId;
+            if (target.matches('.add-small-item-btn')) {
+                const input = sectionDiv.querySelector('.small-item-name-input');
+                addSmallItem(sectionId, input.value.trim());
+                input.value = '';
+            } else if (target.matches('.delete-small-item-btn')) {
+                deleteSmallItem(sectionId, itemId);
+            } else if (target.matches('.btn-record')) {
+                startRecording(sectionId, itemId);
+            } else if (target.matches('.btn-stop')) {
+                stopRecording();
+            } else if (target.matches('.toggle-section')) {
+                toggleSection(sectionId, target.checked);
+            } else if (target.matches('.delete-section-btn')) {
+                deleteSection(sectionId);
+            } else if (target.matches('.set-template-btn')) {
+                setAsTemplate(sectionId);
+            } else if (target.matches('.apply-template-btn')) {
+                applyTemplate(sectionId);
+            } else if (target.matches('.download-section-zip-btn')) {
+                downloadSectionAsZip(sectionId);
             }
         }
-
+        function handleHomelessGridClick(e) {
+            if (e.target.matches('.delete-homeless-video-btn')) {
+                const videoId = e.target.dataset.videoId;
+                if (confirm("Bạn có chắc muốn xóa video này?")) {
+                    const videoIndex = homelessVideos.findIndex(v => v.id.toString() === videoId);
+                    if (videoIndex > -1) {
+                        URL.revokeObjectURL(homelessVideos[videoIndex].url);
+                        homelessVideos.splice(videoIndex, 1);
+                        renderHomelessVideos();
+                    }
+                }
+            }
+        }
+        function addLargeSection() {
+            const name = largeSectionNameInput.value.trim();
+            if (name) {
+                largeSections.push({ id: `s_${Date.now()}`, name, enabled: true, items: [] });
+                largeSectionNameInput.value = '';
+                saveToLocalStorage();
+                render();
+            }
+        }
+        function deleteSection(sectionId) {
+            if (confirm("Bạn có chắc muốn xóa toàn bộ section lớn này?")) {
+                largeSections = largeSections.filter(s => s.id !== sectionId);
+                saveToLocalStorage();
+                render();
+            }
+        }
+        function toggleSection(sectionId, isEnabled) {
+            const section = largeSections.find(s => s.id === sectionId);
+            if(section) {
+                section.enabled = isEnabled;
+                saveToLocalStorage();
+                render();
+            }
+        }
+        function addSmallItem(sectionId, name) {
+            if (!name) return;
+            const section = largeSections.find(s => s.id === sectionId);
+            if (section) {
+                section.items.push({ id: `i_${Date.now()}`, name, status: 'new', videoUrl: null });
+                saveToLocalStorage();
+                render();
+            }
+        }
+        function deleteSmallItem(sectionId, itemId) {
+            const section = largeSections.find(s => s.id === sectionId);
+            if (section) {
+                const itemIndex = section.items.findIndex(item => item.id === itemId);
+                if (itemIndex > -1 && section.items[itemIndex].videoUrl) {
+                    URL.revokeObjectURL(section.items[itemIndex].videoUrl);
+                }
+                section.items = section.items.filter(item => item.id !== itemId);
+                saveToLocalStorage();
+                render();
+            }
+        }
+        function setAsTemplate(sectionId) {
+            const section = largeSections.find(s => s.id === sectionId);
+            if (section) {
+                templateItems = section.items.map(item => ({ name: item.name }));
+                alert(`Đã đặt mẫu theo section "${section.name}".`);
+                render();
+            }
+        }
+        function applyTemplate(sectionId) {
+            if (!templateItems) return;
+            const section = largeSections.find(s => s.id === sectionId);
+            if (section && confirm(`Thay thế các hạng mục trong "${section.name}" bằng mẫu đã lưu?`)) {
+                section.items = templateItems.map(templateItem => ({
+                    id: `i_${Date.now()}_${Math.random()}`,
+                    name: templateItem.name,
+                    status: 'new',
+                    videoUrl: null
+                }));
+                saveToLocalStorage();
+                render();
+            }
+        }
+        async function startCameraPreview() {
+            if (stream) return;
+            try {
+                const preset = compressionPresets[compressionSelect.value];
+                const withAudio = document.getElementById('record-audio-checkbox').checked; // Checkbox state
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: preset.width, height: preset.height, facingMode: { exact: "environment" } },
+                    audio: withAudio // Use checkbox state
+                });
+                videoEl.srcObject = stream;
+                previewContainer.style.display = 'flex';
+                document.querySelector('h1').style.display = 'none'; // Hide header
+            } catch (err) {
+                alert(`Lỗi camera: ${err.message}`);
+                stopCameraPreview();
+            }
+        }
+        function stopCameraPreview() {
+             if (stream && !isRecording()) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                videoEl.srcObject = null;
+                previewContainer.style.display = 'none';
+                document.querySelector('h1').style.display = ''; // Show header
+            }
+        }
+        async function _startCommonRecording() {
+            await startCameraPreview();
+            if(!stream) return false;
+            let mimeType = 'video/mp4; codecs=avc1';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/webm; codecs=vp8, opus';
+                 if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    alert('Trình duyệt không hỗ trợ quay video MP4 hoặc WebM.');
+                    return false;
+                }
+            }
+            const preset = compressionPresets[compressionSelect.value];
+            mediaRecorder = new MediaRecorder(stream, { 
+                mimeType, 
+                videoBitsPerSecond: preset.bitrate 
+            });
+            mediaRecorder.ondataavailable = e => e.data.size > 0 && recordedChunks.push(e.data);
+            mediaRecorder.onstop = handleStop;
+            mediaRecorder.start();
+            updateCentralButton('video', true);
+            render();
+            return true;
+        }
+        async function startRecording(sectionId, itemId) {
+            const success = await _startCommonRecording();
+            if (success) {
+                currentlyRecording = { sectionId, itemId };
+                isRecordingHomeless = false;
+                const section = largeSections.find(s => s.id === sectionId);
+                const item = section.items.find(i => i.id === itemId);
+                statusBar.textContent = `Đang quay: ${item.name}`;
+                statusBar.className = 'status-bar status-recording';
+                statusBar.style.display = 'block';
+            }
+        }
+        async function startHomelessRecording() {
+            const success = await _startCommonRecording();
+            if(success) {
+                isRecordingHomeless = true;
+                currentlyRecording = null;
+                statusBar.textContent = `Đang quay video nhanh...`;
+                statusBar.className = 'status-bar status-recording';
+                statusBar.style.display = 'block';
+            }
+        }
         function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
         }
-
-        function handleStop(index) {
-            const fileExtension = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
-            const videoBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+        async function transcodeToMp4(videoBlob) {
+            const inputFileName = 'input.webm';
+            const outputFileName = 'output.mp4';
+            if (!ffmpeg.isLoaded()) {
+                await ffmpeg.load();
+            }
+            ffmpeg.FS('writeFile', inputFileName, await fetchFile(videoBlob));
+            await ffmpeg.run('-i', inputFileName, '-c', 'copy', outputFileName);
+            const data = ffmpeg.FS('readFile', outputFileName);
+            ffmpeg.FS('unlink', inputFileName);
+            ffmpeg.FS('unlink', outputFileName);
+            return new Blob([data.buffer], { type: 'video/mp4' });
+        }
+        async function handleStop() {
+            const originalMimeType = mediaRecorder.mimeType;
+            let videoBlob = new Blob(recordedChunks, { type: originalMimeType });
+            let finalVideoBlob = videoBlob;
+            let finalFileExtension = originalMimeType.includes('mp4') ? 'mp4' : 'webm';
+            if (!originalMimeType.includes('mp4')) {
+                statusBar.textContent = `Đang chuyển đổi sang MP4... (Vui lòng chờ)`;
+                statusBar.className = 'status-bar status-processing';
+                statusBar.style.display = 'block';
+                try {
+                    finalVideoBlob = await transcodeToMp4(videoBlob);
+                    finalFileExtension = 'mp4';
+                    console.log("Chuyển đổi sang MP4 thành công!");
+                } catch (error) {
+                    console.error("Lỗi khi chuyển đổi sang MP4:", error);
+                    alert("Không thể chuyển đổi video sang MP4. Sẽ lưu dưới dạng WebM.");
+                }
+            }
+            if (isRecordingHomeless) {
+                const newVideo = {
+                    id: Date.now(),
+                    name: 'untitled',
+                    url: URL.createObjectURL(finalVideoBlob),
+                    extension: finalFileExtension,
+                };
+                homelessVideos.push(newVideo);
+                renderHomelessVideos();
+            } else if (currentlyRecording) {
+                const section = largeSections.find(s => s.id === currentlyRecording.sectionId);
+                const item = section.items.find(i => i.id === currentlyRecording.itemId);
+                if (item) {
+                    if(item.videoUrl) URL.revokeObjectURL(item.videoUrl);
+                    item.status = 'done';
+                    item.videoUrl = URL.createObjectURL(finalVideoBlob);
+                    item.fileExtension = finalFileExtension;
+                }
+            }
+            statusBar.style.display = 'none';
+            cleanUpAfterRecording();
+        }
+        function cleanUpAfterRecording() {
+            stopCameraPreview();
             recordedChunks = [];
-
-            const item = inspectionItems[index];
-            const fileName = sanitizeFileName(item.name);
-
-            autoDownloadBackup(videoBlob, `${fileName}_BACKUP.${fileExtension}`);
-            
-            item.status = 'done';
-            item.videoUrl = URL.createObjectURL(videoBlob);
-            item.fileExtension = fileExtension;
-
-            currentlyRecordingIndex = null;
-            stream.getTracks().forEach(track => track.stop());
-            videoEl.style.display = 'none';
-            
-            statusBar.textContent = `Đã quay xong! File backup (không tiếng) đã được tự động tải về.`;
-            statusBar.className = 'status-bar status-processing';
-
-            saveItemsToLocalStorage();
-            renderItems();
+            currentlyRecording = null;
+            isRecordingHomeless = false;
+            updateCentralButton('video', false);
+            render();
         }
-
-        function autoDownloadBackup(blob, fileName) {
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            const url = window.URL.createObjectURL(blob);
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        }
-        
         function sanitizeFileName(name) {
             return name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '');
         }
-
-        addItemBtn.addEventListener('click', () => {
-            const name = itemNameInput.value.trim();
-            if (name) {
-                inspectionItems.push({ name: name, status: 'new' });
-                itemNameInput.value = '';
-                saveItemsToLocalStorage();
-                renderItems();
-            } else {
-                alert('Vui lòng nhập tên hạng mục.');
-            }
-        });
-
-        deleteAllBtn.addEventListener('click', () => {
-            if (confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ danh sách hạng mục video không?')) {
-                inspectionItems = [];
-                saveItemsToLocalStorage();
-                renderItems();
-            }
-        });
-
-        itemListDiv.addEventListener('click', (e) => {
-            const target = e.target;
-            const index = parseInt(target.dataset.index, 10);
-            if (target.matches('.btn-record')) startRecording(index);
-            else if (target.matches('.btn-stop')) stopRecording();
-            else if (target.matches('.btn-delete-item')) {
-                if (confirm(`Bạn có muốn xóa hạng mục "${inspectionItems[index].name}"?`)) {
-                    inspectionItems.splice(index, 1);
-                    saveItemsToLocalStorage();
-                    renderItems();
-                }
-            }
-        });
-
-        loadItemsFromLocalStorage();
-        renderItems();
-    })();
-
-    // ====================================================================== //
-    // LOGIC CHO PHẦN 2: HỆ THỐNG CHỤP ẢNH                                    //
-    // ====================================================================== //
-    (function() {
-        const photoGrid = document.getElementById('photo-grid');
-        const NUM_BOXES = 20;
-        let photoBoxes = [];
-        let capturedImageBlobs = [];
-
-        function initializeGrid() {
-            photoGrid.innerHTML = '';
-            photoBoxes = [];
-            for (let i = 0; i < NUM_BOXES; i++) {
-                const box = document.createElement('div');
-                box.className = 'photo-box empty';
-                box.innerHTML = `<span>+</span>`;
-                photoGrid.appendChild(box);
-                photoBoxes.push(box);
-            }
-        }
-
-        function findFirstEmptyBox() {
-            return photoBoxes.find(box => box.classList.contains('empty'));
-        }
-
-        async function addPhotoToGrid(imageBlob) {
-            capturedImageBlobs.push(imageBlob);
-            const emptyBox = findFirstEmptyBox();
-            if (emptyBox) {
-                emptyBox.innerHTML = '';
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(imageBlob);
-                emptyBox.appendChild(img);
-                emptyBox.classList.remove('empty');
-                img.onload = () => {
-                    URL.revokeObjectURL(img.src);
-                }
-            } else {
-                alert("Đã hết ô trống để thêm ảnh!");
-            }
-        }
-
-        const camera = {
-            modal: document.getElementById('camera-modal'),
-            video: document.getElementById('camera-video'),
-            canvas: document.getElementById('camera-canvas'),
-            openBtn: document.getElementById('open-btn'),
-            closeBtn: document.getElementById('close-btn'),
-            captureBtn: document.getElementById('capture-btn'),
-            errorMsg: document.getElementById('error-message'),
-            stream: null
-        };
-
-        async function startCamera() {
-            camera.errorMsg.style.display = 'none';
-            try {
-                if (camera.stream) stopCamera();
-                camera.stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' }
-                });
-                camera.video.srcObject = camera.stream;
-                await camera.video.play();
-                camera.modal.style.display = 'flex';
-            } catch (err) {
-                console.error("Camera Error:", err);
-                let message = `Lỗi không thể truy cập camera: ${err.name}.`;
-                if (window.location.protocol !== 'https:') {
-                    message += '<br><b>Gợi ý:</b> Tính năng này thường yêu cầu trang web chạy trên HTTPS.';
-                } else {
-                    message += '<br><b>Gợi ý:</b> Vui lòng kiểm tra lại bạn đã cấp quyền truy cập camera cho trang web này trong cài đặt của trình duyệt.';
-                }
-                camera.errorMsg.innerHTML = message;
-                camera.errorMsg.style.display = 'block';
-                camera.modal.style.display = 'flex';
-            }
-        }
-
-        function stopCamera() {
-            if (camera.stream) {
-                camera.stream.getTracks().forEach(track => track.stop());
-                camera.stream = null;
-            }
-            camera.video.srcObject = null;
-            camera.modal.style.display = 'none';
-        }
-
-        function capturePhoto() {
-            if (!camera.video.videoWidth) return;
-            const ctx = camera.canvas.getContext('2d');
-            camera.canvas.width = camera.video.videoWidth;
-            camera.canvas.height = camera.video.videoHeight;
-            ctx.drawImage(camera.video, 0, 0, camera.canvas.width, camera.canvas.height);
-            camera.canvas.toBlob(blob => {
-                addPhotoToGrid(blob);
-            }, 'image/jpeg', 0.9);
-        }
-
-        camera.openBtn.addEventListener('click', startCamera);
-        camera.closeBtn.addEventListener('click', stopCamera);
-        camera.captureBtn.addEventListener('click', capturePhoto);
-
-        const downloadZipBtn = document.getElementById('download-zip-btn');
-        async function downloadAllAsZip() {
-            if (capturedImageBlobs.length === 0) {
-                alert("Chưa có ảnh nào để tải về!");
+        async function downloadSectionAsZip(sectionId) {
+            const section = largeSections.find(s => s.id === sectionId);
+            if (!section) return;
+            const recordedItems = section.items.filter(item => item.status === 'done' && item.videoUrl);
+            if (recordedItems.length === 0) {
+                alert(`Không có video nào trong section "${section.name}".`);
                 return;
             }
-            downloadZipBtn.textContent = "Đang nén file...";
-            downloadZipBtn.disabled = true;
-
-            const zip = new JSZip();
-            capturedImageBlobs.forEach((blob, index) => {
-                zip.file(`photo_${index + 1}.jpeg`, blob);
-            });
-
+            alert("Bắt đầu nén file ZIP, vui lòng chờ...");
             try {
-                const zipBlob = await zip.generateAsync({
-                    type: "blob",
-                    compression: "DEFLATE",
-                    compressionOptions: { level: 9 }
+                const zip = new JSZip();
+                const fetchPromises = recordedItems.map(async item => {
+                    const response = await fetch(item.videoUrl);
+                    const blob = await response.blob();
+                    zip.file(`${sanitizeFileName(item.name)}.${item.fileExtension}`, blob);
                 });
-                saveAs(zipBlob, "captured-images.zip");
+                await Promise.all(fetchPromises);
+                const zipBlob = await zip.generateAsync({ type: "blob" });
+                saveAs(zipBlob, `${sanitizeFileName(section.name)}.zip`);
             } catch (err) {
-                console.error("Lỗi khi tạo file zip:", err);
-                alert("Đã có lỗi xảy ra trong quá trình nén file.");
-            } finally {
-                downloadZipBtn.textContent = "Tải Tất Cả Ảnh (ZIP)";
-                downloadZipBtn.disabled = false;
+                console.error(`Lỗi tạo ZIP cho section ${sectionId}:`, err);
+                alert("Có lỗi xảy ra khi tạo file ZIP.");
             }
         }
-        downloadZipBtn.addEventListener('click', downloadAllAsZip);
-
-        document.addEventListener('DOMContentLoaded', initializeGrid);
+        function isRecording() {
+            return mediaRecorder && mediaRecorder.state === 'recording';
+        }
+        return {
+            init: initialize,
+            startCameraPreview,
+            startHomelessRecording,
+            stopRecording,
+            isPreviewActive: () => previewContainer.style.display === 'flex',
+            isRecording,
+            isHomelessRecordingActive: () => isRecordingHomeless,
+            hasRecordedData: () => homelessVideos.length > 0 || largeSections.some(s => s.items.some(i => i.status === 'done')),
+            getAllRecordedData: () => {
+                let allData = [];
+                homelessVideos.forEach((video, index) => {
+                    allData.push({
+                        url: video.url,
+                        fileName: `untitled_${video.id}`,
+                        extension: video.extension
+                    });
+                });
+                largeSections.forEach(section => {
+                    section.items.forEach(item => {
+                        if (item.status === 'done' && item.videoUrl) {
+                            allData.push({
+                                url: item.videoUrl,
+                                fileName: `${sanitizeFileName(section.name)}_${sanitizeFileName(item.name)}`,
+                                extension: item.fileExtension
+                            });
+                        }
+                    });
+                });
+                return allData;
+            }
+        };
     })();
+    photoModule.init();
+    videoModule.init();
+});
 </script>
 </body>
 </html>
