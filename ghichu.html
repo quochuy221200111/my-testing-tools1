@@ -54,12 +54,12 @@
         .result-pane {
             display: flex;
             flex-direction: column;
-            /* YÊU CẦU 1: Căn lề dày lên */
-            padding: 30px; 
+            /* YÊU CẦU: Căn lề sẽ được điều khiển bằng JS */
+            padding: 30px;
             flex-grow: 1;
             border-left: 2px solid var(--border-color);
-            align-items: center; /* Căn giữa iframe đã thu nhỏ */
-            justify-content: center; /* Căn giữa iframe đã thu nhỏ */
+            align-items: center; /* Căn giữa nội dung (thanh điều khiển và iframe) */
+            justify-content: center;
         }
         iframe {
             width: 100%;
@@ -67,20 +67,19 @@
             border: 1px solid var(--border-color);
             border-radius: 5px;
             background-color: #fff;
-            /* YÊU CẦU 1: Zoom nhỏ lại 10% */
             transform: scale(0.9);
         }
 
-        /* --- YÊU CẦU 2: CÁC NÚT TRÔI NỔI MỚI --- */
+        /* --- CÁC NÚT TRÔI NỔI MỚI --- */
         .floating-action-container {
             position: fixed;
             bottom: 20px;
             right: 20px;
             z-index: 1000;
             display: flex;
-            flex-direction: column; /* Xếp các nút theo chiều dọc */
-            gap: 10px; /* Khoảng cách giữa các nút */
-            align-items: flex-end; /* Căn các nút về bên phải */
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
         }
         
         .floating-btn {
@@ -120,14 +119,19 @@
         #toggle-editor-btn:hover { background: #5c6370; }
         #toggle-editor-btn svg { width: 24px; height: 24px; fill: currentColor; }
         
-        /* --- HỆ THỐNG TAB MỚI --- */
+        /* --- HỆ THỐNG TAB MỚI (ĐÃ SỬA LỖI CUỘN) --- */
         .tab-bar {
             display: flex;
             align-items: center;
             background-color: var(--editor-bg);
             padding: 5px 10px;
             flex-shrink: 0;
-            overflow-x: auto;
+        }
+        .tabs-container {
+            display: flex;
+            flex-grow: 1; /* Cho phép container này mở rộng */
+            overflow-x: auto; /* Chỉ cuộn các tab */
+            min-width: 0; /* Cần thiết cho flexbox để co lại đúng cách */
         }
         .tab {
             padding: 10px 15px;
@@ -141,6 +145,7 @@
             gap: 8px;
             border-radius: 5px 5px 0 0;
             margin-right: 4px;
+            flex-shrink: 0; /* Ngăn các tab bị bóp lại */
         }
         .tab.active {
             background-color: var(--tab-active-bg);
@@ -171,9 +176,9 @@
             font-size: 14px;
             padding: 10px;
             resize: none;
-            display: none; /* Ẩn mặc định */
+            display: none;
         }
-        .editor-content textarea.active { display: block; } /* Hiện tab active */
+        .editor-content textarea.active { display: block; }
 
         /* --- CỬA SỔ CẤU HÌNH & TRẠNG THÁI --- */
         .modal-overlay {
@@ -207,20 +212,42 @@
             border-top: 1px solid var(--border-color);
         }
         .hidden { display: none; }
+
+        /* YÊU CẦU: Thanh điều khiển padding */
+        .result-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px; /* Khoảng cách với iframe */
+            width: 100%;
+            max-width: 350px;
+        }
+        .result-controls label {
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .result-controls input[type="range"] {
+            flex-grow: 1;
+        }
+        .result-controls span {
+            font-size: 14px;
+            width: 45px; /* Giữ chiều rộng ổn định */
+            text-align: left;
+        }
+
     </style>
 </head>
 <body>
-    <!-- YÊU CẦU 2: Nhóm các nút trôi nổi vào một container ở góc dưới -->
+    <!-- YÊU CẦU: Sắp xếp lại các nút, đưa nút Ẩn/Hiện lên trên -->
     <div class="floating-action-container">
-        <button id="run-code-btn" class="floating-btn">Chạy Code</button>
-        <button id="copy-code-btn" class="floating-btn">Copy</button>
-        <button id="paste-code-btn" class="floating-btn">Dán</button>
         <button id="toggle-editor-btn" class="floating-btn" title="Ẩn/Hiện khung nhập code">
             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
         </button>
+        <button id="run-code-btn" class="floating-btn">Chạy Code</button>
+        <button id="copy-code-btn" class="floating-btn">Copy</button>
+        <button id="paste-code-btn" class="floating-btn">Dán</button>
     </div>
     
-    <!-- Cửa sổ cấu hình (hiện khi cần) -->
     <div id="config-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h2>Cấu hình Đồng bộ Cloud</h2>
@@ -233,11 +260,13 @@
         </div>
     </div>
     
-    <!-- Giao diện chính -->
     <div class="container">
         <div class="editor-pane">
+            <!-- YÊU CẦU: Thay đổi cấu trúc thanh tab để cuộn được -->
             <div class="tab-bar">
-                <!-- Các tab sẽ được thêm vào đây bằng JS -->
+                <div class="tabs-container">
+                    <!-- Các tab sẽ được thêm vào đây bằng JS -->
+                </div>
                 <button id="add-tab-btn" title="Thêm tab mới">+</button>
             </div>
             <div id="editor-content" class="editor-content">
@@ -248,6 +277,12 @@
             </div>
         </div>
         <div class="result-pane">
+             <!-- YÊU CẦU: Thêm thanh điều chỉnh padding -->
+            <div class="result-controls">
+                <label for="padding-slider">Căn lề:</label>
+                <input type="range" id="padding-slider" min="0" max="100" value="30" title="Điều chỉnh khoảng đệm">
+                <span id="padding-value">30px</span>
+            </div>
             <iframe id="result-frame" title="Result" sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-downloads"></iframe>
         </div>
     </div>
@@ -258,7 +293,6 @@
         const resultFrame = document.getElementById('result-frame');
         const toggleEditorBtn = document.getElementById('toggle-editor-btn');
         const editorPane = document.querySelector('.editor-pane');
-        // YÊU CẦU 2: Lấy các nút mới
         const copyCodeBtn = document.getElementById('copy-code-btn');
         const pasteCodeBtn = document.getElementById('paste-code-btn');
         const actionButtons = [runButton, copyCodeBtn, pasteCodeBtn];
@@ -269,10 +303,15 @@
         const saveConfigBtn = document.getElementById('save-config-btn');
         const clearConfigLink = document.getElementById('clear-config-link');
         
-        const tabBar = document.querySelector('.tab-bar');
+        const tabsContainer = document.querySelector('.tabs-container'); // Container mới cho tab
         const addTabBtn = document.getElementById('add-tab-btn');
         const editorContent = document.getElementById('editor-content');
         const statusText = document.getElementById('status-text');
+
+        // YÊU CẦU: Lấy các element của thanh điều khiển padding
+        const resultPane = document.querySelector('.result-pane');
+        const paddingSlider = document.getElementById('padding-slider');
+        const paddingValue = document.getElementById('padding-value');
 
         const GIST_FILENAME = 'codesync.json';
         let GIST_ID = '';
@@ -311,7 +350,7 @@
         }
 
         function renderTabs() {
-            document.querySelectorAll('.tab').forEach(t => t.remove());
+            tabsContainer.innerHTML = ''; // Dọn dẹp container tab
             editorContent.innerHTML = '';
             
             if (appData.tabs.length === 0) {
@@ -323,12 +362,11 @@
                 const tabEl = document.createElement('div');
                 tabEl.className = 'tab';
                 tabEl.dataset.tabId = tabData.id;
-                // YÊU CẦU 3: Bỏ `contenteditable="true"` khỏi HTML ban đầu
                 tabEl.innerHTML = `
                     <span class="tab-title">${tabData.title}</span>
                     <button class="tab-close-btn">&times;</button>
                 `;
-                tabBar.insertBefore(tabEl, addTabBtn);
+                tabsContainer.appendChild(tabEl); // Thêm tab vào container mới
 
                 const textareaEl = document.createElement('textarea');
                 textareaEl.id = tabData.id;
@@ -356,14 +394,12 @@
 
             if (activeTabEl) activeTabEl.classList.add('active');
             if (activeTextareaEl) activeTextareaEl.classList.add('active');
-
-            // YÊU CẦU 2: Cập nhật trạng thái hiển thị của các nút khi chuyển tab
+            
             setActionButtonsVisibility();
         }
 
         function addEventListenersToTabs() {
             document.querySelectorAll('.tab').forEach(tabEl => {
-                // YÊU CẦU 3: Thay đổi logic để chuyển tab khi click và không ảnh hưởng đến việc đổi tên
                 tabEl.addEventListener('click', (e) => {
                     if (!e.target.classList.contains('tab-close-btn')) {
                         switchTab(tabEl.dataset.tabId);
@@ -381,19 +417,18 @@
                     }
                 });
 
-                // --- YÊU CẦU 3: LOGIC ĐỔI TÊN TAB BẰNG DOUBLE CLICK ---
                 const titleEl = tabEl.querySelector('.tab-title');
                 
                 titleEl.addEventListener('dblclick', () => {
                     titleEl.contentEditable = true;
                     titleEl.focus();
-                    document.execCommand('selectAll', false, null); // Chọn toàn bộ text để dễ dàng sửa
+                    document.execCommand('selectAll', false, null);
                 });
 
                 titleEl.addEventListener('blur', () => {
-                     titleEl.contentEditable = false; // Tắt chế độ sửa khi focus ra ngoài
+                     titleEl.contentEditable = false;
                      const newTitle = titleEl.textContent.trim();
-                     if (newTitle === "") { // Nếu tên rỗng, đặt lại tên cũ
+                     if (newTitle === "") {
                          const oldTabData = appData.tabs.find(t => t.id === tabEl.dataset.tabId);
                          titleEl.textContent = oldTabData.title;
                          return;
@@ -405,11 +440,10 @@
                      }
                 });
                 
-                // Ngăn chặn sự kiện Enter tạo dòng mới khi đang sửa tên
                 titleEl.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        titleEl.blur(); // Kết thúc chỉnh sửa
+                        titleEl.blur();
                     }
                 });
             });
@@ -457,7 +491,6 @@
             }
         }
         
-        // YÊU CẦU 2: Hàm ẩn/hiện các nút chức năng
         function setActionButtonsVisibility() {
             const isCollapsed = editorPane.classList.contains('collapsed');
             const hasActiveTab = !!appData.activeTabId;
@@ -550,20 +583,32 @@
             } else {
                 configModal.classList.remove('hidden');
             }
-            // YÊU CẦU 2: Đặt trạng thái ban đầu cho các nút
+
+            // YÊU CẦU: Khởi tạo giá trị padding từ localStorage
+            const savedPadding = localStorage.getItem('resultPanePadding') || '30';
+            paddingSlider.value = savedPadding;
+            resultPane.style.padding = `${savedPadding}px`;
+            paddingValue.textContent = `${savedPadding}px`;
+
             setActionButtonsVisibility();
         }
 
         // --- GẮN SỰ KIỆN ---
-        runButton.addEventListener('click', runCode);
+
+        // YÊU CẦU: Cập nhật sự kiện cho nút Chạy Code để ẩn luôn editor
+        runButton.addEventListener('click', () => {
+            runCode();
+            if (!editorPane.classList.contains('collapsed')) {
+                editorPane.classList.add('collapsed');
+                setActionButtonsVisibility();
+            }
+        });
 
         toggleEditorBtn.addEventListener('click', () => {
             editorPane.classList.toggle('collapsed');
-            // YÊU CẦU 2: Cập nhật trạng thái nút khi ẩn/hiện editor
             setActionButtonsVisibility();
         });
         
-        // YÊU CẦU 2: Gắn sự kiện cho nút Copy và Dán
         copyCodeBtn.addEventListener('click', () => {
             const activeTextarea = document.querySelector('.editor-content textarea.active');
             if (activeTextarea && activeTextarea.value) {
@@ -581,7 +626,7 @@
                 navigator.clipboard.readText()
                     .then(text => {
                         activeTextarea.value = text;
-                        activeTextarea.dispatchEvent(new Event('input', { bubbles: true })); // Kích hoạt sự kiện input để lưu tự động
+                        activeTextarea.dispatchEvent(new Event('input', { bubbles: true }));
                         updateStatus('Đã dán từ clipboard.');
                     })
                     .catch(err => updateStatus(`Lỗi khi dán: ${err.message}`, true));
@@ -594,6 +639,14 @@
             clearConfig();
         });
         addTabBtn.addEventListener('click', addTab);
+
+        // YÊU CẦU: Gắn sự kiện cho thanh trượt padding
+        paddingSlider.addEventListener('input', () => {
+            const newPadding = paddingSlider.value;
+            resultPane.style.padding = `${newPadding}px`;
+            paddingValue.textContent = `${newPadding}px`;
+            localStorage.setItem('resultPanePadding', newPadding);
+        });
 
         // --- BẮT ĐẦU ỨNG DỤNG ---
         initializeApp();
