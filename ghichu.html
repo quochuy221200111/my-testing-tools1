@@ -54,12 +54,13 @@
         .result-pane {
             display: flex;
             flex-direction: column;
-            /* YÊU CẦU: Căn lề sẽ được điều khiển bằng JS */
-            padding: 30px;
+            padding: 30px; /* Padding mặc định */
             flex-grow: 1;
             border-left: 2px solid var(--border-color);
-            align-items: center; /* Căn giữa nội dung (thanh điều khiển và iframe) */
+            align-items: center;
             justify-content: center;
+            position: relative; /* Cần cho thanh zoom */
+            overflow: hidden; /* Giúp iframe không bị tràn khi zoom lớn */
         }
         iframe {
             width: 100%;
@@ -67,13 +68,16 @@
             border: 1px solid var(--border-color);
             border-radius: 5px;
             background-color: #fff;
-            transform: scale(0.9);
+            /* YÊU CẦU: Transform origin ở tâm để zoom đẹp hơn */
+            transform-origin: center center;
+            transition: transform 0.2s ease; /* Thêm hiệu ứng mượt mà khi zoom */
         }
 
         /* --- CÁC NÚT TRÔI NỔI MỚI --- */
         .floating-action-container {
             position: fixed;
-            bottom: 20px;
+            /* YÊU CẦU 2: Di chuyển các nút lên cao hơn */
+            bottom: 60px;
             right: 20px;
             z-index: 1000;
             display: flex;
@@ -129,9 +133,9 @@
         }
         .tabs-container {
             display: flex;
-            flex-grow: 1; /* Cho phép container này mở rộng */
-            overflow-x: auto; /* Chỉ cuộn các tab */
-            min-width: 0; /* Cần thiết cho flexbox để co lại đúng cách */
+            flex-grow: 1;
+            overflow-x: auto;
+            min-width: 0;
         }
         .tab {
             padding: 10px 15px;
@@ -145,7 +149,7 @@
             gap: 8px;
             border-radius: 5px 5px 0 0;
             margin-right: 4px;
-            flex-shrink: 0; /* Ngăn các tab bị bóp lại */
+            flex-shrink: 0;
         }
         .tab.active {
             background-color: var(--tab-active-bg);
@@ -213,32 +217,49 @@
         }
         .hidden { display: none; }
 
-        /* YÊU CẦU: Thanh điều khiển padding */
-        .result-controls {
-            display: flex;
+        /* YÊU CẦU 1: Thanh điều khiển ZOOM trôi nổi */
+        .zoom-controls {
+            /* Mặc định ẩn đi */
+            display: none; 
+            
+            /* Thuộc tính trôi nổi */
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001; /* Cao hơn iframe nhưng thấp hơn các nút khác */
+            
+            /* Giao diện */
+            background-color: rgba(40, 44, 52, 0.9); /* Nền mờ */
+            backdrop-filter: blur(5px); /* Hiệu ứng blur cho đẹp */
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+
+            /* Căn chỉnh nội dung */
             align-items: center;
             gap: 10px;
-            margin-bottom: 15px; /* Khoảng cách với iframe */
             width: 100%;
             max-width: 350px;
         }
-        .result-controls label {
+        .zoom-controls label {
             font-size: 14px;
             white-space: nowrap;
         }
-        .result-controls input[type="range"] {
+        .zoom-controls input[type="range"] {
             flex-grow: 1;
         }
-        .result-controls span {
+        .zoom-controls span {
             font-size: 14px;
-            width: 45px; /* Giữ chiều rộng ổn định */
+            width: 50px; /* Giữ chiều rộng ổn định */
             text-align: left;
+            font-variant-numeric: tabular-nums; /* Giúp số không bị nhảy chiều rộng */
         }
 
     </style>
 </head>
 <body>
-    <!-- YÊU CẦU: Sắp xếp lại các nút, đưa nút Ẩn/Hiện lên trên -->
     <div class="floating-action-container">
         <button id="toggle-editor-btn" class="floating-btn" title="Ẩn/Hiện khung nhập code">
             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
@@ -262,29 +283,25 @@
     
     <div class="container">
         <div class="editor-pane">
-            <!-- YÊU CẦU: Thay đổi cấu trúc thanh tab để cuộn được -->
             <div class="tab-bar">
-                <div class="tabs-container">
-                    <!-- Các tab sẽ được thêm vào đây bằng JS -->
-                </div>
+                <div class="tabs-container"></div>
                 <button id="add-tab-btn" title="Thêm tab mới">+</button>
             </div>
-            <div id="editor-content" class="editor-content">
-                <!-- Các textarea cho mỗi tab sẽ được thêm vào đây -->
-            </div>
+            <div id="editor-content" class="editor-content"></div>
             <div id="status-bar" class="status-bar">
                 <span id="status-text">Sẵn sàng</span> | <a href="#" id="clear-config-link" style="color: var(--text-color);">Xóa cấu hình</a>
             </div>
         </div>
         <div class="result-pane">
-             <!-- YÊU CẦU: Thêm thanh điều chỉnh padding -->
-            <div class="result-controls">
-                <label for="padding-slider">Căn lề:</label>
-                <input type="range" id="padding-slider" min="0" max="100" value="30" title="Điều chỉnh khoảng đệm">
-                <span id="padding-value">30px</span>
-            </div>
             <iframe id="result-frame" title="Result" sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-downloads"></iframe>
         </div>
+    </div>
+
+    <!-- YÊU CẦU 1: HTML của thanh Zoom trôi nổi -->
+    <div class="zoom-controls">
+        <label for="zoom-slider">Zoom:</label>
+        <input type="range" id="zoom-slider" min="25" max="200" value="100" title="Phóng to/Thu nhỏ kết quả">
+        <span id="zoom-value">100%</span>
     </div>
 
     <script>
@@ -303,15 +320,15 @@
         const saveConfigBtn = document.getElementById('save-config-btn');
         const clearConfigLink = document.getElementById('clear-config-link');
         
-        const tabsContainer = document.querySelector('.tabs-container'); // Container mới cho tab
+        const tabsContainer = document.querySelector('.tabs-container');
         const addTabBtn = document.getElementById('add-tab-btn');
         const editorContent = document.getElementById('editor-content');
         const statusText = document.getElementById('status-text');
 
-        // YÊU CẦU: Lấy các element của thanh điều khiển padding
-        const resultPane = document.querySelector('.result-pane');
-        const paddingSlider = document.getElementById('padding-slider');
-        const paddingValue = document.getElementById('padding-value');
+        // YÊU CẦU 1: Lấy các element của thanh điều khiển ZOOM
+        const zoomControls = document.querySelector('.zoom-controls');
+        const zoomSlider = document.getElementById('zoom-slider');
+        const zoomValue = document.getElementById('zoom-value');
 
         const GIST_FILENAME = 'codesync.json';
         let GIST_ID = '';
@@ -350,7 +367,7 @@
         }
 
         function renderTabs() {
-            tabsContainer.innerHTML = ''; // Dọn dẹp container tab
+            tabsContainer.innerHTML = '';
             editorContent.innerHTML = '';
             
             if (appData.tabs.length === 0) {
@@ -366,7 +383,7 @@
                     <span class="tab-title">${tabData.title}</span>
                     <button class="tab-close-btn">&times;</button>
                 `;
-                tabsContainer.appendChild(tabEl); // Thêm tab vào container mới
+                tabsContainer.appendChild(tabEl);
 
                 const textareaEl = document.createElement('textarea');
                 textareaEl.id = tabData.id;
@@ -395,7 +412,7 @@
             if (activeTabEl) activeTabEl.classList.add('active');
             if (activeTextareaEl) activeTextareaEl.classList.add('active');
             
-            setActionButtonsVisibility();
+            updateUIVisibility();
         }
 
         function addEventListenersToTabs() {
@@ -491,14 +508,23 @@
             }
         }
         
-        function setActionButtonsVisibility() {
+        // YÊU CẦU 1 & 2: Hàm mới để quản lý hiển thị của các nút và thanh zoom
+        function updateUIVisibility() {
             const isCollapsed = editorPane.classList.contains('collapsed');
             const hasActiveTab = !!appData.activeTabId;
 
+            // Điều khiển các nút Chạy, Copy, Dán
             if (isCollapsed || !hasActiveTab) {
                 actionButtons.forEach(btn => btn.classList.add('hidden'));
             } else {
                 actionButtons.forEach(btn => btn.classList.remove('hidden'));
+            }
+
+            // YÊU CẦU 1: Điều khiển thanh Zoom
+            if (isCollapsed) {
+                zoomControls.style.display = 'flex'; // Hiện thanh zoom
+            } else {
+                zoomControls.style.display = 'none'; // Ẩn thanh zoom
             }
         }
 
@@ -584,29 +610,28 @@
                 configModal.classList.remove('hidden');
             }
 
-            // YÊU CẦU: Khởi tạo giá trị padding từ localStorage
-            const savedPadding = localStorage.getItem('resultPanePadding') || '30';
-            paddingSlider.value = savedPadding;
-            resultPane.style.padding = `${savedPadding}px`;
-            paddingValue.textContent = `${savedPadding}px`;
+            // YÊU CẦU 1: Khởi tạo giá trị zoom từ localStorage
+            const savedZoom = localStorage.getItem('resultFrameZoom') || '100';
+            zoomSlider.value = savedZoom;
+            resultFrame.style.transform = `scale(${savedZoom / 100})`;
+            zoomValue.textContent = `${savedZoom}%`;
 
-            setActionButtonsVisibility();
+            updateUIVisibility();
         }
 
         // --- GẮN SỰ KIỆN ---
 
-        // YÊU CẦU: Cập nhật sự kiện cho nút Chạy Code để ẩn luôn editor
         runButton.addEventListener('click', () => {
             runCode();
             if (!editorPane.classList.contains('collapsed')) {
                 editorPane.classList.add('collapsed');
-                setActionButtonsVisibility();
+                updateUIVisibility();
             }
         });
 
         toggleEditorBtn.addEventListener('click', () => {
             editorPane.classList.toggle('collapsed');
-            setActionButtonsVisibility();
+            updateUIVisibility();
         });
         
         copyCodeBtn.addEventListener('click', () => {
@@ -640,12 +665,12 @@
         });
         addTabBtn.addEventListener('click', addTab);
 
-        // YÊU CẦU: Gắn sự kiện cho thanh trượt padding
-        paddingSlider.addEventListener('input', () => {
-            const newPadding = paddingSlider.value;
-            resultPane.style.padding = `${newPadding}px`;
-            paddingValue.textContent = `${newPadding}px`;
-            localStorage.setItem('resultPanePadding', newPadding);
+        // YÊU CẦU 1: Gắn sự kiện cho thanh trượt zoom
+        zoomSlider.addEventListener('input', () => {
+            const newZoom = zoomSlider.value;
+            resultFrame.style.transform = `scale(${newZoom / 100})`;
+            zoomValue.textContent = `${newZoom}%`;
+            localStorage.setItem('resultFrameZoom', newZoom);
         });
 
         // --- BẮT ĐẦU ỨNG DỤNG ---
