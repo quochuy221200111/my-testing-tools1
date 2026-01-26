@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -19,7 +20,7 @@
 --color-success: #28a745;
 --color-dark: #343a40;
 --color-light-gray: #f8f9fa;
---header-height: 110px; /* Dành cho Tabs + Controls */
+--header-height: 110px; /* Chiều cao dự kiến ban đầu */
 }
 
 body {
@@ -31,7 +32,7 @@ background-color: var(--color-light-gray);
 transition: padding-top 0.3s;
 }
 
-/* --- [YÊU CẦU 5] Nút Ẩn/Hiện Menu --- */
+/* --- Nút Ẩn/Hiện Menu --- */
 #toggle-menu-btn {
 position: fixed;
 top: 10px;
@@ -47,13 +48,13 @@ font-size: 20px;
 box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* --- [YÊU CẦU 4] Thanh Tabs --- */
+/* --- Thanh Tabs --- */
 #tabs-container {
 position: fixed;
 top: 0;
 left: 0;
 right: 50px; /* Chừa chỗ cho nút menu */
-height: 40px;
+min-height: 40px;
 background: #e9ecef;
 display: flex;
 align-items: center;
@@ -64,24 +65,40 @@ white-space: nowrap;
 border-bottom: 1px solid #ccc;
 z-index: 1000;
 transition: transform 0.3s;
+box-sizing: border-box;
 }
 .tab-item {
 padding: 8px 15px;
 background: #ccc;
 border-radius: 5px 5px 0 0;
-cursor: pointer;
+cursor: grab;
 font-weight: bold;
 color: #555;
 position: relative;
 user-select: none;
 border: 1px solid #bbb;
 border-bottom: none;
+transition: background-color 0.2s, color 0.2s, opacity 0.2s;
 }
 .tab-item.active {
 background: white;
 color: var(--color-primary);
-border-bottom: 2px solid white; /* Che viền dưới container */
+border-bottom: 2px solid white;
 z-index: 1001;
+cursor: default;
+}
+.tab-item.dragging {
+opacity: 0.5;
+background: #d0eaff;
+}
+.tab-item.drag-over {
+border-left: 2px solid var(--color-primary);
+}
+.tab-item input {
+border: 1px solid #007bff;
+padding: 5px;
+font-size: 13px;
+font-weight: bold;
 }
 .tab-close {
 margin-left: 8px;
@@ -112,16 +129,17 @@ z-index: 999;
 padding: 10px 15px;
 border-bottom: 2px solid #ddd;
 display: flex;
-gap: 15px;
+gap: 10px;
 align-items: center;
 flex-wrap: wrap;
 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 transition: transform 0.3s;
+box-sizing: border-box;
 }
 
 /* Class để ẩn header khi toggle */
 body.header-hidden {
-padding-top: 10px;
+padding-top: 10px !important;
 }
 body.header-hidden #tabs-container,
 body.header-hidden #controls {
@@ -132,7 +150,14 @@ transform: translateY(-150%); /* Đẩy lên trên màn hình */
 display: flex;
 gap: 8px;
 align-items: center;
+border-left: 1px solid #eee;
+padding-left: 8px;
 }
+.control-group:first-child {
+    border-left: none;
+    padding-left: 0;
+}
+
 
 #controls button, #controls .file-input-label {
 padding: 8px 12px;
@@ -140,7 +165,7 @@ border: 1px solid #ccc;
 background-color: #f0f0f0;
 cursor: pointer;
 border-radius: 5px;
-font-size: 14px;
+font-size: 12px;
 font-weight: 500;
 transition: background-color 0.2s, opacity 0.2s;
 display: flex;
@@ -156,8 +181,24 @@ cursor: not-allowed;
 }
 
 #controls #exportZip { background-color: var(--color-primary); color: white; border-color: var(--color-primary); font-weight: bold; }
+#controls #exportZipNoVideo { background-color: #0056b3; color: white; }
+#controls #exportOnlyVideos { background-color: #5a2c82; color: white; }
 #controls #clearAll { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
-#controls .control-group:last-child { margin-left: auto; }
+
+/* Nút mới */
+#addManualImageBtn { background-color: #17a2b8; color: white; }
+#toggleSelectModeBtn.active { background-color: #ffc107; color: black; font-weight: bold; }
+#exportSelectedBtn { background-color: #fd7e14; color: white; }
+#moveSelectedUpBtn, #moveSelectedDownBtn { font-size: 18px; padding: 5px 12px; background-color: #e9ecef; }
+/* [YÊU CẦU 1] Nút chụp nhanh */
+#quickShotBtn { background-color: #6f42c1; color: white; font-weight: bold; }
+
+/* [YÊU CẦU 3] Nút dịch */
+#translateToEnBtn, #translateToZhBtn, #revertTranslationBtn {
+    background-color: #343a40;
+    color: white;
+}
+#revertTranslationBtn { background-color: #6c757d; }
 
 
 h2 {
@@ -187,7 +228,19 @@ align-items: center;
 justify-content: center;
 border-radius: 5px;
 overflow: hidden;
-transition: background-color 0.3s, border-color 0.3s;
+transition: background-color 0.3s, border-color 0.3s, box-shadow 0.2s;
+}
+.box.selected {
+border: 3px solid #0056b3;
+box-shadow: 0 0 15px rgba(0, 86, 179, 0.7);
+}
+/* [YÊU CẦU 1] CSS CHO Ô ẢNH ĐƯỢC FOCUS */
+.box.last-shot-focus {
+    border: 4px solid #ff8c00; /* Viền màu cam đậm nổi bật */
+    box-shadow: 0 0 15px rgba(255, 140, 0, 0.8);
+}
+.multi-select-mode .box .thumbnail {
+cursor: pointer;
 }
 .box.has-photo {
 background-color: var(--color-checked);
@@ -202,6 +255,7 @@ font-weight: bold;
 width: 100%;
 padding: 2px 4px;
 user-select: text;
+outline: none;
 }
 .description[contenteditable="true"] { cursor: text; background-color: rgba(255, 255, 255, 0.7); }
 .add-box-btn, .delete-box-btn { position: absolute; width: 22px; height: 22px; color: white; border: 1px solid white; border-radius: 50%; font-size: 16px; font-weight: bold; line-height: 20px; text-align: center; cursor: pointer; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.2s; }
@@ -223,7 +277,7 @@ user-select: text;
 
 /* --- 3. Xác nhận Kiểm định --- */
 #inspection-section { padding: 0 15px; margin-top: 20px; }
-.item-code-manager, .inspection-row { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ddd; }
+.item-code-manager { background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ddd; }
 .item-code-manager h3 { margin-top: 0; }
 .item-code-input-group { display: flex; gap: 10px; }
 .item-code-input-group input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
@@ -242,19 +296,26 @@ user-select: text;
 .tick-label.checked { background-color: var(--color-checked); border-color: var(--color-checked-border); }
 .tick-label input[type="checkbox"] { display: none; }
 .tick-label span { font-size: 14px; }
-
-/* --- AQL Frames Styling --- */
-.aql-frame { border: 1px solid #b3e5fc; border-radius: 8px; padding: 15px; margin-top: 15px; background-color: #f1f8ff; position: relative; }
-.aql-frame-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.aql-frame-header input { flex-grow: 1; font-weight: bold; font-size: 1.1em; border: none; border-bottom: 1px dashed #03a9f4; background: transparent; padding: 5px;}
-.delete-aql-frame-btn { background-color: #ffcdd2; color: #c62828; border: 1px solid #c62828; border-radius: 50%; width: 25px; height: 25px; line-height: 25px; text-align: center; cursor: pointer; font-weight: bold;}
 .add-aql-frame-btn { background-color: #0277bd; color: white; border: none; padding: 10px; border-radius: 5px; font-weight: bold; display: block; width: 100%; margin-top: 15px; }
+
+/* Bảng AQL */
+.aql-table-container { overflow-x: auto; }
+.aql-results-table { width: 100%; border-collapse: collapse; margin-top: 10px; background-color: #f1f8ff; border: 1px solid #b3e5fc; border-radius: 8px; font-size: 14px; }
+.aql-results-table th, .aql-results-table td { border: 1px solid #b3e5fc; padding: 8px; text-align: center; vertical-align: middle; }
+.aql-results-table thead th { background-color: #0277bd; color: white; font-weight: bold; }
+.aql-results-table tbody tr:nth-child(even) { background-color: #e3f2fd; }
+.aql-results-table input[type="text"], .aql-results-table input[type="number"] { width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px; box-sizing: border-box; text-align: center; }
+.aql-results-table input[readonly] { background-color: #e9ecef; border: none; font-weight: bold; }
+.aql-results-table .aql-test-description { text-align: left; }
+.delete-aql-row-btn { background-color: #ffcdd2; color: #c62828; border: 1px solid #c62828; border-radius: 50%; width: 25px; height: 25px; line-height: 25px; text-align: center; cursor: pointer; font-weight: bold; }
+.open-aql-btn { background-color: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+
 
 .defect-photos-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
 .defect-photo-item { position: relative; }
 .defect-photo-item img { width: 100%; height: auto; border-radius: 5px; }
 .add-defect-photo-btn { display: block; width: 100%; margin-top: 15px; padding: 10px; background-color: var(--color-danger); color: white; border: none; border-radius: 5px; font-weight: bold; }
-.open-aql-btn { background-color: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+
 
 /* --- 4. Ảnh Ghi Chú --- */
 #note-controls { padding: 0 15px; display: flex; gap: 10px; margin-bottom: 15px; }
@@ -267,85 +328,93 @@ user-select: text;
 .note-photo-item img { width: 100%; height: auto; max-width: 100%; display: block; border-radius: 8px; border: 2px solid #ccc; }
 .delete-note-photo-btn { position: absolute; top: 5px; right: 5px; background-color: var(--color-danger); }
 
+/* [YÊU CẦU 2] Vùng ghi chú */
+#notes-section {
+    padding: 0 15px;
+    margin-top: 20px;
+}
+#local-notes {
+    width: 100%;
+    min-height: 150px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+
 /* --- Tiện ích & Zoom --- */
 .hidden { display: none !important; }
 
 /* Overlay tiến trình chung (chặn thao tác) */
-#progress-overlay {
-position: fixed;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background: rgba(0, 0, 0, 0.7);
-z-index: 9998;
-display: none;
-justify-content: center;
-align-items: center;
-flex-direction: column;
-color: white;
-}
+#progress-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 12000; display: none; justify-content: center; align-items: center; flex-direction: column; color: white; }
 #progress-bar { width: 80%; max-width: 400px; }
 #progress-text { margin-top: 10px; font-size: 16px; font-weight: bold; }
 
-/* [YÊU CẦU 1] Container chứa các thanh tiến trình video (Không chặn thao tác) */
-#video-queue-container {
-position: fixed;
-bottom: 10px;
-left: 10px;
-width: 300px;
-z-index: 9999;
-display: flex;
-flex-direction: column-reverse; /* Video mới nhất ở dưới */
-gap: 10px;
-pointer-events: none; /* Để click xuyên qua các khoảng trống */
-}
-.video-progress-item {
-background-color: rgba(0, 0, 0, 0.85);
-color: white;
-padding: 10px;
-border-radius: 8px;
-box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-pointer-events: auto; /* Cho phép tương tác với nút hủy nếu cần */
-display: flex;
-flex-direction: column;
-gap: 5px;
-border-left: 5px solid var(--color-primary);
-}
+/* Container chứa các thanh tiến trình video (Không chặn thao tác) */
+#video-queue-container { position: fixed; bottom: 10px; left: 10px; width: 300px; z-index: 9999; display: flex; flex-direction: column-reverse; gap: 10px; pointer-events: none; }
+.video-progress-item { background-color: rgba(0, 0, 0, 0.85); color: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); pointer-events: auto; display: flex; flex-direction: column; gap: 5px; border-left: 5px solid var(--color-primary); }
 .video-progress-item p { margin: 0; font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.video-progress-item progress { width: 100%; height: 10px; }
-.video-progress-item.finished { border-left-color: var(--color-success); transition: opacity 1s ease-out; }
+.video-progress-item.finished { border-left-color: var(--color-success); opacity: 0; transition: opacity 1s ease-out 2s; }
 .video-progress-item.error { border-left-color: var(--color-danger); }
 
 
 /* Zoom */
-.zoom-icon {
-position: absolute;
-bottom: 30px;
-right: 5px;
-width: 20px;
-height: 20px;
-background-color: rgba(0, 0, 0, 0.6);
-color: white;
-border-radius: 50%;
-display: flex;
-align-items: center;
-justify-content: center;
-font-size: 12px;
-cursor: pointer;
-z-index: 5;
-border: 1px solid white;
-}
-#zoom-overlay {
-position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: none; justify-content: center; align-items: center; z-index: 10000; overflow: hidden; touch-action: none;
-}
+.zoom-icon { position: absolute; bottom: 30px; right: 5px; width: 20px; height: 20px; background-color: rgba(0, 0, 0, 0.6); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; z-index: 5; border: 1px solid white; }
+#zoom-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: none; justify-content: center; align-items: center; z-index: 10000; overflow: hidden; touch-action: none; }
 #zoom-image { max-width: 100%; max-height: 100%; transform-origin: center center; transition: transform 0.1s ease-out; cursor: grab; }
 .zoom-close-btn { position: absolute; top: 15px; right: 25px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 10001; }
+.zoom-nav { position: absolute; top: 50%; transform: translateY(-50%); background-color: rgba(0,0,0,0.5); color: white; border: none; font-size: 40px; cursor: pointer; padding: 10px; z-index: 10001; user-select: none; }
+#zoom-prev { left: 15px; }
+#zoom-next { right: 15px; }
+
+/* [YÊU CẦU 1] MODAL CHỤP NHANH */
+#quick-shot-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 14000;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+#quick-shot-video {
+    width: 90%;
+    max-width: 600px;
+    height: auto;
+    border: 2px solid white;
+    border-radius: 10px;
+}
+#quick-shot-canvas {
+    display: none; /* Canvas dùng để xử lý, không cần hiển thị */
+}
+#quick-shot-actions {
+    display: flex;
+    gap: 20px;
+}
+#quick-shot-actions button {
+    padding: 12px 25px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+#do-quick-shot-btn {
+    background-color: var(--color-danger);
+    color: white;
+}
+#close-quick-shot-btn {
+    background-color: var(--color-secondary);
+    color: white;
+}
+
 
 /* MODAL AQL */
-#aql-modal-overlay {
-position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 1001; display: none; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box;
-}
+#aql-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 10001; display: none; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; }
 #aql-modal-content { background-color: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; }
 #aql-modal-content h1 { text-align: center; color: #0056b3; margin-top:0; margin-bottom: 25px; font-size: 1.5rem; }
 .aql-calculator-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
@@ -367,20 +436,84 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 #aqlApplyBtn { background-color: var(--color-success); color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 #aqlCloseBtn { background-color: var(--color-secondary); color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
 
-/* GƯƠNG CHỤP NHANH */
+/* GƯƠNG CHỤP NHANH - ĐÃ CẬP NHẬT */
 #next-shot-mirror {
-position: fixed; bottom: 20px; left: 50%; width: 175px; height: 175px; transform-origin: center center; transform: translateX(-50%) rotate(90deg); background-color: #ffffff; border: 3px solid var(--color-primary); border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.25); z-index: 2000; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; box-sizing: border-box; transition: opacity 0.3s;
+    position: fixed; /* Luôn cố định trên màn hình dù cuộn trang */
+    bottom: 20px; /* Cách đáy màn hình 20px */
+    left: 50%; /* Căn giữa theo chiều ngang */
+    width: 175px;
+    height: 175px;
+    /* Dịch chuyển về bên trái 50% chiều rộng của nó để thực sự ở giữa */
+    /* Xoay 90 độ để phù hợp khi cầm điện thoại dọc chụp ảnh ngang */
+    transform: translateX(-50%) rotate(90deg);
+    background-color: #ffffff;
+    border: 3px solid #007bff; /* Màu viền chính */
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+    z-index: 2000; /* Nổi lên trên hầu hết các phần tử khác */
+    cursor: pointer; /* Biến con trỏ thành hình bàn tay, báo hiệu có thể click */
+    display: flex; /* Dùng flexbox để căn chỉnh nội dung bên trong */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
-#next-shot-mirror.hidden { display: none !important; }
-#next-shot-mirror.disabled { opacity: 0.3; pointer-events: none; }
-#toggle-mirror-btn { position: absolute; top: -5px; left: -5px; width: 28px; height: 28px; background-color: #f44336; color: white; border: 2px solid white; border-radius: 50%; font-size: 14px; font-weight: bold; line-height: 24px; text-align: center; cursor: pointer; z-index: 2001; box-shadow: 0 1px 3px rgba(0,0,0,0.3); pointer-events: all !important; }
-#next-shot-thumbnail { width: 90%; height: 70%; object-fit: cover; border: 1px solid #ccc; border-radius: 5px; background-color: #f0f0f0; }
-#next-shot-description { margin: 8px 0 0 0; font-size: 13px; font-weight: bold; color: var(--color-dark); text-align: center; width: 100%; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Ẩn gương đi khi có class này */
+#next-shot-mirror.hidden {
+    display: none !important;
+}
+
+/* Vô hiệu hóa gương (mờ đi và không click được) */
+#next-shot-mirror.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* CSS cho ảnh và mô tả bên trong */
+#next-shot-thumbnail {
+    width: 90%;
+    height: 70%;
+    object-fit: cover; /* Đảm bảo ảnh lấp đầy mà không bị méo */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+#next-shot-description {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    text-align: center;
+    /* Giới hạn mô tả trong 2 dòng */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Nút bật/tắt gương (giữ lại từ mã gốc để đảm bảo hoạt động) */
+#toggle-mirror-btn { 
+    position: absolute; 
+    top: -5px; 
+    left: -5px; 
+    width: 28px; 
+    height: 28px; 
+    background-color: #f44336; 
+    color: white; 
+    border: 2px solid white; 
+    border-radius: 50%; 
+    font-size: 14px; 
+    font-weight: bold; 
+    line-height: 24px; 
+    text-align: center; 
+    cursor: pointer; 
+    z-index: 2001; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3); 
+    pointer-events: all !important; 
+}
+
 
 /* BẢNG TÍNH SAI SỐ */
-#tolerance-modal-overlay {
-position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 11000; display: none; justify-content: center; align-items: center; color: white; flex-direction: row; gap: 20px; padding: 20px; box-sizing: border-box;
-}
+#tolerance-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 11000; display: none; justify-content: center; align-items: center; color: white; flex-direction: row; gap: 20px; padding: 20px; box-sizing: border-box; }
 #tolerance-modal-content { display: contents; }
 #tolerance-photo-container { flex: 1; max-width: 45%; }
 #tolerance-photo-container img { width: 100%; height: auto; border-radius: 8px; border: 2px solid #fff; }
@@ -399,14 +532,80 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 #tolerance-modal-overlay { flex-direction: column; }
 #tolerance-photo-container { max-width: 80%; margin-bottom: 20px; }
 }
+
+/* MODAL CẮT ẢNH */
+#crop-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 13000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none;
+}
+#crop-container {
+    position: relative;
+    max-width: 95vw;
+    max-height: 80vh;
+}
+#crop-image-preview {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+}
+#crop-box {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px dashed white;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    cursor: move;
+}
+.crop-handle {
+    position: absolute;
+    width: 12px; height: 12px;
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 50%;
+}
+.crop-handle.nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.crop-handle.ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.crop-handle.sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.crop-handle.se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+.crop-handle.n { top: -6px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.crop-handle.s { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.crop-handle.w { top: 50%; left: -6px; transform: translateY(-50%); cursor: ew-resize; }
+.crop-handle.e { top: 50%; right: -6px; transform: translateY(-50%); cursor: ew-resize; }
+
+
+#crop-actions {
+    position: absolute;
+    bottom: -60px; /* Tăng khoảng cách */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 15px;
+}
+#crop-actions button {
+    padding: 12px 25px; /* Tăng kích thước nút */
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#confirm-crop-btn { background-color: var(--color-success); }
+#cancel-crop-btn { background-color: var(--color-danger); }
 </style>
 </head>
 <body>
 
-<!-- [YÊU CẦU 5] Nút Ẩn/Hiện Menu -->
+<!-- Nút Ẩn/Hiện Menu -->
 <button id="toggle-menu-btn" title="Ẩn/Hiện Menu">☰</button>
 
-<!-- [YÊU CẦU 4] Thanh Tabs quản lý phiên -->
+<!-- Thanh Tabs quản lý phiên -->
 <div id="tabs-container">
 <!-- Tabs sẽ được tạo bằng JS -->
 <button id="add-tab-btn" title="Thêm phiên mới">+</button>
@@ -416,39 +615,71 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 <div id="controls">
 <div class="control-group">
 <label for="zipFileInput" class="file-input-label">Nhập SP (ZIP/RAR)</label>
-<button id="exportZip">Xuất ZIP</button>
+<button id="exportZip">Xuất ZIP (Full)</button>
+<button id="exportZipNoVideo">Xuất ZIP (Không Video)</button>
+<button id="exportOnlyVideos">Chỉ Xuất Video</button>
 </div>
 <div class="control-group">
 <button id="undoBtn" disabled title="Hoàn tác">↶</button>
 <button id="redoBtn" disabled title="Làm lại">↷</button>
 </div>
 <div class="control-group">
-<button id="scrollToTop" title="Cuộn lên đầu">↑</button>
-<button id="scrollToEnd" title="Cuộn xuống cuối">↓</button>
+<button id="scrollToTop" title="Cuộn lên đầu">↑↑</button>
+<button id="scrollToEnd" title="Cuộn xuống cuối">↓↓</button>
 </div>
 <div class="control-group">
+<button id="addManualImageBtn" title="Thêm ảnh từ máy và sửa">Thêm & Sửa Ảnh</button>
+<!-- [YÊU CẦU 1] Nút Chụp Nhanh Mới -->
+<button id="quickShotBtn" title="Chụp ảnh nhanh không cần xác nhận">📷 Chụp Nhanh</button>
 <button id="toggleToleranceBtn">Đối chiếu: Bật</button>
+</div>
+<!-- Các nút chọn và điều hướng nhiều ảnh -->
+<div class="control-group">
+<button id="toggleSelectModeBtn" title="Bật/tắt chế độ chọn nhiều ảnh">Chọn Nhiều Ảnh</button>
+<button id="exportSelectedBtn" class="hidden" title="Xuất file ZIP chỉ chứa các ảnh đã chọn">Xuất mục đã chọn</button>
+<button id="moveSelectedUpBtn" class="hidden" title="Di chuyển nhóm đã chọn lên trên">↑</button>
+<button id="moveSelectedDownBtn" class="hidden" title="Di chuyển nhóm đã chọn xuống dưới">↓</button>
+</div>
+<!-- [YÊU CẦU 3] Nhóm nút dịch -->
+<div class="control-group">
+    <button id="translateToEnBtn" title="Dịch tên tất cả ảnh sang Tiếng Anh">Dịch sang Tiếng Anh</button>
+    <button id="translateToZhBtn" title="Dịch tên tất cả ảnh sang Tiếng Trung">Dịch sang Tiếng Trung</button>
+    <button id="revertTranslationBtn" title="Khôi phục lại tên ảnh gốc" class="hidden">Khôi phục gốc</button>
 </div>
 <div class="control-group">
 <button id="clearAll" title="Xóa dữ liệu phiên này">Xóa Phiên</button>
 </div>
-<input type="file" accept=".zip,.rar" id="zipFileInput" class="hidden">
+<input type="file" id="zipFileInput" class="hidden" accept=".zip,.rar">
+<input type="file" id="manualImageInput" class="hidden" accept="image/*">
 </div>
 
-<!-- Khu vực hiển thị tiến trình (cho các tác vụ chặn như nén ảnh) -->
+<!-- Khu vực hiển thị tiến trình -->
 <div id="progress-overlay">
 <progress id="progress-bar" value="0" max="100"></progress>
 <p id="progress-text">Đang xử lý...</p>
 </div>
 
-<!-- [YÊU CẦU 1] Container chứa tiến trình video -->
+<!-- Container chứa tiến trình video -->
 <div id="video-queue-container"></div>
 
 <!-- Modal Phóng to Ảnh -->
 <div id="zoom-overlay">
 <span class="zoom-close-btn">&times;</span>
+<button id="zoom-prev" class="zoom-nav">&lt;</button>
 <img id="zoom-image" src="" alt="Zoomed Image">
+<button id="zoom-next" class="zoom-nav">&gt;</button>
 </div>
+
+<!-- [YÊU CẦU 1] Modal Chụp Nhanh -->
+<div id="quick-shot-modal">
+    <video id="quick-shot-video" playsinline></video>
+    <canvas id="quick-shot-canvas"></canvas>
+    <div id="quick-shot-actions">
+        <button id="do-quick-shot-btn">Chụp</button>
+        <button id="close-quick-shot-btn">Đóng</button>
+    </div>
+</div>
+
 
 <!-- 1. Ảnh Chi Tiết Sản Phẩm -->
 <h2>1. Ảnh Chi Tiết Sản Phẩm</h2>
@@ -462,7 +693,6 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 </div>
 <div id="factory-media-container"></div>
 <input type="file" id="factoryPhotoInput" multiple accept="image/*" capture="camera" class="hidden">
-<!-- [YÊU CẦU 1] Cho phép chọn nhiều video -->
 <input type="file" id="factoryVideoInput" multiple accept="video/*" capture="user" class="hidden">
 
 <!-- 3. Xác Nhận Kiểm Định -->
@@ -489,6 +719,12 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 <input type="file" id="notePhotoInput" multiple accept="image/*" class="hidden">
 <input type="file" id="noteZipInput" accept=".zip,.rar" class="hidden">
 
+<!-- [YÊU CẦU 2] Ghi Chú Kinh Nghiệm Sản Phẩm -->
+<section id="notes-section">
+    <h2>5. Ghi Chú / Kinh Nghiệm Sản Phẩm</h2>
+    <textarea id="local-notes" placeholder="Nhập ghi chú, bài học kinh nghiệm cho sản phẩm/phiên làm việc này... Dữ liệu sẽ được lưu tự động trên trình duyệt này."></textarea>
+</section>
+
 
 <!-- MODAL TÍNH AQL -->
 <div id="aql-modal-overlay">
@@ -511,6 +747,13 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 <option value="S-2">Special Inspection S-2</option>
 <option value="S-3">Special Inspection S-3</option>
 <option value="S-4">Special Inspection S-4</option>
+</select>
+</div>
+<div class="aql-form-group">
+<label for="aqlCritical">Lỗi nghiêm trọng (Critical Defects):</label>
+<select id="aqlCritical">
+<option value="0" selected>AQL 0 (Not allowed)</option>
+<option value="0.065">AQL 0.065</option>
 </select>
 </div>
 <div class="aql-form-group">
@@ -543,6 +786,7 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 <table class="aql-result-table">
 <thead><tr><th>Loại lỗi</th><th>Mức AQL</th><th>Chấp nhận (Ac)</th><th>Từ chối (Re)</th></tr></thead>
 <tbody>
+<tr><td>Lỗi nghiêm trọng</td><td id="aql-critical-aql-result">0</td><td class="accept" id="aql-critical-ac">0</td><td class="reject" id="aql-critical-re">1</td></tr>
 <tr><td>Lỗi nặng</td><td id="aql-major-aql-result">2.5</td><td class="accept" id="aql-major-ac">5</td><td class="reject" id="aql-major-re">6</td></tr>
 <tr><td>Lỗi nhẹ</td><td id="aql-minor-aql-result">4.0</td><td class="accept" id="aql-minor-ac">7</td><td class="reject" id="aql-minor-re">8</td></tr>
 </tbody>
@@ -556,11 +800,18 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 </div>
 </div>
 
+<!-- HTML CỦA GƯƠNG CHỤP NHANH -->
 <div id="next-shot-mirror" class="hidden">
-<div id="toggle-mirror-btn" title="Ẩn/Hiện Gương">👁</div>
-<img id="next-shot-thumbnail" src="" alt="Next Shot Thumbnail">
-<p id="next-shot-description"></p>
+    <!-- Nút bật/tắt gương (tùy chọn) -->
+    <div id="toggle-mirror-btn" title="Ẩn/Hiện Gương">👁</div>
+    
+    <!-- Nơi hiển thị ảnh xem trước của ô tiếp theo -->
+    <img id="next-shot-thumbnail" src="" alt="Next Shot Thumbnail">
+    
+    <!-- Nơi hiển thị mô tả của ô ảnh tiếp theo -->
+    <p id="next-shot-description"></p>
 </div>
+
 
 <div id="tolerance-modal-overlay">
 <span id="close-tolerance-modal-btn">&times;</span>
@@ -587,9 +838,29 @@ position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,
 </div>
 </div>
 
+<div id="crop-modal-overlay">
+    <div id="crop-container">
+        <img id="crop-image-preview" src="">
+        <div id="crop-box">
+            <div class="crop-handle nw"></div>
+            <div class="crop-handle ne"></div>
+            <div class="crop-handle sw"></div>
+            <div class="crop-handle se"></div>
+            <div class="crop-handle n"></div>
+            <div class="crop-handle s"></div>
+            <div class="crop-handle w"></div>
+            <div class="crop-handle e"></div>
+        </div>
+    </div>
+    <div id="crop-actions">
+        <button id="cancel-crop-btn">Hủy</button>
+        <button id="confirm-crop-btn">Xác nhận</button>
+    </div>
+</div>
+
 
 <script>
-// --- [YÊU CẦU 4] QUẢN LÝ TABS & SESSION ---
+// --- QUẢN LÝ TABS & SESSION ---
 const DB_NAME = `QCAppDB_MultiSessions`;
 const DB_VERSION = 1;
 const STORE_STATE = 'appState';
@@ -600,11 +871,21 @@ let historyIndex = -1;
 let isRestoringState = false;
 let isToleranceModeActive = true;
 let currentToleranceSourceBox = null;
-let activeSessionId = null; // ID của phiên làm việc hiện tại
+let activeSessionId = null;
+
+let isMultiSelectMode = false;
+let selectedBoxIds = new Set();
+let currentlyFocusedBox = null;
+let currentZoomBoxId = null;
+// [YÊU CẦU 1] Biến mới để theo dõi ô ảnh được focus để chụp tiếp
+let lastInteractedBoxId = null; 
+// [YÊU CẦU 3] Biến lưu trữ bản dịch gốc
+let originalDescriptions = {};
+
 
 // Khởi tạo danh sách Tabs
-let sessions = JSON.parse(localStorage.getItem('qc_sessions')) || [{ id: 'default', name: 'Phiên 1' }];
-if (sessions.length === 0) sessions = [{ id: 'default', name: 'Phiên 1' }];
+let sessions = JSON.parse(localStorage.getItem('qc_sessions')) || [{ id: `session_${Date.now()}`, name: 'Phiên 1' }];
+if (sessions.length === 0) sessions = [{ id: `session_${Date.now()}`, name: 'Phiên 1' }];
 
 // --- CÁC HÀM TIỆN ÍCH ---
 function compressImage(file, maxSizeKB = 500) {
@@ -711,7 +992,6 @@ function saveStateToDB(state) {
 if (!db || !state || !activeSessionId) return;
 try {
 const transaction = db.transaction([STORE_STATE], 'readwrite');
-// Sử dụng activeSessionId làm key để lưu trữ riêng biệt
 transaction.objectStore(STORE_STATE).put(state, activeSessionId);
 } catch (e) {
 console.error("Không thể lưu trạng thái:", e);
@@ -719,28 +999,37 @@ console.error("Không thể lưu trạng thái:", e);
 }
 
 function loadStateFromDB(sessionId) {
-return new Promise((resolve) => {
-if (!db) { resolve(); return; }
-const transaction = db.transaction([STORE_STATE], 'readonly');
-const request = transaction.objectStore(STORE_STATE).get(sessionId);
-request.onsuccess = async (event) => {
-const savedState = event.target.result;
-if (savedState) {
-historyStack = [savedState];
-historyIndex = 0;
-await rebuildUI(savedState);
-updateHistoryButtons();
-} else {
-// Nếu session mới chưa có dữ liệu, reset về trạng thái trắng
-resetApplicationState(false);
-}
-resolve();
-};
-request.onerror = () => resolve();
-});
+    return new Promise((resolve) => {
+        if (!db) { resolve(); return; }
+        const transaction = db.transaction([STORE_STATE], 'readonly');
+        const request = transaction.objectStore(STORE_STATE).get(sessionId);
+        request.onsuccess = async (event) => {
+            const savedState = event.target.result;
+            if (savedState) {
+                historyStack = [savedState];
+                historyIndex = 0;
+                await rebuildUI(savedState);
+                updateHistoryButtons();
+            } else {
+                resetApplicationState(false);
+                const currentSession = sessions.find(s => s.id === activeSessionId);
+                const sessionName = currentSession ? currentSession.name : "MÃ MẶC ĐỊNH";
+                createItemCodeTag(sessionName);
+                createInspectionRow(sessionName, {}, true);
+                captureState();
+            }
+            // [YÊU CẦU 2] Tải ghi chú cho phiên
+            loadNotesForSession(sessionId);
+            resolve();
+        };
+        request.onerror = () => {
+            loadNotesForSession(sessionId);
+            resolve();
+        };
+    });
 }
 
-// Hàm reset giao diện (true: xóa hoàn toàn, false: chỉ xóa UI để load mới)
+// Hàm reset giao diện
 function resetApplicationState(shouldCapture = true) {
 document.getElementById('boxes-container').innerHTML = '';
 document.getElementById('factory-media-container').innerHTML = '';
@@ -748,55 +1037,144 @@ document.getElementById('note-photos-container').innerHTML = '';
 document.getElementById('item-codes-display').innerHTML = '';
 document.getElementById('inspection-rows-container').innerHTML = '';
 document.getElementById('itemCodeInput').value = '';
+document.getElementById('local-notes').value = ''; // [YÊU CẦU 2]
 
-// Mặc định tạo 1 box nếu trống
-if (document.getElementById('boxes-container').children.length === 0) {
-const initialBox = createDetailBox("Ảnh Tổng Quan 1");
-document.getElementById('boxes-container').appendChild(initialBox);
-renumberDetailBoxes();
-}
+// [YÊU CẦU 1] Reset cả biến focus
+lastInteractedBoxId = null;
 
 historyStack = [];
 historyIndex = -1;
+updateHistoryButtons();
 
 if (shouldCapture) captureState();
 }
 
 // --- LOGIC TABS UI ---
+let draggedTab = null;
 function renderTabs() {
-const container = document.getElementById('tabs-container');
-const addBtn = document.getElementById('add-tab-btn');
-// Xóa các tab cũ (trừ nút add)
-Array.from(container.getElementsByClassName('tab-item')).forEach(el => el.remove());
+    const container = document.getElementById('tabs-container');
+    const addBtn = document.getElementById('add-tab-btn');
+    Array.from(container.getElementsByClassName('tab-item')).forEach(el => el.remove());
 
-sessions.forEach(session => {
-const tab = document.createElement('div');
-tab.className = `tab-item ${session.id === activeSessionId ? 'active' : ''}`;
-tab.textContent = session.name;
-tab.onclick = () => switchSession(session.id);
+    sessions.forEach(session => {
+        const tab = document.createElement('div');
+        tab.className = `tab-item ${session.id === activeSessionId ? 'active' : ''}`;
+        tab.dataset.sessionId = session.id;
+        tab.draggable = true;
 
-if (sessions.length > 1) {
-const close = document.createElement('span');
-close.className = 'tab-close';
-close.innerHTML = '&times;';
-close.onclick = (e) => {
-e.stopPropagation();
-deleteSession(session.id);
-};
-tab.appendChild(close);
+        const tabName = document.createElement('span');
+        tabName.textContent = session.name;
+        tab.appendChild(tabName);
+
+        tab.addEventListener('click', () => switchSession(session.id));
+        tab.addEventListener('dblclick', () => {
+            if (tab.classList.contains('active')) {
+                editTabName(tab, session.id);
+            }
+        });
+
+        tab.addEventListener('dragstart', (e) => {
+            draggedTab = tab;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => tab.classList.add('dragging'), 0);
+        });
+
+        tab.addEventListener('dragend', () => {
+            tab.classList.remove('dragging');
+            draggedTab = null;
+        });
+
+        tab.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('.tab-item');
+            if (target && draggedTab !== target) {
+                 document.querySelectorAll('.tab-item.drag-over').forEach(t => t.classList.remove('drag-over'));
+                target.classList.add('drag-over');
+            }
+        });
+        
+        tab.addEventListener('dragleave', (e) => {
+             e.target.closest('.tab-item')?.classList.remove('drag-over');
+        });
+
+
+        tab.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.tab-item.drag-over').forEach(t => t.classList.remove('drag-over'));
+            const targetTab = e.target.closest('.tab-item');
+            if (draggedTab && targetTab && draggedTab !== targetTab) {
+                const draggedId = draggedTab.dataset.sessionId;
+                const targetId = targetTab.dataset.sessionId;
+                const draggedIndex = sessions.findIndex(s => s.id === draggedId);
+                const targetIndex = sessions.findIndex(s => s.id === targetId);
+
+                const [removed] = sessions.splice(draggedIndex, 1);
+                sessions.splice(targetIndex, 0, removed);
+                
+                localStorage.setItem('qc_sessions', JSON.stringify(sessions));
+                renderTabs();
+            }
+        });
+
+        if (sessions.length > 1) {
+            const close = document.createElement('span');
+            close.className = 'tab-close';
+            close.innerHTML = '&times;';
+            close.onclick = (e) => {
+                e.stopPropagation();
+                deleteSession(session.id);
+            };
+            tab.appendChild(close);
+        }
+        container.insertBefore(tab, addBtn);
+    });
 }
 
-container.insertBefore(tab, addBtn);
-});
+function editTabName(tabElement, sessionId) {
+    const nameSpan = tabElement.querySelector('span:not(.tab-close)');
+    const currentName = nameSpan.textContent;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    
+    nameSpan.style.display = 'none';
+    tabElement.insertBefore(input, nameSpan);
+    input.focus();
+    input.select();
+
+    const saveName = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== currentName) {
+            const session = sessions.find(s => s.id === sessionId);
+            if(session) session.name = newName;
+            localStorage.setItem('qc_sessions', JSON.stringify(sessions));
+            nameSpan.textContent = newName;
+        }
+        input.remove();
+        nameSpan.style.display = '';
+    };
+
+    input.addEventListener('blur', saveName);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') {
+            input.value = currentName; 
+            input.blur();
+        }
+    });
 }
+
 
 async function switchSession(sessionId) {
-if (sessionId === activeSessionId) return;
-activeSessionId = sessionId;
-localStorage.setItem('active_qc_session', sessionId);
-renderTabs();
-// Show loading mask if needed
-await loadStateFromDB(sessionId);
+    if (sessionId === activeSessionId) return;
+    
+    // [YÊU CẦU 2] Lưu ghi chú của phiên hiện tại trước khi chuyển
+    saveNotesForSession(activeSessionId);
+
+    activeSessionId = sessionId;
+    localStorage.setItem('active_qc_session', sessionId);
+    renderTabs();
+    await loadStateFromDB(sessionId);
 }
 
 function createNewSession() {
@@ -809,22 +1187,44 @@ switchSession(id);
 }
 }
 
-function deleteSession(sessionId) {
-if (confirm("Bạn có chắc muốn xóa phiên làm việc này? Dữ liệu sẽ mất vĩnh viễn.")) {
-sessions = sessions.filter(s => s.id !== sessionId);
-localStorage.setItem('qc_sessions', JSON.stringify(sessions));
+async function deleteSession(sessionId) {
+    const sessionToDelete = sessions.find(s => s.id === sessionId);
+    if (!sessionToDelete) return;
+    
+    if (confirm(`Bạn có chắc muốn xóa phiên "${sessionToDelete.name}"? Một bản sao lưu sẽ được tự động tải về.`)) {
+        showProgress("Đang tạo bản sao lưu...", 0, 100);
+        const transaction = db.transaction([STORE_STATE], 'readonly');
+        const request = transaction.objectStore(STORE_STATE).get(sessionId);
+        request.onsuccess = async (event) => {
+            const stateToBackup = event.target.result;
+            if (stateToBackup) {
+                 await generateZipFromState(stateToBackup, sessionToDelete.name, true); 
+            } else {
+                console.log("Không có dữ liệu để sao lưu cho phiên này.");
+            }
+            
+            hideProgress();
+            sessions = sessions.filter(s => s.id !== sessionId);
+            localStorage.setItem('qc_sessions', JSON.stringify(sessions));
+            localStorage.removeItem(`notes_${sessionId}`); // [YÊU CẦU 2] Xóa ghi chú liên quan
+            const deleteTransaction = db.transaction([STORE_STATE], 'readwrite');
+            deleteTransaction.objectStore(STORE_STATE).delete(sessionId);
 
-// Xóa data trong DB
-const transaction = db.transaction([STORE_STATE], 'readwrite');
-transaction.objectStore(STORE_STATE).delete(sessionId);
-
-if (activeSessionId === sessionId) {
-// Nếu xóa tab đang active, chuyển về tab đầu tiên
-switchSession(sessions[0].id);
-} else {
-renderTabs();
-}
-}
+            if (activeSessionId === sessionId) {
+                switchSession(sessions[0]?.id || null);
+                 if (!sessions.length) { 
+                    createNewSession();
+                 }
+            } else {
+                renderTabs();
+            }
+        };
+        request.onerror = (e) => {
+            hideProgress();
+            console.error("Lỗi khi tải dữ liệu để sao lưu:", e);
+            alert("Không thể tạo bản sao lưu. Hủy xóa phiên.");
+        };
+    }
 }
 
 
@@ -835,14 +1235,15 @@ id: box.id,
 baseDescription: box.dataset.baseDescription,
 imageBlob: box.imageBlob || null,
 isCameraCaptured: box.dataset.isCameraCaptured === 'true',
-skipTolerance: box.dataset.skipTolerance // Lưu trạng thái skip
+skipTolerance: box.dataset.skipTolerance === 'true'
 }));
-// ... (Các phần khác giữ nguyên như code cũ)
+
 const factoryMedia = Array.from(document.querySelectorAll('.factory-media-item')).map(item => ({
 id: item.id,
 mediaBlob: item.mediaBlob || null,
 type: item.dataset.type
 }));
+
 const notePhotos = Array.from(document.querySelectorAll('.note-photo-item')).map(item => ({
 id: item.id,
 imageBlob: item.imageBlob || null
@@ -857,19 +1258,22 @@ row.querySelectorAll('.main-inputs input[type="text"], .main-inputs input[type="
 const checkboxes = {};
 row.querySelectorAll('input[type="checkbox"]').forEach(checkbox => { checkboxes[checkbox.name] = checkbox.checked; });
 const defectPhotos = Array.from(row.querySelectorAll('.defect-photo-item')).map(item => ({ imageBlob: item.imageBlob }));
-const aqlFrames = Array.from(row.querySelectorAll('.aql-frame')).map(frame => ({
-description: frame.querySelector('.aql-test-description').value,
-orderQty: frame.dataset.orderQty || '',
-sampleSize: frame.querySelector('input[name="aql_check_qty"]').value,
-majorAc: frame.querySelector('input[name="major_standard"]').value,
-minorAc: frame.querySelector('input[name="minor_standard"]').value,
-inspectionLevel: frame.dataset.inspectionLevel,
-majorAql: frame.dataset.majorAql,
-minorAql: frame.dataset.minorAql
+const aqlFrames = Array.from(row.querySelectorAll('.aql-tests-tbody tr')).map(tr => ({
+description: tr.querySelector('.aql-test-description').value,
+orderQty: tr.dataset.orderQty || '',
+sampleSize: tr.querySelector('input[name="aql_check_qty"]').value,
+criticalAc: tr.querySelector('input[name="critical_standard"]').value,
+majorAc: tr.querySelector('input[name="major_standard"]').value,
+minorAc: tr.querySelector('input[name="minor_standard"]').value,
+inspectionLevel: tr.dataset.inspectionLevel,
+criticalAql: tr.dataset.criticalAql,
+majorAql: tr.dataset.majorAql,
+minorAql: tr.dataset.minorAql
 }));
 inspectionData[code] = { inputs, checkboxes, defectPhotos, aqlFrames };
 });
-return { detailPhotos, factoryMedia, notePhotos, itemCodes, inspectionData };
+// [YÊU CẦU 1] Lưu lại ID của ô được focus
+return { detailPhotos, factoryMedia, notePhotos, itemCodes, inspectionData, lastInteractedBoxId };
 }
 
 async function rebuildUI(state) {
@@ -880,12 +1284,16 @@ document.getElementById('factory-media-container').innerHTML = '';
 document.getElementById('note-photos-container').innerHTML = '';
 document.getElementById('item-codes-display').innerHTML = '';
 document.getElementById('inspection-rows-container').innerHTML = '';
+originalDescriptions = {}; // [YÊU CẦU 3] Reset bản dịch
+document.getElementById('revertTranslationBtn').classList.add('hidden');
+
 
 if (state.detailPhotos) {
 for (const data of state.detailPhotos) {
 const box = createDetailBox(data.baseDescription, data.id);
-// Khôi phục trạng thái skip tolerance
-if (data.skipTolerance) box.dataset.skipTolerance = data.skipTolerance;
+if (data.skipTolerance) {
+box.dataset.skipTolerance = 'true';
+}
 
 if (data.imageBlob) {
 box.imageBlob = data.imageBlob;
@@ -925,7 +1333,39 @@ createInspectionRow(code, data);
 }
 }
 isRestoringState = false;
-updateNextShotMirror();
+
+// [YÊU CẦU 1] Khôi phục lại trạng thái focus sau khi tải
+if (state.lastInteractedBoxId) {
+    // Dùng setTimeout để đảm bảo DOM đã render hoàn toàn
+    setTimeout(() => setLastInteractedBox(state.lastInteractedBoxId), 0);
+} else {
+    updateNextShotMirror();
+}
+}
+
+
+// --- [YÊU CẦU 1] HÀM MỚI ĐỂ QUẢN LÝ FOCUS ---
+/**
+ * Đặt ô được chỉ định làm tiêu điểm chụp ảnh tiếp theo.
+ * @param {string} boxId ID của phần tử .box
+ */
+function setLastInteractedBox(boxId) {
+    // Bỏ class focus khỏi ô cũ (nếu có)
+    if (lastInteractedBoxId) {
+        document.getElementById(lastInteractedBoxId)?.classList.remove('last-shot-focus');
+    }
+    
+    // Cập nhật biến trạng thái global
+    lastInteractedBoxId = boxId;
+    const newFocusBox = document.getElementById(boxId);
+    
+    if (newFocusBox) {
+        // Thêm class focus cho ô mới
+        newFocusBox.classList.add('last-shot-focus');
+    }
+    
+    // Cập nhật gương xem trước ngay lập tức
+    updateNextShotMirror();
 }
 
 
@@ -945,14 +1385,12 @@ thumbnail.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 }
 }
 
-// [YÊU CẦU 3] Thêm tham số isNew để đánh dấu ô mới tạo
 function createDetailBox(baseDescription, id = `box-${Date.now()}`, isNew = false) {
 const box = document.createElement('div');
 box.className = 'box';
 box.id = id;
 box.dataset.baseDescription = baseDescription;
 box.imageBlob = null;
-// Nếu là ô mới tạo thủ công, đánh dấu skip tolerance
 if (isNew) {
 box.dataset.skipTolerance = 'true';
 }
@@ -960,14 +1398,30 @@ box.dataset.skipTolerance = 'true';
 const addButton = document.createElement('div');
 addButton.className = 'add-box-btn';
 addButton.textContent = '+';
-// Khi bấm nút +, isNew = true
 addButton.onclick = (e) => { e.stopPropagation(); const newBox = createDetailBox("Mô tả mới", undefined, true); box.insertAdjacentElement('afterend', newBox); renumberDetailBoxes(); captureState(); };
 box.appendChild(addButton);
 
 const deleteButton = document.createElement('div');
 deleteButton.className = 'delete-box-btn';
 deleteButton.innerHTML = '&times;';
-deleteButton.onclick = (e) => { e.stopPropagation(); if (confirm('Xóa ô ảnh này?')) { box.remove(); renumberDetailBoxes(); captureState(); } };
+deleteButton.onclick = (e) => {
+e.stopPropagation();
+if (isMultiSelectMode && selectedBoxIds.has(box.id)) {
+if (confirm(`Bạn có chắc muốn xóa ${selectedBoxIds.size} ô ảnh đã chọn?`)) {
+selectedBoxIds.forEach(idToDelete => document.getElementById(idToDelete)?.remove());
+selectedBoxIds.clear();
+toggleMultiSelectMode(false);
+renumberDetailBoxes();
+captureState();
+}
+} else {
+if (confirm('Xóa ô ảnh này?')) {
+box.remove();
+renumberDetailBoxes();
+captureState();
+}
+}
+};
 box.appendChild(deleteButton);
 
 const thumbnail = document.createElement('img');
@@ -978,14 +1432,36 @@ const p = document.createElement('p');
 p.className = 'description';
 p.textContent = baseDescription;
 p.contentEditable = true;
-p.onblur = () => { const newDesc = p.textContent.replace(/^\d+\.?\s*/, ''); box.dataset.baseDescription = newDesc; renumberDetailBoxes(); captureState(); };
+p.onfocus = () => {
+    currentlyFocusedBox = box;
+    const textNode = p.firstChild;
+    if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+        const fullText = textNode.textContent;
+        const match = fullText.match(/^(\d+\.\s*)/);
+        const startIndex = match ? match[0].length : 0;
+        setTimeout(() => {
+            const range = document.createRange();
+            range.setStart(textNode, startIndex);
+            range.setEnd(textNode, fullText.length);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }, 0);
+    }
+};
+p.onblur = () => { 
+    const newDesc = p.textContent.replace(/^\d+\.?\s*/, ''); 
+    box.dataset.baseDescription = newDesc; 
+    renumberDetailBoxes(); 
+    captureState(); 
+};
 p.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); p.blur(); } };
 box.appendChild(p);
 
 const zoomIcon = document.createElement('div');
 zoomIcon.className = 'zoom-icon';
 zoomIcon.innerHTML = '&#128269;';
-zoomIcon.onclick = (e) => { e.stopPropagation(); if(box.imageBlob) showZoom(thumbnail.src); };
+zoomIcon.onclick = (e) => { e.stopPropagation(); if(box.imageBlob) showZoom(box.id); };
 box.appendChild(zoomIcon);
 
 const input = document.createElement('input');
@@ -1000,11 +1476,12 @@ const compressedBlob = await compressImage(file);
 box.imageBlob = compressedBlob;
 box.dataset.isCameraCaptured = 'true';
 
+// [YÊU CẦU 1] Đặt ô này làm focus mới
+setLastInteractedBox(box.id);
+
 updateBoxAppearance(box);
 captureState();
-updateNextShotMirror();
 
-// [YÊU CẦU 3] Chỉ hiện popup nếu không bị skip
 if (isToleranceModeActive && box.dataset.skipTolerance !== 'true') {
 const fullDescription = box.querySelector('.description').textContent;
 const measurementRegex = /(\d+\.?\d*)\s*(cm|mm|kg|g|s|m)\b/i;
@@ -1015,12 +1492,28 @@ const unit = match[2];
 showToleranceCalculator(value, unit, compressedBlob, box);
 }
 }
-
 } catch (error) { console.error("Lỗi nén ảnh:", error); }
 finally { hideProgress(); }
 };
 box.appendChild(input);
-thumbnail.onclick = () => input.click();
+
+thumbnail.onclick = () => {
+if (isMultiSelectMode) {
+toggleBoxSelection(box);
+} else {
+input.click();
+}
+};
+
+// [YÊU CẦU 1] Thêm sự kiện click để chủ động chọn focus
+box.addEventListener('click', (e) => {
+    // Chỉ hoạt động khi không ở chế độ chọn nhiều và không click vào nút con
+    if (!isMultiSelectMode && e.target.classList.contains('box')) {
+        setLastInteractedBox(box.id);
+    }
+});
+
+
 updateBoxAppearance(box);
 return box;
 }
@@ -1063,7 +1556,7 @@ if (type === 'image') {
 const zoomIcon = document.createElement('div');
 zoomIcon.className = 'zoom-icon';
 zoomIcon.innerHTML = '&#128269;';
-zoomIcon.onclick = (e) => { e.stopPropagation(); showZoom(mediaElement.src); };
+zoomIcon.onclick = (e) => { e.stopPropagation(); showZoom(item.id); }; 
 item.appendChild(zoomIcon);
 }
 return item;
@@ -1110,7 +1603,6 @@ item.appendChild(zoomIcon);
 return item;
 }
 
-// ... (Các hàm AQL, Item Code, Inspection Row giữ nguyên) ...
 function createItemCodeTag(code) {
 const display = document.getElementById('item-codes-display');
 const tag = document.createElement('div');
@@ -1130,35 +1622,118 @@ tag.appendChild(removeBtn);
 display.appendChild(tag);
 }
 
-function createAqlFrameHTML(data = {}) {
-const description = data.description || "Kiểm tra ngoại quan";
-const sampleSize = data.sampleSize || "";
-const majorAc = data.majorAc || "";
-const minorAc = data.minorAc || "";
-const orderQty = data.orderQty || "";
-const datasetAttributes = ['inspectionLevel', 'majorAql', 'minorAql'].map(key => data[key] ? `data-${key.toLowerCase()}="${data[key]}"` : '').join(' ');
-return `<div class="aql-frame" data-orderqty="${orderQty}" ${datasetAttributes}><div class="aql-frame-header"><input type="text" class="aql-test-description" placeholder="Mô tả bài test AQL..." value="${description}"><button class="delete-aql-frame-btn" title="Xóa bài test này">&times;</button></div><div class="input-group"><label><span>Số lượng kiểm</span><input type="number" name="aql_check_qty" value="${sampleSize}" readonly></label><label><span>Major (Ac)</span><input type="number" name="major_standard" value="${majorAc}" readonly></label><label><span>Minor (Ac)</span><input type="number" name="minor_standard" value="${minorAc}" readonly></label></div><button class="open-aql-btn">Mở Công cụ tính AQL</button></div>`;
+function createAqlTableRowHTML(data = {}) {
+    const description = data.description || "Kiểm tra ngoại quan";
+    const sampleSize = data.sampleSize || "";
+    const criticalAc = data.criticalAc || "0";
+    const majorAc = data.majorAc || "";
+    const minorAc = data.minorAc || "";
+    const orderQty = data.orderQty || "";
+    const datasetAttributes = ['inspectionLevel', 'criticalAql', 'majorAql', 'minorAql'].map(key => data[key] ? `data-${key.toLowerCase()}="${data[key]}"` : '').join(' ');
+
+    return `
+        <tr data-orderqty="${orderQty}" ${datasetAttributes}>
+            <td>
+                <input type="text" class="aql-test-description" placeholder="Mô tả bài test..." value="${description}">
+                <button class="open-aql-btn">Tính AQL</button>
+            </td>
+            <td><input type="number" name="aql_check_qty" value="${sampleSize}" readonly title="Số lượng kiểm"></td>
+            <td><input type="number" name="critical_standard" value="${criticalAc}" readonly title="Critical (Ac)"></td>
+            <td><input type="number" name="major_standard" value="${majorAc}" readonly title="Major (Ac)"></td>
+            <td><input type="number" name="minor_standard" value="${minorAc}" readonly title="Minor (Ac)"></td>
+            <td><button class="delete-aql-row-btn" title="Xóa bài test này">&times;</button></td>
+        </tr>`;
 }
 
-function createInspectionRow(code, data = {}) {
+function createInspectionRow(code, data = {}, createDefaultTests = false) {
 const container = document.getElementById('inspection-rows-container');
 const row = document.createElement('div');
 row.className = 'inspection-row';
 row.dataset.code = code;
-row.innerHTML = `<h4>Mã hàng: ${code}</h4><div class="main-inputs"><h5>Thông tin số lượng</h5><div class="input-group"><label><span>Đóng gói (TT)</span><input type="number" name="pack_qty_actual" placeholder="Thực tế" value="${data.inputs?.pack_qty_actual || ''}"></label><label><span>Sản phẩm (TT)</span><input type="number" name="prod_qty_actual" placeholder="Thực tế" value="${data.inputs?.prod_qty_actual || ''}"></label><label><span>Sản phẩm (TC)</span><input type="number" name="prod_qty_standard" placeholder="Tiêu chuẩn" value="${data.inputs?.prod_qty_standard || ''}"></label></div></div><h5>Tiêu chuẩn AQL</h5><div class="aql-frames-container"></div><button class="add-aql-frame-btn">+ Thêm Bài Test AQL</button><h5 style="margin-top: 20px;">Tình trạng kiểm tra</h5><div class="checkbox-group">${['has_sample', 'pass_style', 'pass_workmanship', 'pass_packing', 'pass_marking', 'pass_measurement', 'pass_special'].map(name => {
+row.innerHTML = `<h4>Mã hàng: ${code}</h4>
+<div class="main-inputs">
+<h5>Thông tin số lượng</h5>
+<div class="input-group">
+<label><span>Đóng gói (TT)</span><input type="number" name="pack_qty_actual" placeholder="Thực tế" value="${data.inputs?.pack_qty_actual || ''}"></label>
+<label><span>Sản phẩm (TT)</span><input type="number" name="prod_qty_actual" placeholder="Thực tế" value="${data.inputs?.prod_qty_actual || ''}"></label>
+<label><span>Sản phẩm (TC)</span><input type="number" name="prod_qty_standard" placeholder="Tiêu chuẩn" value="${data.inputs?.prod_qty_standard || ''}"></label>
+</div>
+</div>
+<h5>Tiêu chuẩn AQL</h5>
+<div class="aql-table-container">
+<table class="aql-results-table">
+<thead>
+<tr>
+<th>Tiêu chí đánh giá AQL</th>
+<th>SL kiểm</th>
+<th>Critical</th>
+<th>Major</th>
+<th>Minor</th>
+<th>Xóa</th>
+</tr>
+</thead>
+<tbody class="aql-tests-tbody"></tbody>
+</table>
+</div>
+<button class="add-aql-frame-btn">+ Thêm Bài Test AQL</button>
+<h5 style="margin-top: 20px;">Tình trạng kiểm tra</h5>
+<div class="checkbox-group">${['has_sample', 'pass_style', 'pass_workmanship', 'pass_packing', 'pass_marking', 'pass_measurement', 'pass_special'].map(name => {
 const labels = { has_sample: 'Có Sample', pass_style: 'PASS: Kiểu dáng, chất liệu, màu sắc', pass_workmanship: 'PASS: Tay nghề/Ngoại quan/Chức năng', pass_packing: 'PASS: Đóng gói', pass_marking: 'PASS: Ghi nhãn/Mác', pass_measurement: 'PASS: Đo lường/Kiểm tra thực địa', pass_special: 'PASS: Yêu cầu đặc biệt của khách hàng' };
 const isChecked = data.checkboxes?.[name] || false;
 return `<label class="tick-label ${isChecked ? 'checked' : ''}"><input type="checkbox" name="${name}" ${isChecked ? 'checked' : ''}><span>${labels[name]}</span></label>`;
-}).join('')}</div><h5>Ảnh Lỗi (${code})</h5><div class="defect-photos-container"></div><button class="add-defect-photo-btn">Chụp Ảnh Lỗi</button><input type="file" class="hidden-defect-input" multiple accept="image/*" capture="camera" class="hidden">`;
+}).join('')}</div>
+<h5>Ảnh Lỗi (${code})</h5>
+<div class="defect-photos-container"></div>
+<button class="add-defect-photo-btn">Chụp Ảnh Lỗi</button>
+<input type="file" class="hidden-defect-input" multiple accept="image/*" capture="camera" class="hidden">`;
 
-const actualProdQtyInput = row.querySelector('input[name="prod_qty_actual"]');
-actualProdQtyInput.addEventListener('input', (e) => { const newQty = e.target.value; row.querySelectorAll('.aql-frame').forEach(frame => { frame.dataset.orderqty = newQty; }); captureState(); });
-const aqlContainer = row.querySelector('.aql-frames-container');
-if (data.aqlFrames && data.aqlFrames.length > 0) { data.aqlFrames.forEach(frameData => { if (!frameData.orderQty && data.inputs?.prod_qty_actual) { frameData.orderQty = data.inputs.prod_qty_actual; } aqlContainer.innerHTML += createAqlFrameHTML(frameData); }); } else { const defaultOrderQty = data.inputs?.prod_qty_actual || ''; aqlContainer.innerHTML += createAqlFrameHTML({ orderQty: defaultOrderQty }); }
-row.querySelectorAll('input, select').forEach(input => { input.addEventListener('input', captureState); if (input.type === 'checkbox') { input.addEventListener('change', () => { input.parentElement.classList.toggle('checked', input.checked); captureState(); }); } });
-aqlContainer.addEventListener('click', e => { if (e.target.classList.contains('open-aql-btn')) { openAqlModal(e.target.closest('.aql-frame')); } if (e.target.classList.contains('delete-aql-frame-btn')) { if (confirm("Bạn có chắc muốn xóa bài test AQL này?")) { e.target.closest('.aql-frame').remove(); captureState(); } } });
-aqlContainer.addEventListener('input', e => { if (e.target.classList.contains('aql-test-description')) captureState(); });
-row.querySelector('.add-aql-frame-btn').addEventListener('click', () => { const currentOrderQty = row.querySelector('input[name="prod_qty_actual"]')?.value || ''; aqlContainer.insertAdjacentHTML('beforeend', createAqlFrameHTML({description: "", orderQty: currentOrderQty})); captureState(); });
+const aqlTbody = row.querySelector('.aql-tests-tbody');
+const defaultOrderQty = data.inputs?.prod_qty_actual || '';
+
+if (createDefaultTests) {
+aqlTbody.innerHTML += createAqlTableRowHTML({ description: "Kiểm tra ngoại quan", orderQty: defaultOrderQty });
+aqlTbody.innerHTML += createAqlTableRowHTML({ description: "Kiểm tra chức năng", orderQty: defaultOrderQty });
+aqlTbody.innerHTML += createAqlTableRowHTML({ description: "Kiểm tra đo lường", orderQty: defaultOrderQty });
+} else if (data.aqlFrames && data.aqlFrames.length > 0) {
+data.aqlFrames.forEach(frameData => {
+if (!frameData.orderQty) { frameData.orderQty = defaultOrderQty; }
+aqlTbody.innerHTML += createAqlTableRowHTML(frameData);
+});
+} else {
+aqlTbody.innerHTML += createAqlTableRowHTML({ orderQty: defaultOrderQty });
+}
+
+row.querySelector('input[name="prod_qty_actual"]').addEventListener('input', (e) => {
+const newQty = e.target.value;
+row.querySelectorAll('.aql-tests-tbody tr').forEach(tr => { tr.dataset.orderqty = newQty; });
+captureState();
+});
+
+row.querySelectorAll('input, select').forEach(input => {
+input.addEventListener('input', captureState);
+if (input.type === 'checkbox') {
+input.addEventListener('change', () => { input.parentElement.classList.toggle('checked', input.checked); captureState(); });
+}
+});
+
+aqlTbody.addEventListener('click', e => {
+const target = e.target;
+if (target.classList.contains('open-aql-btn')) {
+openAqlModal(target.closest('tr'));
+} else if (target.classList.contains('delete-aql-row-btn')) {
+if (confirm("Bạn có chắc muốn xóa bài test AQL này?")) {
+target.closest('tr').remove();
+captureState();
+}
+}
+});
+aqlTbody.addEventListener('input', e => { if (e.target.classList.contains('aql-test-description')) captureState(); });
+row.querySelector('.add-aql-frame-btn').addEventListener('click', () => {
+const currentOrderQty = row.querySelector('input[name="prod_qty_actual"]')?.value || '';
+aqlTbody.insertAdjacentHTML('beforeend', createAqlTableRowHTML({description: "", orderQty: currentOrderQty}));
+captureState();
+});
+
 const defectPhotoInput = row.querySelector('.hidden-defect-input');
 const defectContainer = row.querySelector('.defect-photos-container');
 row.querySelector('.add-defect-photo-btn').addEventListener('click', () => defectPhotoInput.click());
@@ -1167,66 +1742,111 @@ if (data.defectPhotos) { data.defectPhotos.forEach(async photoData => { if (phot
 container.appendChild(row);
 }
 
+
 // --- ZIP EXPORT ---
-async function exportAllDataAsZip() {
-showProgress("Đang chuẩn bị dữ liệu...", 0, 100);
-const zip = new JSZip();
-const today = new Date();
-const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
-const currentSessionName = sessions.find(s => s.id === activeSessionId)?.name || 'Unknown';
-const reportName = `BCKD_${currentSessionName}_${dateString}`;
-const mainFolder = zip.folder(reportName);
+async function generateZipFromState(state, sessionName, isBackup = false) {
+    const zip = new JSZip();
+    const today = new Date();
+    const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    const timeString = `${today.getHours().toString().padStart(2, '0')}${today.getMinutes().toString().padStart(2, '0')}${today.getSeconds().toString().padStart(2, '0')}`;
+    
+    let reportName;
+    if (isBackup) {
+        reportName = `backup_${sessionName}_${dateString}_${timeString}`;
+    } else {
+        reportName = `BCKD_${sessionName}_${dateString}`;
+    }
+    
+    const mainFolder = zip.folder(reportName);
 
-const currentState = getCurrentState();
+    if (state.detailPhotos && state.detailPhotos.length > 0) {
+        const detailPhotosFolder = mainFolder.folder("1_Anh_Chi_Tiet");
+        for (const [index, photo] of state.detailPhotos.entries()) {
+            if (photo.imageBlob) {
+                const filename = `${index + 1}. ${photo.baseDescription}.jpg`;
+                detailPhotosFolder.file(filename, photo.imageBlob);
+            }
+        }
+    }
 
-if (currentState.detailPhotos.length > 0) {
-const detailPhotosFolder = mainFolder.folder("1_Anh_Chi_Tiet");
-for (const [index, photo] of currentState.detailPhotos.entries()) {
-if (photo.imageBlob) {
-const filename = `${index + 1}. ${photo.baseDescription}.jpg`;
-detailPhotosFolder.file(filename, photo.imageBlob);
-}
-}
+    const factoryPhotos = state.factoryMedia.filter(m => m.type === 'image');
+    const factoryVideos = state.factoryMedia.filter(m => m.type === 'video');
+
+    if (factoryPhotos.length > 0) {
+        const factoryPhotoFolder = mainFolder.folder("2_Anh_Factory");
+        for (const [i, photo] of factoryPhotos.entries()) {
+            if (photo.mediaBlob) {
+                factoryPhotoFolder.file(`factory-photo-${i + 1}.jpg`, photo.mediaBlob);
+            }
+        }
+    }
+    
+    if (factoryVideos.length > 0) {
+        const factoryVideoFolder = mainFolder.folder("3_Video_Factory");
+        for (const [i, video] of factoryVideos.entries()) {
+            if (video.mediaBlob) {
+                const extension = video.mediaBlob.name?.split('.').pop() || 'mp4';
+                factoryVideoFolder.file(`factory-video-${i + 1}.${extension}`, video.mediaBlob);
+            }
+        }
+    }
+    
+    let reportText = `BÁO CÁO KIỂM ĐỊNH SẢN PHẨM\nNgày: ${dateString}\nPhiên: ${sessionName}\n\n`;
+    reportText += `1. ẢNH CHI TIẾT SẢN PHẨM\n-------------------------\n`;
+    state.detailPhotos.forEach((photo, index) => { reportText += `${index + 1}. ${photo.baseDescription} - ${photo.imageBlob ? 'Đã chụp' : 'Chưa chụp'}\n`; });
+    reportText += `\n2. CÁC MÃ HÀNG KIỂM TRA\n------------------------\n`;
+    state.itemCodes.forEach(code => {
+    reportText += `MÃ: ${code}\n`;
+    const data = state.inspectionData[code];
+    if(data) {
+    reportText += `  - Số lượng: Thực tế ${data.inputs.prod_qty_actual} / Tiêu chuẩn ${data.inputs.prod_qty_standard}\n`;
+    data.aqlFrames.forEach((frame, idx) => { reportText += `  - AQL Check #${idx+1}: ${frame.description} | Mẫu: ${frame.sampleSize} | Cri(Ac): ${frame.criticalAc} | Maj(Ac): ${frame.majorAc} | Min(Ac): ${frame.minorAc}\n`; });
+    }
+    });
+    mainFolder.file("noi_dung_bao_cao.txt", reportText);
+
+    if (Object.keys(zip.files).length <= 1) { 
+        if(!isBackup) alert("Không có dữ liệu để xuất.");
+        return; 
+    }
+    
+    return zip.generateAsync({ type: "blob" }, (metadata) => {
+        showProgress(`Đang nén ZIP... ${metadata.percent.toFixed(0)}%`, metadata.percent, 100);
+    }).then(content => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `${reportName}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    });
 }
 
-if (currentState.factoryMedia.length > 0) {
-const factoryFolder = mainFolder.folder("2_Anh_Video_Factory");
-for (const [i, media] of currentState.factoryMedia.entries()) {
-if (media.mediaBlob) {
-const extension = media.type === 'image' ? '.jpg' : '.mp4';
-factoryFolder.file(`factory-media-${i + 1}${extension}`, media.mediaBlob);
-}
-}
+async function exportAllDataAsZip(options = { photos: true, videos: true, text: true }) {
+    showProgress("Đang chuẩn bị dữ liệu...", 0, 100);
+    const currentState = getCurrentState();
+    
+    const stateToExport = {
+        detailPhotos: options.photos ? currentState.detailPhotos : [],
+        factoryMedia: (options.photos || options.videos) 
+            ? currentState.factoryMedia.filter(m => (options.photos && m.type === 'image') || (options.videos && m.type === 'video'))
+            : [],
+        notePhotos: [], 
+        itemCodes: options.text ? currentState.itemCodes : [],
+        inspectionData: options.text ? currentState.inspectionData : {}
+    };
+
+    const currentSessionName = sessions.find(s => s.id === activeSessionId)?.name || 'Unknown';
+    try {
+        await generateZipFromState(stateToExport, currentSessionName, false);
+    } catch(err) {
+        console.error("Lỗi tạo ZIP:", err);
+    } finally {
+        hideProgress();
+    }
 }
 
-// ... (logic tạo file text giữ nguyên, thêm vào zip)
-let reportText = `BÁO CÁO KIỂM ĐỊNH SẢN PHẨM\nNgày: ${dateString}\nPhiên: ${currentSessionName}\n\n`;
-reportText += `1. ẢNH CHI TIẾT SẢN PHẨM\n-------------------------\n`;
-currentState.detailPhotos.forEach((photo, index) => { reportText += `${index + 1}. ${photo.baseDescription} - ${photo.imageBlob ? 'Đã chụp' : 'Chưa chụp'}\n`; });
-reportText += `\n2. CÁC MÃ HÀNG KIỂM TRA\n------------------------\n`;
-currentState.itemCodes.forEach(code => {
-reportText += `MÃ: ${code}\n`;
-const data = currentState.inspectionData[code];
-if(data) {
-reportText += `  - Số lượng: Thực tế ${data.inputs.prod_qty_actual} / Tiêu chuẩn ${data.inputs.prod_qty_standard}\n`;
-data.aqlFrames.forEach((frame, idx) => { reportText += `  - AQL Check #${idx+1}: ${frame.description} | Mẫu: ${frame.sampleSize} | Major(Ac): ${frame.majorAc} | Minor(Ac): ${frame.minorAc}\n`; });
-}
-});
-mainFolder.file("noi_dung_bao_cao.txt", reportText);
-
-zip.generateAsync({ type: "blob" }, (metadata) => {
-showProgress(`Đang nén tệp ZIP... ${metadata.percent.toFixed(0)}%`, metadata.percent, 100);
-}).then(content => {
-const link = document.createElement('a');
-link.href = URL.createObjectURL(content);
-link.download = `${reportName}.zip`;
-document.body.appendChild(link);
-link.click();
-document.body.removeChild(link);
-URL.revokeObjectURL(link.href);
-hideProgress();
-}).catch(err => { console.error("Lỗi tạo ZIP:", err); hideProgress(); });
-}
 
 // --- ZIP IMPORT ---
 async function handleArchiveInput(file, targetContainerId) {
@@ -1235,8 +1855,20 @@ const isZip = file.name.toLowerCase().endsWith('.zip');
 const isRar = file.name.toLowerCase().endsWith('.rar');
 if (!isZip && !isRar) { alert("Chỉ hỗ trợ file .zip và .rar"); return; }
 if (targetContainerId === 'boxes-container') {
-if (!confirm("Tải tệp mới sẽ xóa dữ liệu phiên hiện tại. Bạn có chắc chắn?")) return;
-resetApplicationState(false);
+    if (!confirm("Tải tệp mới sẽ xóa dữ liệu phiên hiện tại. Bạn có chắc chắn?")) return;
+    resetApplicationState(false);
+    document.getElementById('boxes-container').innerHTML = '';
+
+    // [YÊU CẦU 2] SỬA ĐỔI: GIỮ LẠI MÃ HÀNG MẶC ĐỊNH SAU KHI IMPORT
+    const currentSessionForImport = sessions.find(s => s.id === activeSessionId);
+    if (currentSessionForImport) {
+        const sessionName = currentSessionForImport.name;
+        // Kiểm tra để chắc chắn mã hàng chưa tồn tại (an toàn)
+        if (!document.querySelector(`.item-code-tag[data-code="${sessionName}"]`)) {
+             createItemCodeTag(sessionName);
+             createInspectionRow(sessionName, {}, true); // Tạo kèm các bài test AQL mặc định
+        }
+    }
 }
 showProgress("Đang đọc tệp...", 0, 100);
 let imageEntries = [];
@@ -1264,7 +1896,10 @@ showProgress(`Đang xử lý ảnh ${processedFiles + 1}/${imageEntries.length}.
 const compressedBlob = await compressImage(entry.blob);
 if (targetContainerId === 'boxes-container') {
 const baseDescription = entry.name.split('/').pop().replace(/\.[^/.]+$/, "").replace(/^\d+\.?\s*/, '');
-const box = createDetailBox(baseDescription, `box-${Date.now()}-${processedFiles}`);
+const box = createDetailBox(baseDescription, `box-${Date.now()}-${processedFiles}`, false);
+if (baseDescription.trim().toLowerCase() === 'mô tả mới') {
+    box.dataset.skipTolerance = 'true';
+}
 box.imageBlob = compressedBlob;
 updateBoxAppearance(box);
 document.getElementById('boxes-container').appendChild(box);
@@ -1292,13 +1927,9 @@ await loadStateFromDB(initialSessionId);
 
 } catch (error) { console.error(error); alert("Lỗi khởi tạo DB."); }
 
-// [YÊU CẦU 5] Toggle Toolbar
-const toggleMenuBtn = document.getElementById('toggle-menu-btn');
-toggleMenuBtn.addEventListener('click', () => {
+document.getElementById('toggle-menu-btn').addEventListener('click', () => {
 document.body.classList.toggle('header-hidden');
 });
-
-// [YÊU CẦU 4] Nút thêm Tab
 document.getElementById('add-tab-btn').addEventListener('click', createNewSession);
 
 document.getElementById('zipFileInput').addEventListener('change', function() { handleArchiveInput(this.files[0], 'boxes-container'); this.value = ''; });
@@ -1308,7 +1939,11 @@ this.textContent = `Đối chiếu: ${isToleranceModeActive ? 'Bật' : 'Tắt'}
 this.style.backgroundColor = isToleranceModeActive ? '' : 'var(--color-secondary)';
 this.style.color = isToleranceModeActive ? '' : 'white';
 });
-document.getElementById('exportZip').addEventListener('click', exportAllDataAsZip);
+
+document.getElementById('exportZip').addEventListener('click', () => exportAllDataAsZip({ photos: true, videos: true, text: true }));
+document.getElementById('exportZipNoVideo').addEventListener('click', () => exportAllDataAsZip({ photos: true, videos: false, text: true }));
+document.getElementById('exportOnlyVideos').addEventListener('click', () => exportAllDataAsZip({ photos: false, videos: true, text: false }));
+
 document.getElementById('clearAll').addEventListener('click', () => {
 if (confirm("CẢNH BÁO: Xóa dữ liệu của PHIÊN NÀY?")) {
 resetApplicationState();
@@ -1323,16 +1958,12 @@ const factoryPhotoInput = document.getElementById('factoryPhotoInput');
 document.getElementById('addFactoryPhotoBtn').addEventListener('click', () => factoryPhotoInput.click());
 factoryPhotoInput.addEventListener('change', async function() { if (this.files.length === 0) return; const files = Array.from(this.files); this.value = ''; showProgress(`Đang xử lý ${files.length} ảnh...`, 0, files.length); for(const file of files) { try { const compressedBlob = await compressImage(file); const item = await createFactoryMediaItem(compressedBlob, 'image'); document.getElementById('factory-media-container').appendChild(item); } catch(err) { console.error("Lỗi factory photo:", err); } } hideProgress(); captureState(); });
 
-// [YÊU CẦU 1] Xử lý nhiều video đồng thời
 const factoryVideoInput = document.getElementById('factoryVideoInput');
 document.getElementById('addFactoryVideoBtn').addEventListener('click', () => factoryVideoInput.click());
 factoryVideoInput.addEventListener('change', (event) => {
 const files = Array.from(event.target.files);
 if (files.length > 0) {
-files.forEach(file => {
-const uiId = `video-prog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-compressVideoInBackground(file, uiId);
-});
+files.forEach(file => { addVideoFile(file); });
 }
 factoryVideoInput.value = '';
 });
@@ -1347,109 +1978,172 @@ const notePhotoInput = document.getElementById('notePhotoInput');
 notePhotoInput.addEventListener('change', async function() { if (this.files.length === 0) return; const files = Array.from(this.files); this.value = ''; showProgress(`Đang xử lý ${files.length} ảnh ghi chú...`, 0, files.length); for (const file of files) { try { const compressedBlob = await compressImage(file, 800); const item = await createNotePhotoItem(compressedBlob); document.getElementById('note-photos-container').appendChild(item); } catch(err) { console.error("Lỗi ảnh ghi chú:", err); } } hideProgress(); captureState(); });
 document.getElementById('noteZipInput').addEventListener('change', function() { handleArchiveInput(this.files[0], 'note-photos-container'); this.value = ''; });
 
+initHeaderObserver();
+initMultiSelect();
+initManualImageUpload();
+initImageCropper();
+
+// [YÊU CẦU 1]
+initQuickShot();
+// [YÊU CẦU 2]
+initNotes();
+// [YÊU CẦU 3]
+initTranslation();
+
+
 initAqlCalculator();
 initZoom();
 initNextShotMirror();
 initToleranceCalculator();
 });
 
-// [YÊU CẦU 1 & 2] Nén video đa luồng và tối ưu dung lượng
-function compressVideoInBackground(videoFile, uiId) {
-// Tạo UI progress
-const queueContainer = document.getElementById('video-queue-container');
-const progressItem = document.createElement('div');
-progressItem.className = 'video-progress-item';
-progressItem.id = uiId;
-progressItem.innerHTML = `<p>Nén: ${videoFile.name}</p><progress value="0" max="100"></progress>`;
-queueContainer.appendChild(progressItem);
-const progressBar = progressItem.querySelector('progress');
+// SỬA LỖI VIDEO: Bỏ nén, dùng file gốc
+async function addVideoFile(videoFile) {
+    const uiId = `video-prog-${Date.now()}`;
+    const queueContainer = document.getElementById('video-queue-container');
+    const progressItem = document.createElement('div');
+    progressItem.className = 'video-progress-item';
+    progressItem.id = uiId;
+    progressItem.innerHTML = `<p>Đang thêm: ${videoFile.name}</p>`;
+    queueContainer.appendChild(progressItem);
 
-const originalVideoURL = URL.createObjectURL(videoFile);
-const sourceVideo = document.createElement('video');
-sourceVideo.src = originalVideoURL;
-sourceVideo.muted = true;
+    try {
+        const item = await createFactoryMediaItem(videoFile, 'video');
+        document.getElementById('factory-media-container').appendChild(item);
+        
+        progressItem.querySelector('p').textContent = `Hoàn tất: ${videoFile.name}`;
+        progressItem.classList.add('finished');
+        
+        setTimeout(() => {
+            if(progressItem) progressItem.remove();
+        }, 5000);
 
-sourceVideo.onloadedmetadata = async () => {
-const videoStream = sourceVideo.captureStream ? sourceVideo.captureStream() : sourceVideo.mozCaptureStream();
-if (!videoStream || videoStream.getVideoTracks().length === 0) {
-alert('Trình duyệt không hỗ trợ nén video này.');
-progressItem.remove();
-return;
-}
-const pureVideoStream = new MediaStream(videoStream.getVideoTracks());
-let recordedChunks = [];
-
-// [YÊU CẦU 2] Giảm Bitrate xuống ~600kbps (giảm 20% so với 750k cũ)
-const options = { mimeType: 'video/mp4; codecs=avc1', videoBitsPerSecond: 600000 };
-if (!MediaRecorder.isTypeSupported(options.mimeType)) { options.mimeType = 'video/webm; codecs=vp8'; }
-
-let mediaRecorder;
-try { mediaRecorder = new MediaRecorder(pureVideoStream, options); }
-catch (e) { console.error(e); progressItem.classList.add('error'); return; }
-
-mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) recordedChunks.push(event.data); };
-mediaRecorder.onstop = async () => {
-const fileExtension = options.mimeType.includes('mp4') ? 'mp4' : 'webm';
-const compressedBlob = new Blob(recordedChunks, { type: `video/${fileExtension}` });
-const item = await createFactoryMediaItem(compressedBlob, 'video');
-document.getElementById('factory-media-container').appendChild(item);
-
-// Xử lý xong
-progressItem.querySelector('p').textContent = `Hoàn tất: ${videoFile.name}`;
-progressItem.classList.add('finished');
-setTimeout(() => progressItem.remove(), 3000);
-captureState();
-URL.revokeObjectURL(originalVideoURL);
-sourceVideo.remove();
-};
-
-let duration = sourceVideo.duration;
-sourceVideo.ontimeupdate = () => { if(duration > 0) { progressBar.value = (sourceVideo.currentTime / duration) * 100; } };
-
-mediaRecorder.start();
-await sourceVideo.play();
-};
-
-sourceVideo.onended = () => { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); };
-sourceVideo.onerror = () => { progressItem.classList.add('error'); progressItem.querySelector('p').textContent = "Lỗi video!"; };
+        captureState();
+    } catch (error) {
+        console.error("Lỗi khi thêm video:", error);
+        progressItem.classList.add('error');
+        progressItem.querySelector('p').textContent = `Lỗi khi thêm video: ${videoFile.name}`;
+    }
 }
 
 
-// --- GƯƠNG CHỤP NHANH ---
-const nextShotMirror = document.getElementById('next-shot-mirror');
-const nextShotThumbnail = document.getElementById('next-shot-thumbnail');
-const nextShotDescription = document.getElementById('next-shot-description');
-
+// --- [YÊU CẦU 1] GƯƠNG CHỤP NHANH - LOGIC ĐÃ ĐƯỢC CẬP NHẬT HOÀN TOÀN ---
+/**
+ * Cập nhật "gương" để hiển thị ô ảnh tiếp theo cần chụp.
+ * Logic mới thông minh hơn, ưu tiên ô được focus và tìm ô trống tiếp theo.
+ */
 function updateNextShotMirror() {
-const allBoxes = Array.from(document.querySelectorAll('#boxes-container .box'));
-if (allBoxes.length === 0) { nextShotMirror.classList.add('hidden'); return; }
-let lastPhotoIndex = -1;
-for (let i = allBoxes.length - 1; i >= 0; i--) { if (allBoxes[i].dataset.isCameraCaptured === 'true') { lastPhotoIndex = i; break; } }
-let targetBox = (lastPhotoIndex === -1) ? allBoxes.find(box => box.dataset.isCameraCaptured !== 'true') : (lastPhotoIndex < allBoxes.length - 1 ? allBoxes[lastPhotoIndex + 1] : null);
-if (targetBox) {
-nextShotDescription.textContent = targetBox.querySelector('.description').textContent;
-nextShotThumbnail.src = targetBox.querySelector('.thumbnail').src;
-nextShotMirror.dataset.targetId = targetBox.id;
-nextShotMirror.classList.remove('hidden');
-} else { nextShotMirror.classList.add('hidden'); }
+    const nextShotMirror = document.getElementById('next-shot-mirror');
+    const nextShotThumbnail = document.getElementById('next-shot-thumbnail');
+    const nextShotDescription = document.getElementById('next-shot-description');
+
+    const allBoxes = Array.from(document.querySelectorAll('#boxes-container .box'));
+    if (allBoxes.length === 0) {
+        nextShotMirror.classList.add('hidden');
+        return;
+    }
+
+    let startIndex = -1;
+    // ƯU TIÊN 1: Dùng ô vừa tương tác (được tô viền cam) làm điểm bắt đầu
+    if (lastInteractedBoxId) {
+        const lastBox = document.getElementById(lastInteractedBoxId);
+        if (lastBox) {
+            startIndex = allBoxes.indexOf(lastBox);
+        }
+    }
+
+    // ƯU TIÊN 2: Nếu không có ô nào được focus, tìm ô cuối cùng có ảnh
+    if (startIndex === -1) {
+        for (let i = allBoxes.length - 1; i >= 0; i--) {
+            if (allBoxes[i].dataset.isCameraCaptured === 'true') {
+                startIndex = i;
+                break;
+            }
+        }
+    }
+
+    // Bây giờ, tìm ô trống *tiếp theo* tính từ điểm bắt đầu (startIndex)
+    let targetBox = null;
+    if (startIndex === -1) {
+        // Chưa có ảnh nào, chưa có focus. Lấy ô trống đầu tiên.
+        targetBox = allBoxes.find(box => !box.dataset.isCameraCaptured);
+    } else {
+        // Bắt đầu tìm từ ô *sau* ô startIndex
+        for (let i = startIndex + 1; i < allBoxes.length; i++) {
+            if (!allBoxes[i].dataset.isCameraCaptured) {
+                targetBox = allBoxes[i];
+                break;
+            }
+        }
+        // Nếu tìm đến cuối mà không thấy, quay lại tìm từ đầu
+        if (!targetBox) {
+             for (let i = 0; i < startIndex + 1; i++) {
+                if (!allBoxes[i].dataset.isCameraCaptured) {
+                    targetBox = allBoxes[i];
+                    break;
+                }
+            }
+        }
+    }
+
+    // Cập nhật giao diện của "gương"
+    if (targetBox) {
+        const description = targetBox.querySelector('.description').textContent;
+        const thumbnailUrl = targetBox.querySelector('.thumbnail').src;
+
+        nextShotDescription.textContent = description;
+        nextShotThumbnail.src = thumbnailUrl;
+        nextShotMirror.dataset.targetId = targetBox.id;
+        nextShotMirror.classList.remove('hidden');
+    } else {
+        // Tất cả các ô đã được lấp đầy
+        nextShotMirror.classList.add('hidden');
+    }
 }
+
+/**
+ * Gắn các sự kiện click cho "gương".
+ */
 function initNextShotMirror() {
-nextShotMirror.addEventListener('click', () => { const targetBox = document.getElementById(nextShotMirror.dataset.targetId); if (targetBox) targetBox.querySelector('input[type="file"]').click(); });
-document.getElementById('toggle-mirror-btn').addEventListener('click', (e) => { e.stopPropagation(); nextShotMirror.classList.toggle('disabled'); });
+    const nextShotMirror = document.getElementById('next-shot-mirror');
+
+    // Sự kiện chính: Click vào gương để chụp ảnh cho ô mục tiêu
+    nextShotMirror.addEventListener('click', () => {
+        const targetId = nextShotMirror.dataset.targetId;
+        if (!targetId) return;
+
+        const targetBox = document.getElementById(targetId);
+        if (targetBox) {
+            const input = targetBox.querySelector('input[type="file"]');
+            if (input) {
+                input.click(); 
+            }
+        }
+    });
+
+    // Sự kiện phụ: Bật/tắt gương
+    document.getElementById('toggle-mirror-btn').addEventListener('click', (e) => {
+        e.stopPropagation(); // Ngăn sự kiện click của gương bị kích hoạt
+        nextShotMirror.classList.toggle('disabled');
+    });
 }
+
 
 // --- ZOOM ẢNH ---
 function initZoom() {
 const overlay = document.getElementById('zoom-overlay');
 const image = document.getElementById('zoom-image');
 const closeBtn = document.querySelector('.zoom-close-btn');
+const prevBtn = document.getElementById('zoom-prev');
+const nextBtn = document.getElementById('zoom-next');
+
 let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 }, pointers = [], prevDiff = -1;
 function setTransform() { if (scale < 1) { scale = 1; pointX = 0; pointY = 0; } image.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`; }
-const closeZoom = () => { overlay.style.display = 'none'; image.src = ''; pointers = []; prevDiff = -1; };
+const closeZoom = () => { overlay.style.display = 'none'; image.src = ''; pointers = []; prevDiff = -1; currentZoomBoxId = null; };
 closeBtn.addEventListener('click', closeZoom);
 document.addEventListener('keydown', (e) => { if (e.key === "Escape") closeZoom(); });
 overlay.addEventListener('click', (e) => { if (e.target === overlay) closeZoom(); });
-overlay.addEventListener('pointerdown', (e) => { pointers.push(e); if (pointers.length === 1) { panning = true; start = { x: e.clientX - pointX, y: e.clientY - pointY }; image.style.cursor = 'grabbing'; } });
+overlay.addEventListener('pointerdown', (e) => { if(e.target !== prevBtn && e.target !== nextBtn) { pointers.push(e); if (pointers.length === 1) { panning = true; start = { x: e.clientX - pointX, y: e.clientY - pointY }; image.style.cursor = 'grabbing'; } }});
 overlay.addEventListener('pointerup', (e) => { panning = false; image.style.cursor = 'grab'; pointers = pointers.filter(p => p.pointerId !== e.pointerId); if (pointers.length < 2) prevDiff = -1; });
 overlay.addEventListener('pointercancel', (e) => { panning = false; image.style.cursor = 'grab'; pointers = pointers.filter(p => p.pointerId !== e.pointerId); if (pointers.length < 2) prevDiff = -1; });
 overlay.addEventListener('pointermove', (e) => {
@@ -1457,26 +2151,614 @@ const index = pointers.findIndex(p => p.pointerId === e.pointerId); if (index > 
 if (pointers.length === 2) { const curDiff = Math.hypot(pointers[0].clientX - pointers[1].clientX, pointers[0].clientY - pointers[1].clientY); if (prevDiff > 0) { scale += (curDiff > prevDiff ? 0.02 : -0.02); scale = Math.max(1, Math.min(scale, 5)); setTransform(); } prevDiff = curDiff; } else if (panning && pointers.length === 1) { e.preventDefault(); pointX = e.clientX - start.x; pointY = e.clientY - start.y; setTransform(); }
 });
 overlay.addEventListener('wheel', (e) => { e.preventDefault(); const xs = (e.clientX - pointX) / scale, ys = (e.clientY - pointY) / scale, delta = -e.deltaY; (delta > 0) ? (scale *= 1.1) : (scale /= 1.1); scale = Math.max(1, Math.min(scale, 5)); pointX = e.clientX - xs * scale; pointY = e.clientY - ys * scale; setTransform(); });
+
+prevBtn.addEventListener('click', () => navigateZoom(-1));
+nextBtn.addEventListener('click', () => navigateZoom(1));
 }
-function showZoom(imageUrl) { const overlay = document.getElementById('zoom-overlay'); const image = document.getElementById('zoom-image'); image.style.transform = 'translate(0px, 0px) scale(1)'; image.src = imageUrl; overlay.style.display = 'flex'; }
+
+function navigateZoom(direction) {
+    if (!currentZoomBoxId) return;
+    const allBoxes = Array.from(document.querySelectorAll('#boxes-container .box, .factory-media-item')).filter(el => el.imageBlob || el.mediaBlob);
+    const currentIndex = allBoxes.findIndex(b => b.id === currentZoomBoxId);
+    if (currentIndex === -1) return;
+    
+    let nextIndex = currentIndex + direction;
+    if (nextIndex >= allBoxes.length) nextIndex = 0;
+    if (nextIndex < 0) nextIndex = allBoxes.length - 1;
+    
+    showZoom(allBoxes[nextIndex].id);
+}
+
+async function showZoom(boxIdOrUrl) {
+    const overlay = document.getElementById('zoom-overlay');
+    const image = document.getElementById('zoom-image');
+    image.style.transform = 'translate(0px, 0px) scale(1)';
+    
+    if (boxIdOrUrl.startsWith('data:') || boxIdOrUrl.startsWith('blob:')) {
+        image.src = boxIdOrUrl;
+        currentZoomBoxId = null;
+        document.getElementById('zoom-prev').style.display = 'none';
+        document.getElementById('zoom-next').style.display = 'none';
+    } else {
+        const element = document.getElementById(boxIdOrUrl);
+        // [YÊU CẦU 4] SỬA LỖI: Kiểm tra cả imageBlob và mediaBlob
+        if (element) {
+            const blob = element.imageBlob || element.mediaBlob;
+            if (blob && blob.type.startsWith('image/')) {
+                currentZoomBoxId = boxIdOrUrl;
+                image.src = await blobToDataURL(blob);
+                document.getElementById('zoom-prev').style.display = 'block';
+                document.getElementById('zoom-next').style.display = 'block';
+            } else {
+                return; // Không phải ảnh, không zoom
+            }
+        } else {
+            return;
+        }
+    }
+    overlay.style.display = 'flex';
+}
+
+
+// --- LOGIC NÉ THANH CÔNG CỤ ---
+function initHeaderObserver() {
+    const controls = document.getElementById('controls');
+    const tabs = document.getElementById('tabs-container');
+
+    const updateBodyPadding = () => {
+        const totalHeight = controls.offsetHeight + tabs.offsetHeight;
+        document.body.style.paddingTop = `${totalHeight}px`;
+    };
+    
+    const resizeObserver = new ResizeObserver(updateBodyPadding);
+    resizeObserver.observe(controls);
+    
+    updateBodyPadding();
+}
+
+
+// --- LOGIC CHỌN NHIỀU ẢNH ---
+function initMultiSelect() {
+const toggleBtn = document.getElementById('toggleSelectModeBtn');
+const moveUpBtn = document.getElementById('moveSelectedUpBtn');
+const moveDownBtn = document.getElementById('moveSelectedDownBtn');
+const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+
+toggleBtn.addEventListener('click', () => {
+toggleMultiSelectMode(!isMultiSelectMode);
+});
+
+moveUpBtn.addEventListener('click', () => moveSelectedBoxes('up'));
+moveDownBtn.addEventListener('click', () => moveSelectedBoxes('down'));
+exportSelectedBtn.addEventListener('click', exportSelectedImages);
+}
+
+function toggleMultiSelectMode(enable) {
+isMultiSelectMode = enable;
+const toggleBtn = document.getElementById('toggleSelectModeBtn');
+const body = document.body;
+
+body.classList.toggle('multi-select-mode', isMultiSelectMode);
+toggleBtn.classList.toggle('active', isMultiSelectMode);
+toggleBtn.textContent = isMultiSelectMode ? 'Tắt Chọn Nhiều' : 'Chọn Nhiều Ảnh';
+
+if (!isMultiSelectMode) {
+selectedBoxIds.forEach(id => {
+document.getElementById(id)?.classList.remove('selected');
+});
+selectedBoxIds.clear();
+}
+updateMultiSelectButtonsVisibility();
+}
+
+function toggleBoxSelection(boxElement) {
+if (!isMultiSelectMode) return;
+const id = boxElement.id;
+if (selectedBoxIds.has(id)) {
+selectedBoxIds.delete(id);
+boxElement.classList.remove('selected');
+} else {
+selectedBoxIds.add(id);
+boxElement.classList.add('selected');
+}
+updateMultiSelectButtonsVisibility();
+}
+
+function updateMultiSelectButtonsVisibility() {
+const moveUpBtn = document.getElementById('moveSelectedUpBtn');
+const moveDownBtn = document.getElementById('moveSelectedDownBtn');
+const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+
+const hasSelection = selectedBoxIds.size > 0;
+moveUpBtn.classList.toggle('hidden', !hasSelection);
+moveDownBtn.classList.toggle('hidden', !hasSelection);
+exportSelectedBtn.classList.toggle('hidden', !hasSelection);
+}
+
+function moveSelectedBoxes(direction) {
+if (selectedBoxIds.size === 0) return;
+const container = document.getElementById('boxes-container');
+const allBoxes = Array.from(container.children);
+const selectedElements = Array.from(selectedBoxIds).map(id => document.getElementById(id)).filter(Boolean);
+
+selectedElements.sort((a, b) => allBoxes.indexOf(a) - allBoxes.indexOf(b));
+
+if (direction === 'up') {
+const firstSelected = selectedElements[0];
+const precedingElement = firstSelected.previousElementSibling;
+if (precedingElement && !selectedBoxIds.has(precedingElement.id)) {
+selectedElements.forEach(el => container.insertBefore(el, precedingElement));
+}
+} else { 
+const lastSelected = selectedElements[selectedElements.length - 1];
+const followingElement = lastSelected.nextElementSibling;
+if (followingElement) {
+selectedElements.reverse().forEach(el => container.insertBefore(el, followingElement.nextElementSibling));
+}
+}
+renumberDetailBoxes();
+captureState();
+}
+
+async function exportSelectedImages() {
+    if (selectedBoxIds.size === 0) {
+        alert("Vui lòng chọn ít nhất một ảnh để xuất.");
+        return;
+    }
+    showProgress("Đang chuẩn bị ảnh đã chọn...", 0, 100);
+    const zip = new JSZip();
+    const today = new Date();
+    const dateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+    const reportName = `Selected_Images_${dateString}`;
+    const mainFolder = zip.folder(reportName);
+
+    const allBoxes = Array.from(document.querySelectorAll('#boxes-container .box'));
+
+    for (const id of selectedBoxIds) {
+        const box = document.getElementById(id);
+        if (box && box.imageBlob) {
+            const index = allBoxes.indexOf(box);
+            const filename = `${index + 1}. ${box.dataset.baseDescription}.jpg`;
+            mainFolder.file(filename, box.imageBlob);
+        }
+    }
+
+    try {
+        const content = await zip.generateAsync({ type: "blob" }, (metadata) => {
+            showProgress(`Đang nén ZIP... ${metadata.percent.toFixed(0)}%`, metadata.percent, 100);
+        });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `${reportName}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    } catch (err) {
+        console.error("Lỗi khi tạo ZIP ảnh đã chọn:", err);
+    } finally {
+        hideProgress();
+    }
+}
+
+
+// --- LOGIC THÊM ẢNH THỦ CÔNG & CROP ---
+function initManualImageUpload() {
+    const addBtn = document.getElementById('addManualImageBtn');
+    const fileInput = document.getElementById('manualImageInput');
+
+    addBtn.addEventListener('click', () => {
+        if (!currentlyFocusedBox) {
+            alert("Vui lòng nhấp vào ô mô tả của ảnh bạn muốn thêm/thay thế!");
+            return;
+        }
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            openCropper(file);
+        }
+        e.target.value = ''; 
+    });
+}
+
+function initImageCropper() {
+    const overlay = document.getElementById('crop-modal-overlay');
+    const container = document.getElementById('crop-container');
+    const imagePreview = document.getElementById('crop-image-preview');
+    const cropBox = document.getElementById('crop-box');
+    
+    document.getElementById('cancel-crop-btn').addEventListener('click', closeCropper);
+    document.getElementById('confirm-crop-btn').addEventListener('click', applyCrop);
+
+    let isResizing = false;
+    let isDragging = false;
+    let resizeHandle = '';
+    let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+    const startAction = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        startX = e.clientX || e.touches[0].clientX;
+        startY = e.clientY || e.touches[0].clientY;
+        
+        const target = e.target;
+        if (target.classList.contains('crop-handle')) {
+            isResizing = true;
+            resizeHandle = Array.from(target.classList).find(c => c !== 'crop-handle');
+        } else if (target === cropBox) {
+            isDragging = true;
+        }
+        
+        startWidth = parseFloat(getComputedStyle(cropBox).width);
+        startHeight = parseFloat(getComputedStyle(cropBox).height);
+        startLeft = parseFloat(getComputedStyle(cropBox).left);
+        startTop = parseFloat(getComputedStyle(cropBox).top);
+
+        window.addEventListener('mousemove', doAction);
+        window.addEventListener('touchmove', doAction, { passive: false });
+        window.addEventListener('mouseup', endAction);
+        window.addEventListener('touchend', endAction);
+    };
+
+    const doAction = (e) => {
+        if (!isDragging && !isResizing) return;
+        e.preventDefault();
+        
+        const currentX = e.clientX || e.touches[0].clientX;
+        const currentY = e.clientY || e.touches[0].clientY;
+        const dx = currentX - startX;
+        const dy = currentY - startY;
+
+        if (isDragging) {
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+            const parentRect = container.getBoundingClientRect();
+            if (newLeft < 0) newLeft = 0;
+            if (newTop < 0) newTop = 0;
+            if (newLeft + startWidth > parentRect.width) newLeft = parentRect.width - startWidth;
+            if (newTop + startHeight > parentRect.height) newTop = parentRect.height - startHeight;
+            cropBox.style.left = `${newLeft}px`;
+            cropBox.style.top = `${newTop}px`;
+        } else if (isResizing) {
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+            let newLeft = startLeft;
+            let newTop = startTop;
+
+            if (resizeHandle.includes('e')) newWidth = startWidth + dx;
+            if (resizeHandle.includes('w')) {
+                newWidth = startWidth - dx;
+                newLeft = startLeft + dx;
+            }
+            if (resizeHandle.includes('s')) newHeight = startHeight + dy;
+            if (resizeHandle.includes('n')) {
+                newHeight = startHeight - dy;
+                newTop = startTop + dy;
+            }
+            
+            if (newWidth > 10) {
+                 cropBox.style.width = `${newWidth}px`;
+                 cropBox.style.left = `${newLeft}px`;
+            }
+            if(newHeight > 10){
+                cropBox.style.height = `${newHeight}px`;
+                cropBox.style.top = `${newTop}px`;
+            }
+        }
+    };
+
+    const endAction = () => {
+        isDragging = false;
+        isResizing = false;
+        window.removeEventListener('mousemove', doAction);
+        window.removeEventListener('touchmove', doAction);
+        window.removeEventListener('mouseup', endAction);
+        window.removeEventListener('touchend', endAction);
+    };
+    
+    cropBox.addEventListener('mousedown', startAction);
+    cropBox.addEventListener('touchstart', startAction, { passive: false });
+}
+
+function openCropper(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const overlay = document.getElementById('crop-modal-overlay');
+        const imagePreview = document.getElementById('crop-image-preview');
+        const originalImage = new Image();
+        
+        originalImage.onload = () => {
+            imagePreview.src = e.target.result;
+            overlay.originalImage = originalImage;
+            overlay.style.display = 'flex';
+            
+            setTimeout(() => {
+                const containerRect = imagePreview.getBoundingClientRect();
+                const width = containerRect.width * 0.8;
+                const height = containerRect.height * 0.8;
+                const cropBox = document.getElementById('crop-box');
+                cropBox.style.width = `${width}px`;
+                cropBox.style.height = `${height}px`;
+                cropBox.style.left = `${(containerRect.width - width) / 2}px`;
+                cropBox.style.top = `${(containerRect.height - height) / 2}px`;
+            }, 50);
+        }
+        originalImage.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function closeCropper() {
+    document.getElementById('crop-modal-overlay').style.display = 'none';
+}
+
+async function applyCrop() {
+    if (!currentlyFocusedBox) {
+        alert("Lỗi: Không xác định được ô ảnh để áp dụng. Vui lòng thử lại.");
+        closeCropper();
+        return;
+    }
+    const overlay = document.getElementById('crop-modal-overlay');
+    const imagePreview = document.getElementById('crop-image-preview');
+    const cropBox = document.getElementById('crop-box');
+    const originalImage = overlay.originalImage;
+
+    const previewRect = imagePreview.getBoundingClientRect();
+    const cropBoxRect = cropBox.getBoundingClientRect();
+    
+    const scaleX = originalImage.naturalWidth / previewRect.width;
+    const scaleY = originalImage.naturalHeight / previewRect.height;
+    
+    const sx = (cropBoxRect.left - previewRect.left) * scaleX;
+    const sy = (cropBoxRect.top - previewRect.top) * scaleY;
+    const sWidth = cropBoxRect.width * scaleX;
+    const sHeight = cropBoxRect.height * scaleY;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = sWidth;
+    canvas.height = sHeight;
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(originalImage, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+
+    canvas.toBlob(async (blob) => {
+        try {
+            showProgress('Đang nén ảnh đã cắt...', 0, 1);
+            const compressedBlob = await compressImage(blob);
+            
+            currentlyFocusedBox.imageBlob = compressedBlob;
+            currentlyFocusedBox.dataset.isCameraCaptured = 'true';
+
+            // [YÊU CẦU 1] Đặt ô này làm focus mới
+            setLastInteractedBox(currentlyFocusedBox.id);
+
+            updateBoxAppearance(currentlyFocusedBox);
+            captureState();
+            
+        } catch (error) {
+            console.error("Lỗi khi xử lý ảnh đã cắt:", error);
+        } finally {
+            hideProgress();
+            closeCropper();
+            currentlyFocusedBox = null;
+        }
+    }, 'image/jpeg');
+}
+
+// --- [YÊU CẦU 1] LOGIC CHỤP ẢNH NHANH ---
+let quickShotStream = null;
+function initQuickShot() {
+    const modal = document.getElementById('quick-shot-modal');
+    const video = document.getElementById('quick-shot-video');
+    const openBtn = document.getElementById('quickShotBtn');
+    const closeBtn = document.getElementById('close-quick-shot-btn');
+    const captureBtn = document.getElementById('do-quick-shot-btn');
+
+    openBtn.addEventListener('click', async () => {
+        try {
+            quickShotStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' } // Ưu tiên camera sau
+            });
+            video.srcObject = quickShotStream;
+            await video.play();
+            modal.style.display = 'flex';
+        } catch (err) {
+            console.error("Lỗi truy cập camera:", err);
+            alert("Không thể truy cập camera. Vui lòng cấp quyền và thử lại.");
+        }
+    });
+
+    closeBtn.addEventListener('click', () => {
+        if (quickShotStream) {
+            quickShotStream.getTracks().forEach(track => track.stop());
+        }
+        video.srcObject = null;
+        modal.style.display = 'none';
+    });
+
+    captureBtn.addEventListener('click', async () => {
+        const allBoxes = Array.from(document.querySelectorAll('#boxes-container .box'));
+        
+        // Tìm ô trống dựa trên logic của gương xem trước
+        const mirrorTargetId = document.getElementById('next-shot-mirror').dataset.targetId;
+        let firstEmptyBox = mirrorTargetId ? document.getElementById(mirrorTargetId) : null;
+
+        // Nếu gương không có mục tiêu (có thể tất cả đã đầy), tìm ô trống đầu tiên
+        if (!firstEmptyBox) {
+            firstEmptyBox = allBoxes.find(box => !box.imageBlob);
+        }
+        
+        if (!firstEmptyBox) {
+            if (confirm("Tất cả các ô đã có ảnh. Bạn có muốn tạo một ô mới để chụp?")) {
+                const lastBox = document.querySelector('#boxes-container .box:last-child');
+                const newBox = createDetailBox("Ảnh chụp nhanh", undefined, true);
+                if (lastBox) {
+                    lastBox.insertAdjacentElement('afterend', newBox);
+                } else {
+                    document.getElementById('boxes-container').appendChild(newBox);
+                }
+                renumberDetailBoxes();
+                captureAndFill(newBox);
+            }
+            return;
+        }
+        
+        captureAndFill(firstEmptyBox);
+    });
+}
+
+async function captureAndFill(targetBox) {
+    const video = document.getElementById('quick-shot-video');
+    const canvas = document.getElementById('quick-shot-canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(async (blob) => {
+        try {
+            showProgress('Đang xử lý ảnh...', 0, 1);
+            const compressedBlob = await compressImage(blob);
+            targetBox.imageBlob = compressedBlob;
+            targetBox.dataset.isCameraCaptured = 'true';
+            
+            // [YÊU CẦU 1] Đặt ô này làm focus mới
+            setLastInteractedBox(targetBox.id);
+
+            updateBoxAppearance(targetBox);
+            captureState();
+            // Cho phép chụp ảnh tiếp theo ngay lập tức
+            hideProgress();
+        } catch (error) {
+            console.error("Lỗi khi xử lý ảnh chụp nhanh:", error);
+            hideProgress();
+        }
+    }, 'image/jpeg');
+}
+
+// --- [YÊU CẦU 2] LOGIC GHI CHÚ ---
+function initNotes() {
+    const notesArea = document.getElementById('local-notes');
+    notesArea.addEventListener('input', () => {
+        saveNotesForSession(activeSessionId);
+    });
+}
+
+function saveNotesForSession(sessionId) {
+    if (!sessionId) return;
+    const notesArea = document.getElementById('local-notes');
+    localStorage.setItem(`notes_${sessionId}`, notesArea.value);
+}
+
+function loadNotesForSession(sessionId) {
+    if (!sessionId) return;
+    const notesArea = document.getElementById('local-notes');
+    notesArea.value = localStorage.getItem(`notes_${sessionId}`) || '';
+}
+
+
+// --- [YÊU CẦU 3] LOGIC DỊCH THUẬT ---
+function initTranslation() {
+    document.getElementById('translateToEnBtn').addEventListener('click', () => translateAllDescriptions('en'));
+    document.getElementById('translateToZhBtn').addEventListener('click', () => translateAllDescriptions('zh-CN'));
+    document.getElementById('revertTranslationBtn').addEventListener('click', revertAllDescriptions);
+}
+
+async function translateAllDescriptions(targetLang) {
+    const boxes = Array.from(document.querySelectorAll('#boxes-container .box'));
+    if (boxes.length === 0) return;
+
+    showProgress(`Đang dịch sang ${targetLang}...`, 0, boxes.length);
+    originalDescriptions = {}; // Xóa bản lưu cũ
+    
+    const promises = boxes.map(async (box, index) => {
+        const p = box.querySelector('.description');
+        const originalText = box.dataset.baseDescription;
+        originalDescriptions[box.id] = originalText; // Lưu lại văn bản gốc
+
+        try {
+            const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalText)}&langpair=vi|${targetLang}`);
+            if (!response.ok) throw new Error('API request failed');
+            const data = await response.json();
+            if (data.responseData && data.responseData.translatedText) {
+                const translatedText = data.responseData.translatedText;
+                box.dataset.baseDescription = translatedText;
+            }
+        } catch (error) {
+            console.error(`Lỗi dịch cho box ${box.id}:`, error);
+            // Nếu lỗi, giữ nguyên văn bản gốc
+        }
+        
+        showProgress(`Đang dịch sang ${targetLang}...`, index + 1, boxes.length);
+    });
+
+    await Promise.all(promises);
+    renumberDetailBoxes();
+    captureState();
+    document.getElementById('revertTranslationBtn').classList.remove('hidden');
+    hideProgress();
+}
+
+function revertAllDescriptions() {
+    if (Object.keys(originalDescriptions).length === 0) {
+        alert("Không có bản dịch để khôi phục.");
+        return;
+    }
+    
+    showProgress("Đang khôi phục...", 0, 1);
+    Object.keys(originalDescriptions).forEach(boxId => {
+        const box = document.getElementById(boxId);
+        if (box) {
+            box.dataset.baseDescription = originalDescriptions[boxId];
+        }
+    });
+
+    renumberDetailBoxes();
+    captureState();
+    originalDescriptions = {};
+    document.getElementById('revertTranslationBtn').classList.add('hidden');
+    hideProgress();
+}
+
 
 // --- AQL LOGIC ---
-let currentAqlFrame = null;
+let currentAqlRow = null;
 const lotSizeToCodeLetterTable=[{min:2,max:8,levels:{"I":"A","II":"A","III":"B","S-1":"A","S-2":"A","S-3":"A","S-4":"A"}},{min:9,max:15,levels:{"I":"A","II":"B","III":"C","S-1":"A","S-2":"A","S-3":"A","S-4":"A"}},{min:16,max:25,levels:{"I":"B","II":"C","III":"D","S-1":"A","S-2":"A","S-3":"B","S-4":"B"}},{min:26,max:50,levels:{"I":"C","II":"D","III":"E","S-1":"A","S-2":"B","S-3":"B","S-4":"C"}},{min:51,max:90,levels:{"I":"C","II":"E","III":"F","S-1":"B","S-2":"B","S-3":"C","S-4":"C"}},{min:91,max:150,levels:{"I":"D","II":"F","III":"G","S-1":"B","S-2":"B","S-3":"C","S-4":"D"}},{min:151,max:280,levels:{"I":"E","II":"G","III":"H","S-1":"B","S-2":"C","S-3":"D","S-4":"E"}},{min:281,max:500,levels:{"I":"F","II":"H","III":"J","S-1":"B","S-2":"C","S-3":"D","S-4":"E"}},{min:501,max:1200,levels:{"I":"G","II":"J","III":"K","S-1":"C","S-2":"C","S-3":"E","S-4":"F"}},{min:1201,max:3200,levels:{"I":"H","II":"K","III":"L","S-1":"C","S-2":"D","S-3":"E","S-4":"G"}},{min:3201,max:10000,levels:{"I":"J","II":"L","III":"M","S-1":"C","S-2":"D","S-3":"F","S-4":"G"}},{min:10001,max:35000,levels:{"I":"K","II":"M","III":"N","S-1":"C","S-2":"D","S-3":"F","S-4":"H"}},{min:35001,max:150000,levels:{"I":"L","II":"N","III":"P","S-1":"D","S-2":"E","S-3":"G","S-4":"J"}},{min:150001,max:500000,levels:{"I":"M","II":"P","III":"Q","S-1":"D","S-2":"E","S-3":"G","S-4":"J"}},{min:500001,max:10000000,levels:{"I":"N","II":"Q","III":"R","S-1":"D","S-2":"E","S-3":"H","S-4":"K"}}];
-const aqlDataTable={"A":{sampleSize:2,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[0,1],"6.5":[0,1]}},"B":{sampleSize:3,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[0,1],"6.5":[0,1]}},"C":{sampleSize:5,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[0,1],"6.5":[1,2]}},"D":{sampleSize:8,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[1,2],"6.5":[1,2]}},"E":{sampleSize:13,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[1,2],"4.0":[1,2],"6.5":[2,3]}},"F":{sampleSize:20,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[1,2],"2.5":[1,2],"4.0":[2,3],"6.5":[3,4]}},"G":{sampleSize:32,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[1,2],"1.5":[1,2],"2.5":[2,3],"4.0":[3,4],"6.5":[5,6]}},"H":{sampleSize:50,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[1,2],"1.0":[1,2],"1.5":[2,3],"2.5":[3,4],"4.0":[5,6],"6.5":[7,8]}},"J":{sampleSize:80,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[1,2],"0.65":[1,2],"1.0":[2,3],"1.5":[3,4],"2.5":[5,6],"4.0":[7,8],"6.5":[10,11]}},"K":{sampleSize:125,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[1,2],"0.40":[1,2],"0.65":[2,3],"1.0":[3,4],"1.5":[5,6],"2.5":[7,8],"4.0":[10,11],"6.5":[14,15]}},"L":{sampleSize:200,aql:{"0.065":[0,1],"0.10":[0,1],"0.15":[1,2],"0.25":[1,2],"0.40":[2,3],"0.65":[3,4],"1.0":[5,6],"1.5":[7,8],"2.5":[10,11],"4.0":[14,15],"6.5":[21,22]}},"M":{sampleSize:315,aql:{"0.065":[0,1],"0.10":[1,2],"0.15":[1,2],"0.25":[2,3],"0.40":[3,4],"0.65":[5,6],"1.0":[7,8],"1.5":[10,11],"2.5":[14,15],"4.0":[21,22],"6.5":[21,22]}},"N":{sampleSize:500,aql:{"0.065":[1,2],"0.10":[1,2],"0.15":[2,3],"0.25":[3,4],"0.40":[5,6],"0.65":[7,8],"1.0":[10,11],"1.5":[14,15],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}},"P":{sampleSize:800,aql:{"0.065":[1,2],"0.10":[2,3],"0.15":[3,4],"0.25":[5,6],"0.40":[7,8],"0.65":[10,11],"1.0":[14,15],"1.5":[21,22],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}},"Q":{sampleSize:1250,aql:{"0.065":[2,3],"0.10":[3,4],"0.15":[5,6],"0.25":[7,8],"0.40":[10,11],"0.65":[14,15],"1.0":[21,22],"1.5":[21,22],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}},"R":{sampleSize:2000,aql:{"0.065":[3,4],"0.10":[5,6],"0.15":[7,8],"0.25":[10,11],"0.40":[14,15],"0.65":[21,22],"1.0":[21,22],"1.5":[21,22],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}}};
+const aqlDataTable={"A":{sampleSize:2,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[0,1],"6.5":[0,1]}},"B":{sampleSize:3,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[0,1],"6.5":[0,1]}},"C":{sampleSize:5,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[0,1],"6.5":[1,2]}},"D":{sampleSize:8,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[0,1],"4.0":[1,2],"6.5":[1,2]}},"E":{sampleSize:13,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[0,1],"2.5":[1,2],"4.0":[1,2],"6.5":[2,3]}},"F":{sampleSize:20,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[0,1],"1.5":[1,2],"2.5":[1,2],"4.0":[2,3],"6.5":[3,4]}},"G":{sampleSize:32,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[0,1],"1.0":[1,2],"1.5":[1,2],"2.5":[2,3],"4.0":[3,4],"6.5":[5,6]}},"H":{sampleSize:50,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[0,1],"0.65":[1,2],"1.0":[1,2],"1.5":[2,3],"2.5":[3,4],"4.0":[5,6],"6.5":[7,8]}},"J":{sampleSize:80,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[0,1],"0.40":[1,2],"0.65":[1,2],"1.0":[2,3],"1.5":[3,4],"2.5":[5,6],"4.0":[7,8],"6.5":[10,11]}},"K":{sampleSize:125,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[0,1],"0.25":[1,2],"0.40":[1,2],"0.65":[2,3],"1.0":[3,4],"1.5":[5,6],"2.5":[7,8],"4.0":[10,11],"6.5":[14,15]}},"L":{sampleSize:200,aql:{"0":[0,1],"0.065":[0,1],"0.10":[0,1],"0.15":[1,2],"0.25":[1,2],"0.40":[2,3],"0.65":[3,4],"1.0":[5,6],"1.5":[7,8],"2.5":[10,11],"4.0":[14,15],"6.5":[21,22]}},"M":{sampleSize:315,aql:{"0":[0,1],"0.065":[0,1],"0.10":[1,2],"0.15":[1,2],"0.25":[2,3],"0.40":[3,4],"0.65":[5,6],"1.0":[7,8],"1.5":[10,11],"2.5":[14,15],"4.0":[21,22],"6.5":[21,22]}},"N":{sampleSize:500,aql:{"0":[0,1],"0.065":[1,2],"0.10":[1,2],"0.15":[2,3],"0.25":[3,4],"0.40":[5,6],"0.65":[7,8],"1.0":[10,11],"1.5":[14,15],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}},"P":{sampleSize:800,aql:{"0":[0,1],"0.065":[1,2],"0.10":[2,3],"0.15":[3,4],"0.25":[5,6],"0.40":[7,8],"0.65":[10,11],"1.0":[14,15],"1.5":[21,22],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}},"Q":{sampleSize:1250,aql:{"0":[0,1],"0.065":[2,3],"0.10":[3,4],"0.15":[5,6],"0.25":[7,8],"0.40":[10,11],"0.65":[14,15],"1.0":[21,22],"1.5":[21,22],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}},"R":{sampleSize:2000,aql:{"0":[0,1],"0.065":[3,4],"0.10":[5,6],"0.15":[7,8],"0.25":[10,11],"0.40":[14,15],"0.65":[21,22],"1.0":[21,22],"1.5":[21,22],"2.5":[21,22],"4.0":[21,22],"6.5":[21,22]}}};
+
 function calculateAQL() {
-const quantity = parseInt(document.getElementById('aqlOrderQuantity').value), level = document.getElementById('aqlInspectionLevel').value, majorAqlValue = document.getElementById('aqlMajor').value, minorAqlValue = document.getElementById('aqlMinor').value;
+const quantity = parseInt(document.getElementById('aqlOrderQuantity').value), level = document.getElementById('aqlInspectionLevel').value, criticalAqlValue = document.getElementById('aqlCritical').value, majorAqlValue = document.getElementById('aqlMajor').value, minorAqlValue = document.getElementById('aqlMinor').value;
 let codeLetter = null;
 if (!isNaN(quantity) && quantity >= 2) { for (const range of lotSizeToCodeLetterTable) { if (quantity >= range.min && quantity <= range.max) { codeLetter = range.levels[level]; break; } } }
 if (codeLetter && aqlDataTable[codeLetter]) {
-const aqlData = aqlDataTable[codeLetter], sampleSize = aqlData.sampleSize, majorResult = aqlData.aql[majorAqlValue] || ['N/A', 'N/A'], minorResult = aqlData.aql[minorAqlValue] || ['N/A', 'N/A'];
-document.getElementById('aql-result-code-letter').textContent = codeLetter; document.getElementById('aql-result-sample-size').textContent = sampleSize; document.getElementById('aql-major-aql-result').textContent = majorAqlValue; document.getElementById('aql-major-ac').textContent = majorResult[0]; document.getElementById('aql-major-re').textContent = majorResult[1]; document.getElementById('aql-minor-aql-result').textContent = minorAqlValue; document.getElementById('aql-minor-ac').textContent = minorResult[0]; document.getElementById('aql-minor-re').textContent = minorResult[1];
-} else { const na = 'N/A'; document.getElementById('aql-result-code-letter').textContent = na; document.getElementById('aql-result-sample-size').textContent = na; document.getElementById('aql-major-ac').textContent = na; document.getElementById('aql-major-re').textContent = na; document.getElementById('aql-minor-ac').textContent = na; document.getElementById('aql-minor-re').textContent = na; }
+const aqlData = aqlDataTable[codeLetter], sampleSize = aqlData.sampleSize, criticalResult = aqlData.aql[criticalAqlValue] || ['0', '1'], majorResult = aqlData.aql[majorAqlValue] || ['N/A', 'N/A'], minorResult = aqlData.aql[minorAqlValue] || ['N/A', 'N/A'];
+document.getElementById('aql-result-code-letter').textContent = codeLetter; document.getElementById('aql-result-sample-size').textContent = sampleSize;
+document.getElementById('aql-critical-aql-result').textContent = criticalAqlValue; document.getElementById('aql-critical-ac').textContent = criticalResult[0]; document.getElementById('aql-critical-re').textContent = criticalResult[1];
+document.getElementById('aql-major-aql-result').textContent = majorAqlValue; document.getElementById('aql-major-ac').textContent = majorResult[0]; document.getElementById('aql-major-re').textContent = majorResult[1];
+document.getElementById('aql-minor-aql-result').textContent = minorAqlValue; document.getElementById('aql-minor-ac').textContent = minorResult[0]; document.getElementById('aql-minor-re').textContent = minorResult[1];
+} else { const na = 'N/A'; document.getElementById('aql-result-code-letter').textContent = na; document.getElementById('aql-result-sample-size').textContent = na; document.getElementById('aql-critical-ac').textContent = '0'; document.getElementById('aql-critical-re').textContent = '1'; document.getElementById('aql-major-ac').textContent = na; document.getElementById('aql-major-re').textContent = na; document.getElementById('aql-minor-ac').textContent = na; document.getElementById('aql-minor-re').textContent = na; }
 }
-function initAqlCalculator() { ['aqlOrderQuantity', 'aqlInspectionLevel', 'aqlMajor', 'aqlMinor'].forEach(id => document.getElementById(id).addEventListener('input', calculateAQL)); document.getElementById('aqlCloseBtn').addEventListener('click', closeAqlModal); document.getElementById('aqlApplyBtn').addEventListener('click', applyAndCloseAqlModal); document.getElementById('aql-modal-overlay').addEventListener('click', (e) => { if(e.target.id === 'aql-modal-overlay') closeAqlModal(); }); calculateAQL(); }
-function openAqlModal(frameElement) { currentAqlFrame = frameElement; const orderQty = frameElement.dataset.orderqty || frameElement.closest('.inspection-row')?.querySelector('input[name="prod_qty_standard"]')?.value || 1000; document.getElementById('aqlOrderQuantity').value = orderQty; document.getElementById('aqlInspectionLevel').value = frameElement.dataset.inspectionlevel || 'II'; document.getElementById('aqlMajor').value = frameElement.dataset.majoraql || '2.5'; document.getElementById('aqlMinor').value = frameElement.dataset.minoraql || '4.0'; calculateAQL(); document.getElementById('aql-modal-overlay').style.display = 'flex'; }
-function closeAqlModal() { document.getElementById('aql-modal-overlay').style.display = 'none'; currentAqlFrame = null; }
-function applyAndCloseAqlModal() { if (!currentAqlFrame) return; const sampleSize = document.getElementById('aql-result-sample-size').textContent, majorAc = document.getElementById('aql-major-ac').textContent, minorAc = document.getElementById('aql-minor-ac').textContent; currentAqlFrame.querySelector('input[name="aql_check_qty"]').value = (sampleSize !== 'N/A') ? sampleSize : ''; currentAqlFrame.querySelector('input[name="major_standard"]').value = (majorAc !== 'N/A') ? majorAc : ''; currentAqlFrame.querySelector('input[name="minor_standard"]').value = (minorAc !== 'N/A') ? minorAc : ''; Object.assign(currentAqlFrame.dataset, { orderqty: document.getElementById('aqlOrderQuantity').value, inspectionlevel: document.getElementById('aqlInspectionLevel').value, majoraql: document.getElementById('aqlMajor').value, minoraql: document.getElementById('aqlMinor').value }); captureState(); closeAqlModal(); }
+function initAqlCalculator() { ['aqlOrderQuantity', 'aqlInspectionLevel', 'aqlCritical', 'aqlMajor', 'aqlMinor'].forEach(id => document.getElementById(id).addEventListener('input', calculateAQL)); document.getElementById('aqlCloseBtn').addEventListener('click', closeAqlModal); document.getElementById('aqlApplyBtn').addEventListener('click', applyAndCloseAqlModal); document.getElementById('aql-modal-overlay').addEventListener('click', (e) => { if(e.target.id === 'aql-modal-overlay') closeAqlModal(); }); calculateAQL(); }
+function openAqlModal(rowElement) { currentAqlRow = rowElement; const orderQty = rowElement.dataset.orderqty || rowElement.closest('.inspection-row')?.querySelector('input[name="prod_qty_standard"]')?.value || 1000; document.getElementById('aqlOrderQuantity').value = orderQty; document.getElementById('aqlInspectionLevel').value = rowElement.dataset.inspectionlevel || 'II'; document.getElementById('aqlCritical').value = rowElement.dataset.criticalaql || '0'; document.getElementById('aqlMajor').value = rowElement.dataset.majoraql || '2.5'; document.getElementById('aqlMinor').value = rowElement.dataset.minoraql || '4.0'; calculateAQL(); document.getElementById('aql-modal-overlay').style.display = 'flex'; }
+function closeAqlModal() { document.getElementById('aql-modal-overlay').style.display = 'none'; currentAqlRow = null; }
+function applyAndCloseAqlModal() { if (!currentAqlRow) return;
+    const sampleSize = document.getElementById('aql-result-sample-size').textContent;
+    const criticalAc = document.getElementById('aql-critical-ac').textContent;
+    const majorAc = document.getElementById('aql-major-ac').textContent;
+    const minorAc = document.getElementById('aql-minor-ac').textContent;
+    currentAqlRow.querySelector('input[name="aql_check_qty"]').value = (sampleSize !== 'N/A') ? sampleSize : '';
+    currentAqlRow.querySelector('input[name="critical_standard"]').value = (criticalAc !== 'N/A') ? criticalAc : '0';
+    currentAqlRow.querySelector('input[name="major_standard"]').value = (majorAc !== 'N/A') ? majorAc : '';
+    currentAqlRow.querySelector('input[name="minor_standard"]').value = (minorAc !== 'N/A') ? minorAc : '';
+    Object.assign(currentAqlRow.dataset, { orderqty: document.getElementById('aqlOrderQuantity').value, inspectionlevel: document.getElementById('aqlInspectionLevel').value, criticalaql: document.getElementById('aqlCritical').value, majoraql: document.getElementById('aqlMajor').value, minoraql: document.getElementById('aqlMinor').value });
+    captureState();
+    closeAqlModal();
+}
 
 // --- TÍNH SAI SỐ ---
 function initToleranceCalculator() {
@@ -1484,7 +2766,7 @@ const overlay = document.getElementById('tolerance-modal-overlay');
 const valueInput = document.getElementById('tolerance-value-input');
 document.getElementById('close-tolerance-modal-btn').addEventListener('click', () => overlay.style.display = 'none');
 overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.style.display = 'none'; });
-const saveToleranceValue = () => { if (!currentToleranceSourceBox) return; const newValue = valueInput.value; currentToleranceSourceBox.dataset.baseDescription = newValue.replace(/^\d+\.?\s*/, ''); currentToleranceSourceBox.querySelector('.description').textContent = newValue; renumberDetailBoxes(); captureState(); };
+const saveToleranceValue = () => { if (!currentToleranceSourceBox) return; const newValue = valueInput.value; currentToleranceSourceBox.dataset.baseDescription = newValue.replace(/^\d+\.?\s*/, ''); renumberDetailBoxes(); captureState(); };
 valueInput.addEventListener('blur', saveToleranceValue);
 valueInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); valueInput.blur(); } });
 }
