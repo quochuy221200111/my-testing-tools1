@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
-    <title>Hệ Thống Kiểm Định v4.1</title>
+    <title>Hệ Thống Kiểm Định v4.2 (Đã sửa đổi)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
@@ -104,7 +104,7 @@
             flex-grow: 1;
             overflow-y: auto;
             padding: 20px;
-            padding-bottom: 100px;
+            padding-bottom: 100px; /* Tăng padding để nút không che nội dung */
         }
         .section-container {
             background: #fff;
@@ -191,7 +191,7 @@
         }
         #camera-modal-top { flex-shrink: 0; position: relative; }
         #camera-modal-video { width: 100%; max-height: 70vh; display: block; }
-        #camera-modal-actions { 
+        #camera-modal-actions {
             position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 20px; justify-content: center; width: 100%;
         }
@@ -205,12 +205,26 @@
         }
         #lightbox-img { max-width: 90%; max-height: 80%; object-fit: contain; }
         #lightbox-actions { margin-top: 20px; display: flex; gap: 20px; }
+        
+        /* THAY ĐỔI 1: Di chuyển nút hành động lên cao hơn */
         #central-action-button {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 65px; height: 65px; border-radius: 50%; background-color: var(--color-primary);
-            color: white; display: flex; align-items: center; justify-content: center;
-            border: 3px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            cursor: pointer; z-index: 999; transition: background-color 0.3s, transform 0.2s;
+            position: fixed;
+            bottom: 40px; /* Tăng từ 20px lên 40px */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background-color: var(--color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 999;
+            transition: background-color 0.3s, transform 0.2s;
         }
         #central-action-button.recording { background-color: var(--color-danger); }
         #central-action-button:active { transform: translateX(-50%) scale(0.95); }
@@ -252,6 +266,11 @@
     <div class="main-container">
         <div style="padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--color-border); flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
             <button id="download-all-zip-btn" class="btn-primary">Tải Tất Cả (ZIP)</button>
+            <!-- THAY ĐỔI 2: Thêm trường nhập tiền tố tên file -->
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="file-prefix" style="font-weight: 500;">Tiền tố tên file:</label>
+                <input type="text" id="file-prefix" value="KiemDinh" style="flex-grow: 0; width: 150px;">
+            </div>
             <div class="form-group" style="margin-bottom: 0;">
                  <input type="checkbox" id="auto-download-checkbox" style="width: auto; flex-grow: 0;">
                  <label for="auto-download-checkbox" style="font-weight: 500;">Tự động tải về</label>
@@ -421,7 +440,25 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('autoDownloadEnabled', e.target.checked);
         });
     }
+
+    // THAY ĐỔI 3: Hàm để lưu và tải trạng thái xoay ảnh
+    function setupPhotoRotation() {
+        const photoRotationSelect = document.getElementById('photo-rotation');
+        const savedRotation = localStorage.getItem('photoRotationValue');
+        
+        // Tải giá trị đã lưu khi tải trang
+        if (savedRotation) {
+            photoRotationSelect.value = savedRotation;
+        }
+
+        // Lưu giá trị mới mỗi khi người dùng thay đổi
+        photoRotationSelect.addEventListener('change', () => {
+            localStorage.setItem('photoRotationValue', photoRotationSelect.value);
+        });
+    }
+
     setupAutoDownload();
+    setupPhotoRotation(); // Gọi hàm mới
     
     const exitModal = document.getElementById('exit-warning-modal');
     window.addEventListener('beforeunload', (event) => {
@@ -451,10 +488,13 @@ document.addEventListener('DOMContentLoaded', () => {
         button.disabled = true;
         try {
             const zip = new JSZip();
+            const prefix = document.getElementById('file-prefix').value.trim() || 'KiemDinh';
+            
             if (photoBlobs.length > 0) {
                 const photoFolder = zip.folder("photos");
                 photoBlobs.forEach((blob, index) => {
-                    photoFolder.file(`photo_${index + 1}.jpeg`, blob);
+                    // Sử dụng tiền tố và số thứ tự khi nén ZIP
+                    photoFolder.file(`${prefix}_${index + 1}.jpeg`, blob);
                 });
             }
             if (videoData.length > 0) {
@@ -554,8 +594,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderMainGrid();
                 renderModalGrid();
                 if (document.getElementById('auto-download-checkbox').checked) {
-                    const timestamp = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
-                    saveAs(blob, `photo_${timestamp}.jpeg`);
+                    // THAY ĐỔI 2: Đặt tên file ảnh chụp nhanh theo tiền tố và số thứ tự
+                    const prefix = document.getElementById('file-prefix').value.trim() || 'photo';
+                    const photoIndex = capturedImageBlobs.length;
+                    saveAs(blob, `${prefix}_${photoIndex}.jpeg`);
                 }
             }, 'image/jpeg', 0.92);
         }
@@ -710,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
             homelessVideos.forEach(video => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'video-item';
-                const fileName = `${video.name}_${video.id}.${video.extension}`;
+                const fileName = `${video.name}.${video.extension}`; // Tên file đã được định dạng sẵn
                 itemDiv.innerHTML = `
                     <span class="video-item-name">${video.name}</span>
                     <div class="video-item-actions">
@@ -977,9 +1019,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let finalFileExtension = originalMimeType.includes('mp4') ? 'mp4' : 'webm';
             
             if (isRecordingHomeless) {
+                // THAY ĐỔI 2: Đặt tên video nhanh theo tiền tố và số thứ tự
+                const prefix = document.getElementById('file-prefix').value.trim() || 'video_nhanh';
+                const videoIndex = homelessVideos.length + 1;
                 const newVideo = {
                     id: Date.now(),
-                    name: 'video_nhanh',
+                    name: `${prefix}_${videoIndex}`, // Tên hiển thị
                     url: URL.createObjectURL(videoBlob),
                     extension: finalFileExtension,
                 };
@@ -998,12 +1043,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (document.getElementById('auto-download-checkbox').checked) {
                 let filename;
-                const timestamp = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
                 if (isRecordingHomeless) {
-                    filename = `video_nhanh_${timestamp}.${finalFileExtension}`;
+                    const prefix = document.getElementById('file-prefix').value.trim() || 'video_nhanh';
+                    const videoIndex = homelessVideos.length; // Lấy video vừa thêm vào
+                    filename = `${prefix}_${videoIndex}.${finalFileExtension}`;
                 } else if (currentlyRecording) {
                     const section = largeSections.find(s => s.id === currentlyRecording.sectionId);
                     const item = section.items.find(i => i.id === currentlyRecording.itemId);
+                    const timestamp = new Date().toISOString().slice(0, 19).replace(/[-T:]/g, "");
                     filename = (section && item) 
                         ? `${sanitizeFileName(section.name)}_${sanitizeFileName(item.name)}.${finalFileExtension}`
                         : `video_${timestamp}.${finalFileExtension}`;
@@ -1074,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 homelessVideos.forEach((video) => {
                     allData.push({
                         url: video.url,
-                        fileName: `untitled_${video.id}`,
+                        fileName: video.name, // Sử dụng tên đã được định dạng
                         extension: video.extension
                     });
                 });
