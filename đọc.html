@@ -1,508 +1,1094 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyên gia Chuyển văn bản thành Giọng nói (Đa Engine)</title>
+    <title>Trợ lý Soạn thảo Câu lệnh AI (Pro - Fixed)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
+        :root {
+            --background-color: #f8f9fa;
+            --surface-color: #ffffff;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --button-bg: #e9ecef;
+            --button-hover-bg: #ced4da;
+            --accent-color: #007bff;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --font-size-base: 13px;
+            /* Yêu cầu 1: Biến CSS cho độ trong suốt của panel AI */
+            --ai-panel-opacity: 0.98;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #1c1e21;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            background-color: var(--background-color);
+            color: var(--text-color);
             margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
+            padding: 0 0 200px 0; /* Thêm padding dưới để panel không che nội dung */
+            font-size: var(--font-size-base);
+            line-height: 1.4;
         }
+
         .container {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 800px;
-        }
-        h1 {
-            color: #1877f2;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #dddfe2;
-            border-radius: 8px;
-            font-size: 16px;
-            resize: vertical;
-            min-height: 150px;
-            margin-bottom: 1rem;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 10px;
             box-sizing: border-box;
         }
-        .button-group {
+
+        /* HEADER */
+        .header-controls {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            background: var(--surface-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        button {
-            background-color: #1877f2;
-            color: #ffffff;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.3s;
-        }
-        #stop-button {
-            background-color: #f56c6c;
-        }
-        button:hover:not(:disabled) {
-            filter: brightness(95%);
-        }
-        button:disabled {
-            background-color: #a0bdf5;
-            cursor: not-allowed;
-        }
-        #stop-button:disabled {
-            background-color: #fab6b6;
-        }
-        .controls {
-            margin-top: 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-        .control-group {
+
+        .tabs { display: flex; border-bottom: none; margin-bottom: 0; }
+        .tab-button { padding: 8px 16px; cursor: pointer; border: none; background-color: transparent; font-size: 14px; font-weight: bold; color: #6c757d; border-bottom: 3px solid transparent; transition: color 0.2s; }
+        .tab-button.active { color: var(--accent-color); border-bottom: 3px solid var(--accent-color); }
+        #prompt-view-controls { display: flex; gap: 8px; padding-right: 10px; align-items: center; }
+        .main-button { background-color: var(--button-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s; white-space: nowrap; }
+        .main-button:hover { background-color: var(--button-hover-bg); }
+        .icon-btn { padding: 6px 8px; font-size: 14px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* SESSIONS LAYOUT */
+        .sessions-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        .session { border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--surface-color); padding: 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 6px var(--shadow-color); flex: 1 1 calc(25% - 20px); min-width: 300px; max-width: 100%; position: relative; transition: border-color 0.2s; }
+        .session.pinned { border-color: #a1d2ff; box-shadow: 0 0 5px rgba(0, 123, 255, 0.3); }
+        .session.last-active { border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color); }
+        .session-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 5px; gap: 10px; }
+        .session-title-input { font-size: 1.1em; font-weight: bold; color: var(--accent-color); border: 1px dashed transparent; background: transparent; flex-grow: 1; min-width: 0; padding: 2px 5px; }
+        .session-title-input:focus { border-color: var(--accent-color); background: #fff; color: #000; }
+        .copy-success-icon { display: none; color: #28a745; font-size: 1.2em; margin-right: 5px; animation: fadeInOut 1.5s forwards; }
+        @keyframes fadeInOut { 0% { opacity: 0; transform: scale(0.5); } 20% { opacity: 1; transform: scale(1.2); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+        .session-controls { display: flex; align-items: center; gap: 2px; }
+        .session-controls button { font-size: 11px; padding: 4px 8px; margin-left: 2px; }
+        .pin-session-btn.pinned { background-color: #ffc107; border-color: #ffc107; }
+        
+        /* ROWS PROMPT */
+        .prompt-row { display: flex; flex-direction: column; margin-bottom: 5px; position: relative; }
+        .prompt-row.collapsed .row-content { display: none; }
+        .row-header { display: flex; align-items: center; font-weight: bold; font-size: 0.95em; margin-bottom: 2px; cursor: pointer; padding: 2px 0; user-select: none; }
+        .row-header::before { content: '▼'; margin-right: 5px; font-size: 0.7em; transition: transform 0.2s; color: #888; }
+        .prompt-row.collapsed .row-header::before { transform: rotate(-90deg); }
+        .row-controls { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .row-controls button, .row-controls label { background: none; border: none; cursor: pointer; font-size: 1.1em; color: #666; padding: 0 4px; display: flex; align-items: center; }
+        .action-btn { font-size: 11px !important; padding: 2px 6px; background: #f0f0f0 !important; border-radius: 3px !important; border: 1px solid #ddd !important; white-space: nowrap; }
+        .action-btn:hover { background: #e0e0e0 !important; }
+
+        textarea, input[type="text"] { width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background-color: #ffffff; font-family: inherit; font-size: var(--font-size-base); box-sizing: border-box; resize: vertical; min-height: 32px; transition: height 0.1s ease-out; }
+        textarea:focus, input[type="text"]:focus { outline: none; border-color: var(--accent-color); }
+        .row-code textarea { max-height: 150px !important; min-height: 60px; overflow-y: scroll !important; font-family: "Consolas", "Monaco", "Courier New", monospace; background-color: #f1f3f5; font-size: 12px; white-space: pre; color: #333; }
+        
+        /* Suggestions Popup */
+        .suggestions-popup { display: none; position: absolute; top: 25px; right: 0; background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; z-index: 200; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.15); width: 320px; max-width: 90vw; font-size: 12px; }
+        .suggestion-item { display: flex; align-items: center; margin-bottom: 5px; border-bottom: 1px dashed #eee; padding: 4px; cursor: grab; background-color: white; }
+        .suggestion-item:active { cursor: grabbing; }
+        .suggestion-item:hover { background-color: #f8f9fa; }
+        .suggestion-item-text { flex-grow: 1; cursor: pointer; }
+        
+        /* Storage View Layout */
+        .storage-view-container { display: flex; gap: 15px; height: calc(100vh - 60px); }
+        .storage-column { flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background-color: var(--surface-color); display: flex; flex-direction: column; min-width: 0; max-height: 100%; }
+        .storage-column h3 { margin: 0 0 10px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; }
+        .storage-column-content { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        .storage-item { border: 1px solid #eee; border-radius: 4px; padding: 8px; margin-bottom: 8px; background: #fdfdfd; }
+        .item-header-row { display: flex; gap: 5px; margin-bottom: 5px; align-items: center; }
+        .item-name-input { flex: 1; font-weight: bold; border: none; border-bottom: 1px dashed #ccc; background: transparent; padding: 2px; font-size: 0.95em; }
+        .item-time { font-size: 10px; color: #888; margin-right: 5px; white-space: nowrap; }
+        .btn-sm { padding: 2px 6px; font-size: 11px; background: #eee; border: 1px solid #ddd; border-radius: 3px; cursor: pointer; }
+        .btn-delete { color: #dc3545; }
+        .btn-download { color: var(--accent-color); }
+        .history-content { font-size: 11px; color: #555; max-height: 60px; overflow: hidden; text-overflow: ellipsis; white-space: pre-wrap; cursor: pointer; background: #f1f1f1; padding: 4px; border-radius: 3px; font-family: monospace; }
+        .history-content.expanded { max-height: 300px; overflow-y: auto; }
+        .note-content-area { width: 100%; height: 100px; resize: none; margin-top: 5px; font-size: 12px; overflow-y: auto; }
+        #file-upload, #import-file-input { display: none; }
+        .shortcut-hint { font-size: 11px; color: #888; margin-right: 10px; font-weight: normal; }
+        
+        /* Modal Settings */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
+        .modal { background: white; padding: 20px; border-radius: 8px; width: 450px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+        .modal h3 { margin-top: 0; }
+        .modal h4 { margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .key-input { width: 80px; text-align: center; font-weight: bold; }
+        .number-input, .text-input-long { width: 200px; }
+
+        /* --- START: YÊU CẦU 1 - CSS CHO PANEL GHI ÂM AI MỚI --- */
+        #voice-ai-panel {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            max-width: 800px;
+            z-index: 1001;
+            background-color: rgba(245, 245, 245, var(--ai-panel-opacity));
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
+            transition: transform 0.3s ease-in-out, opacity 0.3s;
+            transform-origin: bottom center;
+            opacity: 0;
+            visibility: hidden;
+            height: 45vh; /* Chiều cao mặc định */
+            min-height: 150px;
         }
-        label, .select-label {
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #606770;
+
+        #voice-ai-panel.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            visibility: visible;
         }
-        select {
-             width: 100%;
-             padding: 10px;
-             border: 1px solid #dddfe2;
-             border-radius: 8px;
-             font-size: 16px;
-             margin-bottom: 1rem;
+
+        #voice-ai-panel.collapsed {
+            transform: translateX(-50%) translateY(calc(100% - 35px));
         }
-        input[type="range"] {
-            width: 100%;
+
+        .ai-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 15px;
             cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(255,255,255, 0.7);
+            border-radius: 12px 12px 0 0;
         }
-        .control-group[disabled] {
-            opacity: 0.4;
-            pointer-events: none;
+        .ai-panel-header #ai-status { font-weight: bold; color: var(--accent-color); font-size: 14px; }
+
+        .ai-panel-toggle-btn {
+            padding: 5px;
+            cursor: pointer;
+            font-size: 20px;
+            background: none;
+            border: none;
         }
-        #status {
-            margin-top: 1rem;
+        .ai-panel-toggle-btn.collapse-btn::before { content: '▼'; }
+        #voice-ai-panel.collapsed .ai-panel-toggle-btn.collapse-btn::before { content: '▲'; }
+
+
+        .ai-panel-content {
+            display: flex;
+            flex-grow: 1;
+            gap: 10px;
+            padding: 10px;
+            min-height: 0;
+        }
+        
+        .ai-panel-left, .ai-panel-right {
+            display: flex;
+            flex-direction: column;
+            flex-basis: 50%;
+            min-width: 0;
+        }
+        .ai-panel-right { flex-basis: 50%; } /* Panel phải cho các hành động */
+
+        #ai-interactive-editor {
+            width: 100%;
+            flex-grow: 1;
+            font-size: 15px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            line-height: 1.6;
+            background: #fff;
+            overflow-y: auto;
+            resize: none;
+        }
+        #ai-interactive-editor:empty:before {
+            content: "Dán văn bản hoặc bắt đầu ghi âm để AI xử lý...";
+            color: #aaa;
+        }
+
+        #ai-live-transcript-container {
+            padding: 8px;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: #fafafa;
+            margin-bottom: 10px;
+            display: none;
+            font-size: 14px;
+            color: #555;
             text-align: center;
-            color: #606770;
-            font-style: italic;
-            min-height: 20px;
         }
-        #download-link {
-            display: block;
-            margin-top: 1rem;
-            text-align: center;
-            color: #1877f2;
-            font-weight: bold;
-            text-decoration: none;
+        
+        #ai-actions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 5px;
         }
+        .ai-action-item { display: flex; align-items: center; gap: 5px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; }
+        .ai-action-item .name { flex-grow: 1; font-weight: 500; font-size: 13px; }
+        .action-control-btn { background: none; border: 1px solid var(--border-color); color: #555; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .action-control-btn.run { color: #28a745; border-color: #28a745; }
+        #add-ai-action-btn { background-color: #f8f9fa; color: var(--accent-color); border: 1px dashed var(--accent-color); margin-top: 10px; width: 100%; }
+
+        .ai-panel-footer {
+            padding: 10px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            align-items: center;
+        }
+        .ai-panel-footer-controls { display: flex; gap: 10px; }
+        .ai-btn { padding: 8px 16px; font-size: 14px; cursor: pointer; border: none; border-radius: 6px; color: white; font-weight: 500; }
+        #ai-start-button { background-color: #dc3545; }
+        #ai-stop-button { background-color: #6c757d; }
+        #ai-insert-button { background-color: #28a745; }
+        
+        /* CSS cho các gợi ý sửa lỗi từ mã tham khảo */
+        .review-block { display: inline; background-color: #fffbdd; padding: 2px 0; }
+        .review-block del { color: #d50000; text-decoration: none; background-color: #ffcdd2; padding: 2px 4px; border-radius: 3px; }
+        .review-block .suggestions-container { display: inline-block; margin-left: 8px; font-style: italic; color: #555; }
+        .suggestion-item {
+            display: inline-block; padding: 2px 6px; margin: 0 4px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s, color 0.2s; border: 1px solid transparent; font-style: normal;
+        }
+        .suggestion-item:hover { background-color: #e0e0e0; }
+        .suggestion-item.best { text-decoration: underline; font-weight: bold; }
+        .suggestion-item.original { color: #757575; }
+        .suggestion-item.selected { background-color: var(--accent-color); color: white; }
+        
+        /* Modal AI Action */
+        #ai-prompt-modal .modal { width: 700px; }
+        #ai-prompt-modal .help-text { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 15px; }
+        #ai-prompt-modal textarea { width: 100%; min-height: 120px; font-family: monospace; font-size: 13px; }
+        /* --- END: CSS PANEL GHI ÂM AI --- */
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Trình Chuyển Đổi Giọng Nói Toàn Năng</h1>
-    <textarea id="text-input" placeholder="Nhập văn bản của bạn vào đây...">Xin chào, đây là một thử nghiệm kết hợp nhiều công nghệ chuyển văn bản thành giọng nói khác nhau. Hãy chọn một giọng từ danh sách bên dưới.</textarea>
-    
-    <div class="control-group">
-        <label for="voice-select" class="select-label">Chọn Engine và Giọng đọc:</label>
-        <select id="voice-select">
-            <option value="google" data-engine="google">Google Translate (Tiếng Việt)</option>
-        </select>
+    <div class="header-controls">
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'prompt-view')">Soạn thảo Prompt</button>
+            <button class="tab-button" onclick="openTab(event, 'storage-view')">Lưu trữ & Ghi chú</button>
+        </div>
+        <div id="prompt-view-controls">
+            <span class="shortcut-hint" id="shortcut-display">Alt+1 (Copy), Alt+2 (Upload), Alt+3 (Focus)</span>
+            <button class="main-button" id="import-data-btn" title="Nhập dữ liệu từ file backup">Nhập Backup</button>
+            <button class="main-button" id="export-data-btn" title="Xuất toàn bộ dữ liệu ra file backup">Xuất Backup</button>
+            <button class="main-button icon-btn" id="settings-btn" title="Cài đặt">⚙️</button>
+            <button class="main-button" id="add-session-btn" title="Thêm phiên mới vào đầu">+ Thêm Phiên</button>
+            <button class="main-button" id="collapse-all-sessions-btn">Thu/Mở tất cả</button>
+        </div>
     </div>
-
-    <div class="button-group">
-        <button id="speak-button">Phát âm</button>
-        <button id="stop-button">Dừng</button>
+    <div id="prompt-view" class="tab-content active">
+        <div class="sessions-container" id="sessions-container"></div>
     </div>
-
-    <div id="status">Đang tải danh sách giọng nói...</div>
-    <a id="download-link" href="#" style="display: none;">Tải về file WAV</a>
-
-    <div class="controls">
-        <div class="control-group" id="gain-group">
-            <label for="gain">Âm Lượng (Gain): <span id="gain-value">1</span></label>
-            <input type="range" id="gain" min="0" max="2" step="0.1" value="1">
-        </div>
-        <div class="control-group" id="speed-group">
-            <label for="speed">Tốc độ: <span id="speed-value">1</span></label>
-            <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1">
-        </div>
-        <div class="control-group" id="pitch-group">
-            <label for="pitch">Cao độ: <span id="pitch-value">1</span></label>
-            <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1">
-        </div>
-        <div class="control-group" id="reverb-group">
-            <label for="reverb">Độ Vang (Reverb): <span id="reverb-value">0</span></label>
-            <input type="range" id="reverb" min="0" max="1" step="0.1" value="0">
-        </div>
-        <div class="control-group" id="eq-low-group">
-            <label for="eq-low">EQ Low (Bass): <span id="eq-low-value">0</span> dB</label>
-            <input type="range" id="eq-low" min="-20" max="20" step="1" value="0">
-        </div>
-        <div class="control-group" id="eq-mid-group">
-            <label for="eq-mid">EQ Mid: <span id="eq-mid-value">0</span> dB</label>
-            <input type="range" id="eq-mid" min="-20" max="20" step="1" value="0">
-        </div>
-        <div class="control-group" id="eq-high-group">
-            <label for="eq-high">EQ High (Treble): <span id="eq-high-value">0</span> dB</label>
-            <input type="range" id="eq-high" min="-20" max="20" step="1" value="0">
+    <div id="storage-view" class="tab-content">
+        <div class="storage-view-container">
+            <div class="storage-column">
+                <h3><span>Tệp đã lưu</span><label for="file-upload" class="main-button" style="font-weight: normal;">+ Tải lên</label></h3>
+                <input type="file" id="file-upload" multiple>
+                <div class="storage-column-content" id="file-list"></div>
+            </div>
+            <div class="storage-column">
+                <h3>Lịch sử Sao chép</h3>
+                <div class="storage-column-content" id="history-list"></div>
+            </div>
+            <div class="storage-column">
+                <h3><span>Ghi chú</span><button class="main-button" id="add-note-btn">+ Thêm</button></h3>
+                <div class="storage-column-content" id="notes-container"></div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Tải thư viện ResponsiveVoice.js -->
-<script src="https://code.responsivevoice.org/responsivevoice.js"></script>
+<!-- Modal Cài đặt -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+        <h3>Cài đặt</h3>
+        <h4>Phím tắt</h4>
+        <p style="font-size:11px; color:#666; margin-bottom:15px;">Nhập 1 ký tự (kết hợp với phím Alt).</p>
+        <div class="setting-row"><label>Sao chép (Copy):</label><input type="text" maxlength="1" id="key-copy" class="key-input"></div>
+        <div class="setting-row"><label>Tải file (Code):</label><input type="text" maxlength="1" id="key-upload" class="key-input"></div>
+        <div class="setting-row"><label>Chuyển ô (Focus):</label><input type="text" maxlength="1" id="key-focus" class="key-input"></div>
+        <div class="setting-row"><label>Ghi âm (Voice):</label><input type="text" maxlength="1" id="key-voice" class="key-input"></div>
+        
+        <h4>Hiển thị</h4>
+        <div class="setting-row">
+            <label for="char-limit-input" title="Đặt 0 để tắt. Nội dung ô sẽ được thu gọn nếu dài hơn giá trị này.">Giới hạn ký tự hiển thị:</label>
+            <input type="number" id="char-limit-input" class="number-input" min="0" step="50">
+        </div>
+
+        <!-- Yêu cầu 1: Cài đặt cho Panel AI -->
+        <h4>Cài đặt AI & Giọng nói</h4>
+        <div class="setting-row"><label for="gemini-key">Gemini API Key:</label><input type="password" id="gemini-key" class="text-input-long" placeholder="Dán API Key của bạn"></div>
+        <div class="setting-row"><label for="gemini-model">Tên Model:</label><input type="text" id="gemini-model" class="text-input-long" value="gemini-1.5-pro-latest"></div>
+        <div class="setting-row"><label for="ai-panel-opacity">Độ trong suốt Panel (%):</label><input type="number" id="ai-panel-opacity" class="number-input" min="10" max="100" value="98"></div>
+        
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button class="main-button" id="cancel-settings">Hủy</button>
+            <button class="main-button" id="save-settings" style="background:var(--accent-color); color:white; border:none;">Lưu</button>
+        </div>
+    </div>
+</div>
+<input type="file" id="import-file-input" accept=".json" style="display: none;">
+
+
+<!-- --- START: YÊU CẦU 1 - PANEL GHI ÂM VÀ XỬ LÝ AI --- -->
+<div id="voice-ai-panel">
+    <div class="ai-panel-header" id="ai-panel-header">
+        <span id="ai-status">Sẵn sàng.</span>
+        <button class="ai-panel-toggle-btn collapse-btn" id="ai-panel-collapse-btn" title="Thu gọn/Mở rộng"></button>
+    </div>
+    <div class="ai-panel-content">
+        <!-- Panel bên trái -->
+        <div class="ai-panel-left">
+             <div id="ai-live-transcript-container">
+                <span id="ai-live-transcript"></span>
+            </div>
+            <div id="ai-interactive-editor" contenteditable="true"></div>
+        </div>
+        <!-- Panel bên phải -->
+        <div class="ai-panel-right">
+             <div id="ai-actions-list"></div>
+             <button id="add-ai-action-btn" class="main-button">➕ Thêm hành động mới</button>
+        </div>
+    </div>
+    <div class="ai-panel-footer">
+        <div class="ai-panel-footer-controls">
+            <button id="ai-start-button" class="ai-btn" title="Bắt đầu ghi âm">🎙️ Bắt đầu</button>
+            <button id="ai-stop-button" class="ai-btn" title="Dừng ghi âm">⏹️ Dừng</button>
+            <button id="ai-insert-button" class="ai-btn" title="Chèn kết quả vào ô đang focus trên trang">Chèn vào trang</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal cho việc chỉnh sửa prompt AI -->
+<div id="ai-prompt-modal" class="modal-overlay">
+    <div class="modal">
+        <h3 id="ai-modal-title">Chỉnh sửa hành động</h3>
+        <input type="hidden" id="ai-modal-action-id">
+        <label for="ai-modal-action-name">Tên hành động:</label>
+        <input type="text" id="ai-modal-action-name" style="width:100%; box-sizing: border-box;">
+        <label for="ai-modal-action-prompt">Câu lệnh (Prompt):</label>
+        <textarea id="ai-modal-action-prompt"></textarea>
+        <p class="help-text">Prompt phải yêu cầu AI trả về một đối tượng JSON. Bạn có thể dùng biến: <code>{{SUGGESTION_COUNT}}</code>.</p>
+        
+        <label for="ai-modal-action-renderer">Mã nguồn xử lý hiển thị (Renderer - Nâng cao):</label>
+        <textarea id="ai-modal-action-renderer" placeholder="Để trống nếu muốn dùng trình xử lý mặc định..."></textarea>
+        <p class="help-text">
+            <b>CẢNH BÁO:</b> Viết một hàm Javascript nhận 2 tham số: <code>(editor, jsonData)</code>.
+        </p>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button id="ai-modal-cancel-btn" class="main-button">Hủy</button>
+            <button id="ai-modal-save-btn" class="main-button" style="background:var(--accent-color); color:white; border:none;">Lưu</button>
+        </div>
+    </div>
+</div>
+<!-- --- END: PANEL GHI ÂM VÀ XỬ LÝ AI --- -->
+
 
 <script>
-    // --- Lấy các phần tử DOM ---
-    const textInput = document.getElementById('text-input');
-    const speakButton = document.getElementById('speak-button');
-    const stopButton = document.getElementById('stop-button');
-    const statusDiv = document.getElementById('status');
-    const downloadLink = document.getElementById('download-link');
-    const voiceSelect = document.getElementById('voice-select');
+document.addEventListener('DOMContentLoaded', () => {
+    // --- START: BIẾN VÀ DOM ELEMENTS CHÍNH ---
+    const sessionsContainer = document.getElementById('sessions-container');
+    const addSessionBtn = document.getElementById('add-session-btn');
+    const collapseAllBtn = document.getElementById('collapse-all-sessions-btn');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const saveSettingsBtn = document.getElementById('save-settings');
+    const cancelSettingsBtn = document.getElementById('cancel-settings');
+    const shortcutDisplay = document.getElementById('shortcut-display');
+    const exportDataBtn = document.getElementById('export-data-btn');
+    const importDataBtn = document.getElementById('import-data-btn');
+    const importFileInput = document.getElementById('import-file-input');
     
-    // Các thanh trượt và giá trị
-    const controls = {
-        gain: { control: document.getElementById('gain'), value: document.getElementById('gain-value'), group: document.getElementById('gain-group') },
-        speed: { control: document.getElementById('speed'), value: document.getElementById('speed-value'), group: document.getElementById('speed-group') },
-        pitch: { control: document.getElementById('pitch'), value: document.getElementById('pitch-value'), group: document.getElementById('pitch-group') },
-        reverb: { control: document.getElementById('reverb'), value: document.getElementById('reverb-value'), group: document.getElementById('reverb-group') },
-        eqLow: { control: document.getElementById('eq-low'), value: document.getElementById('eq-low-value'), group: document.getElementById('eq-low-group') },
-        eqMid: { control: document.getElementById('eq-mid'), value: document.getElementById('eq-mid-value'), group: document.getElementById('eq-mid-group') },
-        eqHigh: { control: document.getElementById('eq-high'), value: document.getElementById('eq-high-value'), group: document.getElementById('eq-high-group') }
-    };
+    let sessions = [];
+    let files = [];
+    let history = [];
+    let notes = [];
+    let suggestions = [];
+    let shortcuts = { copy: '1', upload: '2', focus: '3', voice: 'v' };
+    let settings = { maxCharDisplay: 0 };
+    let lastActiveSessionId = null;
+    let lastFocusedElement = null; // Biến lưu lại ô input cuối cùng được focus trên trang chính
+    // --- END: BIẾN VÀ DOM ELEMENTS CHÍNH ---
 
-    // --- Biến cho Web Audio API (Dùng cho Google) ---
-    let audioContext;
-    let sourceNode;
-    let gainNode, convolverNode, reverbGainNode, dryGainNode;
-    let eqLowNode, eqMidNode, eqHighNode;
-    let audioBuffer;
-    let isSpeaking = false;
+    // --- START: YÊU CẦU 1 - LOGIC CHO PANEL AI GIỌNG NÓI ---
+    const aiPanel = document.getElementById('voice-ai-panel');
+    const aiPanelHeader = document.getElementById('ai-panel-header');
+    const aiPanelCollapseBtn = document.getElementById('ai-panel-collapse-btn');
+    const aiEditor = document.getElementById('ai-interactive-editor');
+    const aiStatusDiv = document.getElementById('ai-status');
+    const aiLiveTranscriptContainer = document.getElementById('ai-live-transcript-container');
+    const aiLiveTranscriptDiv = document.getElementById('ai-live-transcript');
+    const aiActionsListDiv = document.getElementById('ai-actions-list');
+    const aiModal = document.getElementById('ai-prompt-modal');
+    const aiStartButton = document.getElementById('ai-start-button');
+    const aiStopButton = document.getElementById('ai-stop-button');
+    const aiInsertButton = document.getElementById('ai-insert-button');
+    const addAiActionButton = document.getElementById('add-ai-action-btn');
 
-    // --- Tải và điền danh sách giọng nói ---
-    function populateVoiceList() {
-        // Web Speech API voices
-        if (typeof speechSynthesis !== 'undefined') {
-            const voices = speechSynthesis.getVoices();
-            if(voices.length > 0) {
-                const webSpeechGroup = document.createElement('optgroup');
-                webSpeechGroup.label = 'Web Speech API (Trình duyệt)';
-                voices.forEach(voice => {
-                    let option = document.createElement('option');
-                    option.textContent = `${voice.name} (${voice.lang})`;
-                    option.setAttribute('data-lang', voice.lang);
-                    option.setAttribute('data-name', voice.name);
-                    option.setAttribute('data-engine', 'webspeech');
-                    webSpeechGroup.appendChild(option);
-                });
-                voiceSelect.appendChild(webSpeechGroup);
+    let aiActions = []; // Sẽ được load từ localStorage
+
+    // Hiển thị/ẩn panel
+    function toggleAiPanel(show) {
+        if (show) {
+            aiPanel.classList.add('visible');
+        } else {
+            aiPanel.classList.remove('visible');
+            if (window.webkitSpeechRecognition && recognition && isListening) {
+                recognition.stop();
             }
         }
+    }
 
-        // ResponsiveVoice voices
-        if (typeof responsiveVoice !== 'undefined' && responsiveVoice.getVoices().length > 0) {
-            const responsiveGroup = document.createElement('optgroup');
-            responsiveGroup.label = 'ResponsiveVoice API';
-            responsiveVoice.getVoices().forEach(voice => {
-                 let option = document.createElement('option');
-                 option.textContent = voice.name;
-                 option.setAttribute('data-name', voice.name);
-                 option.setAttribute('data-engine', 'responsivevoice');
-                 responsiveGroup.appendChild(option);
-            });
-            voiceSelect.appendChild(responsiveGroup);
+    // Thu gọn/mở rộng panel
+    aiPanelHeader.addEventListener('click', (e) => {
+        if (e.target.id === 'ai-panel-collapse-btn' || e.target.id === 'ai-panel-header' || e.target.id === 'ai-status') {
+             aiPanel.classList.toggle('collapsed');
         }
-        
-        statusDiv.textContent = 'Sẵn sàng để sử dụng!';
-    }
-
-    // Đợi cả 2 API sẵn sàng
-    let webSpeechReady = false;
-    let responsiveVoiceReady = false;
-
-    if (typeof speechSynthesis !== 'undefined') {
-        speechSynthesis.onvoiceschanged = () => {
-            if(!webSpeechReady) {
-                webSpeechReady = true;
-                if(responsiveVoiceReady) populateVoiceList();
-            }
-        };
-        // Trigger for some browsers
-        speechSynthesis.getVoices();
-    } else {
-        webSpeechReady = true; // Mark as ready if not supported
-    }
-
-    if (typeof responsiveVoice !== 'undefined') {
-         responsiveVoice.OnVoiceReady = () => {
-            if(!responsiveVoiceReady) {
-                responsiveVoiceReady = true;
-                if(webSpeechReady) populateVoiceList();
-            }
-        };
-    } else {
-        responsiveVoiceReady = true; // Mark as ready if not supported
-    }
-
-
-    // --- Cập nhật giao diện dựa trên Engine được chọn ---
-    function updateUIForEngine(engine) {
-        const isGoogle = engine === 'google';
-        
-        // Bật/tắt các slider nâng cao
-        controls.reverb.group.toggleAttribute('disabled', !isGoogle);
-        controls.eqLow.group.toggleAttribute('disabled', !isGoogle);
-        controls.eqMid.group.toggleAttribute('disabled', !isGoogle);
-        controls.eqHigh.group.toggleAttribute('disabled', !isGoogle);
-
-        // Cập nhật phạm vi cho các slider chung
-        if (engine === 'webspeech') {
-            // Web speech: rate(0.1-10), pitch(0-2)
-            controls.gain.control.max = 1;
-            controls.speed.control.min = 0.1;
-            controls.speed.control.max = 3; // Practical max
-            controls.pitch.control.min = 0;
-            controls.pitch.control.max = 2;
-        } else if (engine === 'responsivevoice') {
-            // ResponsiveVoice: volume(0-1), rate(0-1.5), pitch(0-2)
-            controls.gain.control.max = 1;
-            controls.speed.control.min = 0.1;
-            controls.speed.control.max = 1.5;
-            controls.pitch.control.min = 0;
-            controls.pitch.control.max = 2;
-        } else { // Google
-            controls.gain.control.max = 2;
-            controls.speed.control.min = 0.5;
-            controls.speed.control.max = 2;
-            controls.pitch.control.min = 0.5;
-            controls.pitch.control.max = 2;
-        }
-        // Reset giá trị nếu vượt ngưỡng
-        controls.gain.control.value = Math.min(controls.gain.control.value, controls.gain.control.max);
-        controls.speed.control.value = Math.min(Math.max(controls.speed.control.value, controls.speed.control.min), controls.speed.control.max);
-        controls.pitch.control.value = Math.min(Math.max(controls.pitch.control.value, controls.pitch.control.min), controls.pitch.control.max);
-        
-        updateSliderValues();
-        downloadLink.style.display = isGoogle ? 'block' : 'none';
-    }
-
-    voiceSelect.addEventListener('change', () => {
-        const selectedOption = voiceSelect.options[voiceSelect.selectedIndex];
-        const engine = selectedOption.getAttribute('data-engine');
-        updateUIForEngine(engine);
     });
-
-    // --- Logic Phát âm ---
-    async function speak() {
-        const text = textInput.value.trim();
-        if (!text) {
-            statusDiv.textContent = 'Vui lòng nhập văn bản.';
-            return;
-        }
-
-        stop(); // Dừng bất cứ thứ gì đang phát
-        isSpeaking = true;
-        speakButton.disabled = true;
-        statusDiv.textContent = 'Đang xử lý...';
-
-        const selectedOption = voiceSelect.options[voiceSelect.selectedIndex];
-        const engine = selectedOption.getAttribute('data-engine');
-
-        if (engine === 'google') {
-            await speakWithGoogle(text);
-        } else if (engine === 'webspeech') {
-            speakWithWebSpeech(text, selectedOption.getAttribute('data-name'));
-        } else if (engine === 'responsivevoice') {
-            speakWithResponsiveVoice(text, selectedOption.getAttribute('data-name'));
-        }
-    }
     
-    function stop() {
-        isSpeaking = false;
-        if (sourceNode) { // Google
-            sourceNode.stop();
-            sourceNode = null;
-        }
-        if (typeof speechSynthesis !== 'undefined' && speechSynthesis.speaking) { // Web Speech
-            speechSynthesis.cancel();
-        }
-        if (typeof responsiveVoice !== 'undefined' && responsiveVoice.isPlaying()) { // ResponsiveVoice
-            responsiveVoice.cancel();
-        }
-        onSpeakEnd();
-    }
-
-    function onSpeakEnd() {
-        isSpeaking = false;
-        speakButton.disabled = false;
-        speakButton.textContent = 'Phát âm';
-        statusDiv.textContent = 'Đã dừng hoặc hoàn thành.';
-    }
-
-    speakButton.addEventListener('click', speak);
-    stopButton.addEventListener('click', stop);
-
-
-    // --- Các hàm cụ thể cho từng Engine ---
-
-    // 1. GOOGLE TRANSLATE
-    async function speakWithGoogle(text) {
-        initAudioContext();
-        if (!audioContext) return;
-        if (audioContext.state === 'suspended') audioContext.resume();
-        
-        downloadLink.style.display = 'none';
-        const chunks = chunkText(text);
-        const audioBuffers = [];
-        let totalLength = 0;
-
-        try {
-            for (let i = 0; i < chunks.length; i++) {
-                if (!isSpeaking) throw new Error("Cancelled");
-                statusDiv.textContent = `Đang tải phần ${i + 1}/${chunks.length}...`;
-                const audioData = await fetchTTS(chunks[i]);
-                if (audioData) {
-                    const decodedBuffer = await audioContext.decodeAudioData(audioData);
-                    audioBuffers.push(decodedBuffer);
-                    totalLength += decodedBuffer.length;
-                } else {
-                    throw new Error("Failed to fetch audio data");
-                }
-            }
-            if (audioBuffers.length === 0) throw new Error("No audio data loaded");
-
-            const finalBuffer = audioContext.createBuffer(audioBuffers[0].numberOfChannels, totalLength, audioBuffers[0].sampleRate);
-            let offset = 0;
-            for (const buffer of audioBuffers) {
-                for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-                    finalBuffer.getChannelData(channel).set(buffer.getChannelData(channel), offset);
-                }
-                offset += buffer.length;
-            }
-            audioBuffer = finalBuffer;
-            playAudio();
-            setupDownloadLink();
-            statusDiv.textContent = 'Đang phát âm...';
-            speakButton.textContent = 'Phát lại';
-
-        } catch (error) {
-            console.error(error);
-            if (error.message !== "Cancelled") {
-                statusDiv.textContent = 'Có lỗi xảy ra khi xử lý âm thanh.';
-            }
-            onSpeakEnd();
-        } finally {
-            speakButton.disabled = false;
-        }
-    }
-
-    // 2. WEB SPEECH API
-    function speakWithWebSpeech(text, voiceName) {
-        if (!('speechSynthesis' in window)) {
-            statusDiv.textContent = 'Trình duyệt không hỗ trợ Web Speech API.';
-            onSpeakEnd();
-            return;
-        }
-        const utterance = new SpeechSynthesisUtterance(text);
-        const voices = speechSynthesis.getVoices();
-        utterance.voice = voices.find(voice => voice.name === voiceName);
-        utterance.volume = parseFloat(controls.gain.control.value);
-        utterance.rate = parseFloat(controls.speed.control.value);
-        utterance.pitch = parseFloat(controls.pitch.control.value);
-        
-        utterance.onstart = () => {
-             statusDiv.textContent = 'Đang phát âm...';
-        };
-        utterance.onend = onSpeakEnd;
-        utterance.onerror = (event) => {
-            console.error('SpeechSynthesisUtterance.onerror', event);
-            statusDiv.textContent = `Lỗi phát âm: ${event.error}`;
-            onSpeakEnd();
-        };
-
-        speechSynthesis.speak(utterance);
-    }
-
-    // 3. RESPONSIVEVOICE
-    function speakWithResponsiveVoice(text, voiceName) {
-         if (typeof responsiveVoice === 'undefined') {
-            statusDiv.textContent = 'Thư viện ResponsiveVoice chưa sẵn sàng.';
-            onSpeakEnd();
-            return;
-        }
-        const parameters = {
-            pitch: parseFloat(controls.pitch.control.value),
-            rate: parseFloat(controls.speed.control.value),
-            volume: parseFloat(controls.gain.control.value),
-            onstart: () => {
-                statusDiv.textContent = 'Đang phát âm...';
-            },
-            onend: onSpeakEnd
-        };
-        responsiveVoice.speak(text, voiceName, parameters);
-    }
-
-    // --- Các hàm hỗ trợ cho GOOGLE (Web Audio API) ---
-    function initAudioContext() { if (!audioContext) { try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); setupAudioNodes(); } catch (e) { statusDiv.textContent = 'Trình duyệt không hỗ trợ Web Audio API.'; console.error(e); } } }
-    function setupAudioNodes() { if (!audioContext) return; gainNode = audioContext.createGain(); eqLowNode = audioContext.createBiquadFilter(); eqLowNode.type = 'lowshelf'; eqLowNode.frequency.value = 320; eqMidNode = audioContext.createBiquadFilter(); eqMidNode.type = 'peaking'; eqMidNode.frequency.value = 1000; eqMidNode.Q.value = 0.5; eqHighNode = audioContext.createBiquadFilter(); eqHighNode.type = 'highshelf'; eqHighNode.frequency.value = 3200; convolverNode = audioContext.createConvolver(); reverbGainNode = audioContext.createGain(); dryGainNode = audioContext.createGain(); createReverbImpulse().then(impulse => { convolverNode.buffer = impulse; }); gainNode.connect(eqLowNode); eqLowNode.connect(eqMidNode); eqMidNode.connect(eqHighNode); eqHighNode.connect(dryGainNode); dryGainNode.connect(audioContext.destination); eqHighNode.connect(reverbGainNode); reverbGainNode.connect(convolverNode); convolverNode.connect(audioContext.destination); updateAudioParams(); }
-    async function createReverbImpulse() { const sampleRate = audioContext.sampleRate; const length = sampleRate * 2; const impulse = audioContext.createBuffer(2, length, sampleRate); const left = impulse.getChannelData(0); const right = impulse.getChannelData(1); for (let i = 0; i < length; i++) { left[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5); right[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5); } return impulse; }
-    function updateAudioParams() { if (!audioContext) return; const params = { gain: parseFloat(controls.gain.control.value), speed: parseFloat(controls.speed.control.value), pitch: parseFloat(controls.pitch.control.value), reverb: parseFloat(controls.reverb.control.value), eqLow: parseInt(controls.eqLow.control.value), eqMid: parseInt(controls.eqMid.control.value), eqHigh: parseInt(controls.eqHigh.control.value) }; gainNode.gain.setValueAtTime(params.gain, audioContext.currentTime); if (sourceNode) { sourceNode.playbackRate.setValueAtTime(params.speed, audioContext.currentTime); sourceNode.detune.setValueAtTime((params.pitch - 1) * 1200, audioContext.currentTime); } dryGainNode.gain.setValueAtTime(1 - params.reverb, audioContext.currentTime); reverbGainNode.gain.setValueAtTime(params.reverb, audioContext.currentTime); eqLowNode.gain.setValueAtTime(params.eqLow, audioContext.currentTime); eqMidNode.gain.setValueAtTime(params.eqMid, audioContext.currentTime); eqHighNode.gain.setValueAtTime(params.eqHigh, audioContext.currentTime); }
-    function playAudio() { if (!audioBuffer || !audioContext) return; stop(); sourceNode = audioContext.createBufferSource(); sourceNode.buffer = audioBuffer; sourceNode.connect(gainNode); updateAudioParams(); sourceNode.start(0); isSpeaking = true; sourceNode.onended = () => { if(isSpeaking) onSpeakEnd(); }; }
-    function setupDownloadLink() { const wavBuffer = bufferToWave(audioBuffer); const originalBlob = new Blob([wavBuffer], { type: 'audio/wav' }); const url = URL.createObjectURL(originalBlob); downloadLink.href = url; downloadLink.download = 'speech.wav'; downloadLink.style.display = 'block'; }
-    async function fetchTTS(text) { const proxyUrl = 'https://api.allorigins.win/raw?url='; const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=vi&client=tw-ob`; const finalUrl = `${proxyUrl}${encodeURIComponent(googleTtsUrl)}`; try { const response = await fetch(finalUrl); if (!response.ok) { throw new Error(`Lỗi HTTP: ${response.status}`); } return await response.arrayBuffer(); } catch (error) { console.error('Lỗi khi tải âm thanh:', error); return null; } }
-    function chunkText(text, maxLength = 100) { const chunks = []; let currentChunk = ''; const sentences = text.match(/[^.!?]+[.!?]*|[\r\n]+/g) || [text]; for (const sentence of sentences) { if ((currentChunk + sentence).length > maxLength) { if (currentChunk.length > 0) chunks.push(currentChunk.trim()); currentChunk = sentence; } else { currentChunk += sentence; } } if (currentChunk.length > 0) chunks.push(currentChunk.trim()); return chunks; }
-    function bufferToWave(abuffer) { let numOfChan = abuffer.numberOfChannels, length = abuffer.length * numOfChan * 2 + 44, buffer = new ArrayBuffer(length), view = new DataView(buffer), channels = [], i, sample, offset = 0, pos = 0; function setUint16(data) { view.setUint16(pos, data, true); pos += 2; } function setUint32(data) { view.setUint32(pos, data, true); pos += 4; } setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157); setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan); setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan); setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4); for (i = 0; i < abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i)); while (pos < length) { for (i = 0; i < numOfChan; i++) { sample = Math.max(-1, Math.min(1, channels[i][offset])); sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; view.setInt16(pos, sample, true); pos += 2; } offset++; } return buffer; }
-    
-    // --- Cập nhật giá trị hiển thị của slider ---
-    function updateSliderValues() {
-        controls.gain.value.textContent = parseFloat(controls.gain.control.value).toFixed(1);
-        controls.speed.value.textContent = parseFloat(controls.speed.control.value).toFixed(1);
-        controls.pitch.value.textContent = parseFloat(controls.pitch.control.value).toFixed(1);
-        controls.reverb.value.textContent = parseFloat(controls.reverb.control.value).toFixed(1);
-        controls.eqLow.value.textContent = `${controls.eqLow.control.value} dB`;
-        controls.eqMid.value.textContent = `${controls.eqMid.control.value} dB`;
-        controls.eqHigh.value.textContent = `${controls.eqHigh.control.value} dB`;
-    }
-
-    // Gán sự kiện input cho tất cả các slider
-    for (const key in controls) {
-        controls[key].control.addEventListener('input', () => {
-            updateSliderValues();
-            // Chỉ áp dụng thay đổi ngay lập tức cho Google (Web Audio) khi đang phát
-            const engine = voiceSelect.options[voiceSelect.selectedIndex].getAttribute('data-engine');
-            if (isSpeaking && engine === 'google') {
-                updateAudioParams();
-            }
+    // Logic render các hành động AI
+    function renderAiActions() {
+        aiActionsListDiv.innerHTML = '';
+        aiActions.forEach((action, index) => {
+            const item = document.createElement('div');
+            item.className = 'ai-action-item';
+            item.innerHTML = `
+                <span class="name">${escapeHtml(action.name)}</span>
+                <button class="action-control-btn edit" data-id="${index}">Sửa</button>
+                <button class="action-control-btn delete" data-id="${index}">Xóa</button>
+                <button class="action-control-btn run" data-id="${index}">Thực thi</button>
+            `;
+            aiActionsListDiv.appendChild(item);
         });
     }
 
-    // --- Khởi tạo ---
-    updateUIForEngine('google');
-</script>
+    // Nhận dạng giọng nói (Sao chép từ mã tham khảo)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    let isListening = false;
 
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'vi-VN';
+
+        let fullTranscript = '';
+        recognition.onstart = () => {
+            isListening = true;
+            aiStatusDiv.textContent = '🔴 Đang lắng nghe...';
+            aiLiveTranscriptContainer.style.display = 'block';
+        };
+        recognition.onend = () => {
+            isListening = false;
+            aiStatusDiv.textContent = 'Đã dừng ghi âm.';
+            aiLiveTranscriptContainer.style.display = 'none';
+        };
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscriptForEditor = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const transcriptPart = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    fullTranscript += transcriptPart + '. ';
+                    finalTranscriptForEditor += transcriptPart + '. ';
+                } else {
+                    interimTranscript += transcriptPart;
+                }
+            }
+            aiLiveTranscriptDiv.innerHTML = escapeHtml(fullTranscript) + `<span style="color: grey;">${escapeHtml(interimTranscript)}</span>`;
+            if (finalTranscriptForEditor) {
+                aiEditor.innerText += finalTranscriptForEditor;
+            }
+        };
+        aiStartButton.onclick = () => {
+            fullTranscript = '';
+            recognition.start();
+        };
+        aiStopButton.onclick = () => {
+            if(isListening) recognition.stop();
+        }
+    } else {
+        aiStartButton.disabled = true;
+        aiStopButton.disabled = true;
+        aiStatusDiv.textContent = "Trình duyệt không hỗ trợ Speech Recognition.";
+    }
+
+    // Xử lý hành động AI (Sao chép từ mã tham khảo)
+    aiActionsListDiv.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        if (e.target.classList.contains('run')) executeAiAction(id);
+        else if (e.target.classList.contains('edit')) openAiPromptModal(id);
+        else if (e.target.classList.contains('delete')) {
+            if (confirm(`Bạn có chắc muốn xóa hành động "${aiActions[id].name}"?`)) {
+                aiActions.splice(id, 1);
+                saveData('promptAiActions', aiActions);
+                renderAiActions();
+            }
+        }
+    });
+
+    addAiActionButton.onclick = () => openAiPromptModal();
+    
+    async function executeAiAction(id) {
+        const apiKey = document.getElementById('gemini-key').value;
+        const model = document.getElementById('gemini-model').value;
+        const textToProcess = aiEditor.innerText;
+        const action = aiActions[id];
+
+        if (!apiKey || !textToProcess.trim()) {
+            alert('Vui lòng nhập API Key và nội dung văn bản trong panel AI.'); return;
+        }
+        
+        aiStatusDiv.textContent = '🤖 AI đang suy nghĩ...';
+        aiEditor.innerHTML = '<div style="text-align:center; color: #aaa;">Đang xử lý...</div>';
+        
+        let processedPrompt = action.prompt.replace('{{SUGGESTION_COUNT}}', "2"); // Tạm thời hardcode, có thể thêm vào cài đặt sau
+
+        const fullPrompt = `${processedPrompt}\n\nVăn bản gốc:\n"""\n${textToProcess}\n"""`;
+        const apiURL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        try {
+            const response = await fetch(apiURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] })
+            });
+
+            const responseData = await response.json();
+            if (!response.ok) throw new Error(responseData.error ? responseData.error.message : 'Unknown API error');
+
+            let resultText = responseData.candidates[0].content.parts[0].text;
+            resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+            const resultJson = JSON.parse(resultText);
+
+            if (action.renderer && action.renderer.trim() !== "") {
+                const customRenderer = new Function('editor', 'jsonData', action.renderer);
+                customRenderer(aiEditor, resultJson);
+                aiStatusDiv.textContent = '✅ Hiển thị bằng renderer tùy chỉnh.';
+            } else {
+                if (resultJson.summary) {
+                    aiEditor.innerHTML = `<strong>Nội dung tóm tắt:</strong><br>${resultJson.summary.replace(/\n/g, '<br>')}`;
+                    aiStatusDiv.textContent = '✅ Đã tóm tắt xong!';
+                } else if (resultJson.changes) {
+                    renderInteractiveChanges(textToProcess, resultJson.changes);
+                    aiStatusDiv.textContent = '✅ Xong! Nhấp vào các gợi ý để sửa.';
+                } else {
+                    throw new Error("AI không trả về JSON có key 'summary' hoặc 'changes'.");
+                }
+            }
+
+        } catch (error) {
+            aiStatusDiv.textContent = `❌ Lỗi xử lý AI: ${error.message}`;
+            aiEditor.innerHTML = textToProcess;
+            console.error(error);
+        }
+    }
+
+    function renderInteractiveChanges(originalText, changes) {
+        let html = escapeHtml(originalText);
+        changes.reverse().forEach((change) => {
+            const originalPhrase = escapeHtml(change.original_phrase);
+            let suggestionsHtml = '<span class="suggestions-container">(';
+            suggestionsHtml += `<span class="suggestion-item best" data-value="${escapeHtml(change.best_suggestion)}">${escapeHtml(change.best_suggestion)}</span>`;
+            (change.alternatives || []).forEach(alt => {
+                suggestionsHtml += `<span class="suggestion-item" data-value="${escapeHtml(alt)}">${escapeHtml(alt)}</span>`;
+            });
+            suggestionsHtml += `<span class="suggestion-item original selected" data-value="${originalPhrase}">(Giữ lại)</span>`;
+            suggestionsHtml += ')</span>';
+
+            const replacementHtml = `<span class="review-block" data-original="${originalPhrase}" data-selected-text="${originalPhrase}"><del>${originalPhrase}</del>${suggestionsHtml}</span>`;
+            
+            const pos = html.lastIndexOf(originalPhrase);
+            if (pos !== -1) {
+                html = html.substring(0, pos) + replacementHtml + html.substring(pos + originalPhrase.length);
+            }
+        });
+        aiEditor.innerHTML = html;
+    }
+    
+    aiEditor.addEventListener('click', (e) => {
+        if (e.target.classList.contains('suggestion-item')) {
+            const clickedSuggestion = e.target;
+            const reviewBlock = clickedSuggestion.closest('.review-block');
+            const container = clickedSuggestion.closest('.suggestions-container');
+
+            if (reviewBlock && container) {
+                container.querySelectorAll('.suggestion-item').forEach(item => item.classList.remove('selected'));
+                clickedSuggestion.classList.add('selected');
+                reviewBlock.dataset.selectedText = clickedSuggestion.dataset.value;
+            }
+        }
+    });
+
+    aiInsertButton.onclick = () => {
+        let finalString = '';
+        const nodes = aiEditor.childNodes;
+        nodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) finalString += node.textContent;
+            else if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('review-block')) finalString += node.dataset.selectedText;
+            else if (node.nodeType === Node.ELEMENT_NODE) finalString += node.innerText || '';
+        });
+        
+        finalString = finalString.replace(/\s+/g, ' ').trim();
+
+        if (lastFocusedElement && (lastFocusedElement.tagName === 'TEXTAREA' || lastFocusedElement.tagName === 'INPUT')) {
+            const start = lastFocusedElement.selectionStart;
+            const end = lastFocusedElement.selectionEnd;
+            const text = lastFocusedElement.value;
+            const before = text.substring(0, start);
+            const after = text.substring(end);
+            lastFocusedElement.value = before + finalString + after;
+            lastFocusedElement.selectionStart = lastFocusedElement.selectionEnd = start + finalString.length;
+            lastFocusedElement.dispatchEvent(new Event('input', { bubbles: true })); // Kích hoạt sự kiện để lưu và resize
+            lastFocusedElement.focus();
+            toggleAiPanel(false); // Ẩn panel sau khi chèn
+            alert("Đã chèn kết quả!");
+        } else {
+            alert("Không tìm thấy ô nhập liệu để chèn văn bản. Vui lòng click vào một ô nhập liệu trên trang trước khi ghi âm.");
+        }
+    };
+    
+    // Modal Logic (Sao chép từ mã tham khảo)
+    function openAiPromptModal(id = null) {
+        const modalId = document.getElementById('ai-modal-action-id');
+        const modalName = document.getElementById('ai-modal-action-name');
+        const modalPrompt = document.getElementById('ai-modal-action-prompt');
+        const modalRenderer = document.getElementById('ai-modal-action-renderer');
+        const modalTitle = document.getElementById('ai-modal-title');
+
+        if (id !== null) {
+            modalTitle.textContent = "Chỉnh sửa hành động";
+            modalId.value = id;
+            modalName.value = aiActions[id].name;
+            modalPrompt.value = aiActions[id].prompt;
+            modalRenderer.value = aiActions[id].renderer || "";
+        } else {
+            modalTitle.textContent = "Thêm hành động mới";
+            modalId.value = -1;
+            modalName.value = '';
+            modalPrompt.value = `Phân tích văn bản... YÊU CẦU: Chỉ trả lời bằng một đối tượng JSON có cấu trúc sau:\n{"changes": [{"original_phrase": "...", "best_suggestion": "...", "alternatives": ["...", "..."]}]}`;
+            modalRenderer.value = '';
+        }
+        aiModal.style.display = 'flex';
+    }
+
+    document.getElementById('ai-modal-cancel-btn').onclick = () => aiModal.style.display = 'none';
+    document.getElementById('ai-modal-save-btn').onclick = () => {
+        const id = document.getElementById('ai-modal-action-id').value;
+        const name = document.getElementById('ai-modal-action-name').value;
+        const prompt = document.getElementById('ai-modal-action-prompt').value;
+        const renderer = document.getElementById('ai-modal-action-renderer').value;
+
+        if (!name || !prompt) { alert("Tên và câu lệnh không được để trống."); return; }
+        const newAction = { name, prompt, renderer };
+        if (id == -1) aiActions.push(newAction);
+        else aiActions[id] = newAction;
+        
+        saveData('promptAiActions', aiActions);
+        renderAiActions();
+        aiModal.style.display = 'none';
+    };
+
+    function toggleVoiceRecognition() {
+        if (!SpeechRecognition) {
+            alert("Trình duyệt của bạn không hỗ trợ tính năng giọng nói.");
+            return;
+        }
+        lastFocusedElement = document.activeElement; // Lưu lại ô đang focus trước khi mở panel
+        toggleAiPanel(true); // Hiển thị panel
+        aiPanel.classList.remove('collapsed');
+        setTimeout(() => { // Đảm bảo panel hiển thị trước khi bắt đầu ghi âm
+             if (!isListening) {
+                 aiStartButton.click();
+             } else {
+                 aiStopButton.click();
+             }
+        }, 100);
+    }
+    // --- END: LOGIC CHO PANEL AI GIỌNG NÓI ---
+    
+    function escapeHtml(text) {
+        if (typeof text !== 'string') return "";
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function getFormattedTime() {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `${hours}:${minutes} ${day}/${month}`;
+    }
+
+    function loadState() {
+        try {
+            sessions = JSON.parse(localStorage.getItem('promptSessions') || '[]');
+            files = JSON.parse(localStorage.getItem('promptFiles') || '[]');
+            history = JSON.parse(localStorage.getItem('promptHistory') || '[]');
+            notes = JSON.parse(localStorage.getItem('promptNotes') || '[]');
+            suggestions = JSON.parse(localStorage.getItem('promptSuggestions') || '["Là một chuyên gia", "Hành động như một", "Viết code"]');
+            
+            const savedShortcuts = JSON.parse(localStorage.getItem('promptShortcuts'));
+            if (savedShortcuts) shortcuts = {...shortcuts, ...savedShortcuts};
+            
+            const savedSettings = JSON.parse(localStorage.getItem('promptSettings'));
+            if (savedSettings) settings = savedSettings;
+            
+            // Load cài đặt cho panel AI
+            document.getElementById('gemini-key').value = localStorage.getItem('geminiApiKey') || '';
+            document.getElementById('gemini-model').value = localStorage.getItem('geminiModel') || 'gemini-1.5-pro-latest';
+            const opacity = localStorage.getItem('aiPanelOpacity') || 98;
+            document.getElementById('ai-panel-opacity').value = opacity;
+            document.documentElement.style.setProperty('--ai-panel-opacity', opacity / 100);
+
+            // Load hành động AI
+            aiActions = JSON.parse(localStorage.getItem('promptAiActions') || '[]');
+            if(aiActions.length === 0) {
+                 aiActions.push({ name: "Sửa lỗi Ngữ pháp", prompt: `Phân tích văn bản... YÊU CẦU: Chỉ trả lời bằng một đối tượng JSON có cấu trúc sau:\n{"changes": [{"original_phrase": "...", "best_suggestion": "...", "alternatives": ["...", "..."]}]}`, renderer: "" });
+                 aiActions.push({ name: "Tóm tắt 3 ý chính", prompt: `Tóm tắt văn bản thành 3 ý chính. YÊU CẦU: Chỉ trả lời bằng một đối tượng JSON có cấu trúc sau: {"summary": "- Ý 1\\n- Ý 2\\n- Ý 3"}`, renderer: "" });
+                 saveData('promptAiActions', aiActions);
+            }
+
+        } catch (e) { console.error("Load error", e); }
+
+        if (sessions.length === 0) { for(let i=0; i<3; i++) sessions.push(createNewSessionData(`Phiên làm việc ${i+1}`)); }
+        if (notes.length === 0) { notes.push({ id: Date.now(), title: 'Ghi chú 1', content: '', timestamp: getFormattedTime() }); }
+
+        updateShortcutDisplay();
+        renderAll();
+    }
+
+    function saveData(key, data) {
+        localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function renderAll() {
+        renderSessions();
+        renderFileList();
+        renderHistoryList();
+        renderNotes();
+        renderAiActions();
+    }
+    
+    exportDataBtn.addEventListener('click', () => {
+        const allData = { sessions, files, history, notes, suggestions, shortcuts, settings,
+            geminiApiKey: localStorage.getItem('geminiApiKey'),
+            geminiModel: localStorage.getItem('geminiModel'),
+            aiPanelOpacity: localStorage.getItem('aiPanelOpacity'),
+            promptAiActions: aiActions
+        };
+        const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.download = `prompt_pro_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        a.href = URL.createObjectURL(blob);
+        a.click();
+        URL.revokeObjectURL(a.href);
+    });
+
+    importDataBtn.addEventListener('click', () => importFileInput.click());
+
+    importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                if (confirm("GHI ĐÈ DỮ LIỆU? Hành động này KHÔNG THỂ hoàn tác.")) {
+                    sessions = importedData.sessions || [];
+                    files = importedData.files || [];
+                    history = importedData.history || [];
+                    notes = importedData.notes || [];
+                    suggestions = importedData.suggestions || [];
+                    aiActions = importedData.promptAiActions || [];
+                    if (importedData.shortcuts) shortcuts = {...shortcuts, ...importedData.shortcuts};
+                    if (importedData.settings) settings = importedData.settings;
+                    
+                    localStorage.setItem('geminiApiKey', importedData.geminiApiKey || '');
+                    localStorage.setItem('geminiModel', importedData.geminiModel || 'gemini-1.5-pro-latest');
+                    localStorage.setItem('aiPanelOpacity', importedData.aiPanelOpacity || '98');
+                    
+                    saveData('promptSessions', sessions); saveData('promptFiles', files); saveData('promptHistory', history); saveData('promptNotes', notes); saveData('promptSuggestions', suggestions); saveData('promptShortcuts', shortcuts); saveData('promptSettings', settings); saveData('promptAiActions', aiActions);
+                    alert("Dữ liệu đã được nhập thành công!");
+                    loadState();
+                }
+            } catch (error) { alert("Lỗi: File backup không hợp lệ."); console.error("Import error:", error); } 
+            finally { importFileInput.value = ''; }
+        };
+        reader.readAsText(file);
+    });
+
+    function updateShortcutDisplay() {
+        shortcutDisplay.textContent = `Phím tắt: Alt+${shortcuts.copy} (Copy), Alt+${shortcuts.upload} (Code), Alt+${shortcuts.focus} (Focus), Alt+${shortcuts.voice} (Voice)`;
+    }
+
+    settingsBtn.addEventListener('click', () => {
+        document.getElementById('key-copy').value = shortcuts.copy;
+        document.getElementById('key-upload').value = shortcuts.upload;
+        document.getElementById('key-focus').value = shortcuts.focus;
+        document.getElementById('key-voice').value = shortcuts.voice;
+        document.getElementById('char-limit-input').value = settings.maxCharDisplay || 0;
+        settingsModal.style.display = 'flex';
+    });
+
+    cancelSettingsBtn.addEventListener('click', () => settingsModal.style.display = 'none');
+
+    saveSettingsBtn.addEventListener('click', () => {
+        const k1 = document.getElementById('key-copy').value.trim().toLowerCase();
+        const k2 = document.getElementById('key-upload').value.trim().toLowerCase();
+        const k3 = document.getElementById('key-focus').value.trim().toLowerCase();
+        const k4 = document.getElementById('key-voice').value.trim().toLowerCase();
+        
+        if(k1 && k2 && k3 && k4) {
+            shortcuts = { copy: k1, upload: k2, focus: k3, voice: k4 };
+            saveData('promptShortcuts', shortcuts);
+            updateShortcutDisplay();
+        }
+        
+        const charLimit = parseInt(document.getElementById('char-limit-input').value, 10);
+        settings.maxCharDisplay = isNaN(charLimit) || charLimit < 0 ? 0 : charLimit;
+        saveData('promptSettings', settings);
+
+        // Lưu cài đặt AI
+        localStorage.setItem('geminiApiKey', document.getElementById('gemini-key').value);
+        localStorage.setItem('geminiModel', document.getElementById('gemini-model').value);
+        const opacity = document.getElementById('ai-panel-opacity').value;
+        localStorage.setItem('aiPanelOpacity', opacity);
+        document.documentElement.style.setProperty('--ai-panel-opacity', opacity / 100);
+
+        settingsModal.style.display = 'none';
+        renderSessions(); 
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.altKey) {
+            const key = e.key.toLowerCase();
+            if (key === shortcuts.voice.toLowerCase()) {
+                e.preventDefault();
+                toggleVoiceRecognition();
+                return;
+            }
+            if (e.target.closest('#voice-ai-panel')) return; // Không chạy phím tắt khác nếu đang focus trong panel AI
+
+            if (key === shortcuts.copy.toLowerCase() || key === shortcuts.upload.toLowerCase() || key === shortcuts.focus.toLowerCase()) {
+                e.preventDefault();
+                const targetSessionEl = lastActiveSessionId 
+                    ? document.querySelector(`.session[data-session-id="${lastActiveSessionId}"]`) 
+                    : document.querySelector('.session');
+                if (!targetSessionEl) return;
+
+                if (key === shortcuts.copy.toLowerCase()) copySessionContent(targetSessionEl);
+                else if (key === shortcuts.upload.toLowerCase()) targetSessionEl.querySelector('.row-code .upload-code-btn')?.click();
+                else if (key === shortcuts.focus.toLowerCase()) {
+                    const inputs = [...targetSessionEl.querySelectorAll('textarea, input.session-title-input')];
+                    let currentFocusIndex = inputs.findIndex(input => input === document.activeElement);
+                    inputs[(currentFocusIndex + 1) % inputs.length]?.focus();
+                }
+            }
+        }
+    });
+
+    document.addEventListener('focusin', (e) => {
+        const sessionEl = e.target.closest('.session');
+        if (sessionEl) {
+            lastActiveSessionId = parseFloat(sessionEl.dataset.sessionId);
+            document.querySelectorAll('.session').forEach(s => s.classList.remove('last-active'));
+            sessionEl.classList.add('last-active');
+        }
+        // Cập nhật lastFocusedElement nếu không phải là trong panel AI
+        if (!e.target.closest('#voice-ai-panel')) {
+             lastFocusedElement = e.target;
+        }
+    });
+
+    // --- CÁC HÀM GỐC CỦA TRANG (GIỮ NGUYÊN) ---
+    // (Toàn bộ các hàm từ createNewSessionData đến hết được giữ nguyên như trong mã gốc của bạn)
+    function createNewSessionData(defaultTitle) {
+            return {
+                id: Date.now() + Math.random(),
+                customTitle: defaultTitle || 'Phiên mới',
+                isPinned: false, 
+                rows: [
+                    { id: 1, title: '1. Lệnh tổng quát', content: '', type: 'general' },
+                    { id: 2, title: '2. Yêu cầu chi tiết', content: '1. ', type: 'numbered', isNumbered: true },
+                    { id: 3, title: '3. Ví dụ', content: '', type: 'example' },
+                    { id: 4, title: '4. Lưu ý', content: '1. ', type: 'numbered', isNumbered: true },
+                    { id: 5, title: '5. Code cần sửa', content: '', type: 'code' },
+                ]
+            };
+    }
+    function renderSessions() {
+        sessions.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+        sessionsContainer.innerHTML = '';
+        sessions.forEach((session, index) => {
+            const sessionEl = createSessionElement(session, index);
+            sessionsContainer.appendChild(sessionEl);
+        });
+        attachSessionEvents();
+    }
+    function createSessionElement(session, index) {
+        const div = document.createElement('div');
+        div.className = `session ${session.isPinned ? 'pinned' : ''}`;
+        if (session.id === lastActiveSessionId) div.classList.add('last-active');
+        div.dataset.sessionId = session.id;
+        let rowsHtml = session.rows.map(row => createRowHtml(row)).join('');
+        const moveControls = `<button class="main-button move-btn" data-dir="up" title="Di chuyển lên/trái">←</button><button class="main-button move-btn" data-dir="down" title="Di chuyển xuống/phải">→</button>`;
+        const pinBtnClass = `main-button pin-session-btn ${session.isPinned ? 'pinned' : ''}`;
+        div.innerHTML = `
+            <div class="session-header">
+                <input type="text" class="session-title-input" value="${escapeHtml(session.customTitle)}" spellcheck="false" placeholder="Tên phiên...">
+                <span class="copy-success-icon">✔</span>
+                <div class="session-controls">
+                    <button class="${pinBtnClass}" title="Ghim phiên này">📌</button>
+                    ${moveControls}
+                    <button class="main-button copy-all-btn">Sao chép</button>
+                    <button class="main-button delete-session-btn" style="color:#dc3545;">Xóa</button>
+                </div>
+            </div>
+            <div class="rows-container">${rowsHtml}</div>`;
+        return div;
+    }
+    function createRowHtml(row) {
+            let controls = '';
+            let contentVal = row.content || '';
+            let placeholder = '';
+            let extraClass = '';
+            let spellcheck = 'false';
+
+            if(row.isNumbered && !contentVal.trim()) contentVal = "1. ";
+
+            if (row.type === 'general') {
+                controls = `<button class="toggle-suggestions-btn" title="Gợi ý">+</button>
+                            <div class="suggestions-popup">
+                                <div class="suggestion-list"></div>
+                                <div style="display:flex; gap:5px; margin-top:5px;">
+                                    <input type="text" class="add-new-sug-input" placeholder="Thêm..." spellcheck="false">
+                                    <button class="save-sug-btn">Lưu</button>
+                                </div>
+                            </div>`;
+                placeholder = "Nhập lệnh tổng quát...";
+            } else if (row.type === 'numbered' && row.title.includes('Yêu cầu chi tiết')) {
+                controls = `
+                    <button class="action-btn supreme-numbering-btn" title="Đánh số thứ tự toàn bộ văn bản trong ô này">Đánh số All</button>
+                    <button class="action-btn supreme-unnumbering-btn" title="Bỏ đánh số toàn bộ văn bản trong ô này">Bỏ số All</button>
+                    <button class="action-btn selective-numbering-btn" title="Chỉ đánh số thứ tự cho văn bản được chọn">Đánh số Chọn lọc</button>
+                    <button class="action-btn selective-unnumbering-btn" title="Bỏ đánh số thứ tự cho văn bản được chọn">Bỏ số Chọn lọc</button>
+                    <button class="action-btn renumber-btn" title="Đánh số lại thủ công">↻</button>
+                    <label><input type="checkbox" class="numbering-chk" ${row.isNumbered?'checked':''}> Số</label>
+                `;
+            } else if (row.type === 'numbered') {
+                 controls = `<button class="action-btn renumber-btn" title="Đánh số lại thủ công">↻</button>
+                    <label><input type="checkbox" class="numbering-chk" ${row.isNumbered?'checked':''}> Số</label>`;
+            } else if (row.type === 'code') {
+                controls = `<button class="upload-code-btn" title="Tải file">📂</button>`;
+                extraClass = 'collapsed';
+            } else if (row.type === 'example') {
+                placeholder = "Ví dụ...";
+            }
+            
+            return `
+                <div class="prompt-row row-${row.type} ${extraClass}" data-row-id="${row.id}">
+                    <div class="row-header">
+                        <span>${escapeHtml(row.title)}</span>
+                        <div class="row-controls">${controls}</div>
+                    </div>
+                    <div class="row-content">
+                        <textarea data-row-type="${row.type}" placeholder="${placeholder}" spellcheck="${spellcheck}">${escapeHtml(contentVal)}</textarea>
+                    </div>
+                </div>
+            `;
+        }
+    function truncateTextarea(textarea) {
+        const limit = settings.maxCharDisplay;
+        if (!limit || limit <= 0) return; 
+        const fullText = textarea.dataset.fullText || textarea.value;
+        if (!textarea.dataset.fullText && fullText.length > limit) {
+             textarea.value = fullText.substring(0, limit) + '...';
+             textarea.dataset.fullText = fullText;
+             textarea.style.height = 'auto';
+             textarea.style.height = (textarea.scrollHeight + 2) + 'px';
+        }
+    }
+    function expandTextarea(textarea) {
+        if (textarea.dataset.fullText) {
+            textarea.value = textarea.dataset.fullText;
+            textarea.removeAttribute('data-full-text');
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight + 2) + 'px';
+        }
+    }
+    function attachSessionEvents() {
+        document.querySelectorAll('textarea').forEach(tx => {
+            if (tx.closest('#voice-ai-panel')) return; // Bỏ qua textarea trong panel AI
+            truncateTextarea(tx);
+            tx.addEventListener('focus', () => expandTextarea(tx));
+            tx.addEventListener('blur', () => truncateTextarea(tx));
+
+            if(!tx.closest('.row-code')) {
+                 tx.style.height = 'auto';
+                 tx.style.height = (tx.scrollHeight + 2) + 'px';
+                 tx.addEventListener('input', function() {
+                     this.style.height = 'auto';
+                     this.style.height = (this.scrollHeight + 2) + 'px';
+                     updateSessionData(this);
+                 });
+            } else {
+                tx.addEventListener('input', () => updateSessionData(tx) );
+            }
+        });
+        document.querySelectorAll('.session-title-input').forEach(inp => { inp.addEventListener('change', (e) => { const sessId = parseFloat(e.target.closest('.session').dataset.sessionId); const sess = sessions.find(s => s.id === sessId); if(sess) { sess.customTitle = e.target.value; saveData('promptSessions', sessions); } }); });
+        document.querySelectorAll('.pin-session-btn').forEach(btn => { btn.addEventListener('click', (e) => { const sessId = parseFloat(e.target.closest('.session').dataset.sessionId); const sess = sessions.find(s => s.id === sessId); if (sess) { sess.isPinned = !sess.isPinned; saveData('promptSessions', sessions); renderSessions(); } }); });
+        document.querySelectorAll('.move-btn').forEach(btn => { btn.addEventListener('click', (e) => { const sessEl = e.target.closest('.session'); const sessId = parseFloat(sessEl.dataset.sessionId); const index = sessions.findIndex(s => s.id === sessId); if(index === -1) return; const dir = e.target.dataset.dir; if (dir === 'up' && index > 0) [sessions[index], sessions[index-1]] = [sessions[index-1], sessions[index]]; else if (dir === 'down' && index < sessions.length - 1) [sessions[index], sessions[index+1]] = [sessions[index+1], sessions[index]]; else return; saveData('promptSessions', sessions); renderSessions(); }); });
+        document.querySelectorAll('.row-header').forEach(header => { header.addEventListener('click', (e) => { if(!e.target.closest('.row-controls')) header.parentElement.classList.toggle('collapsed'); }); });
+        document.querySelectorAll('.delete-session-btn').forEach(btn => { btn.addEventListener('click', (e) => { if(confirm("Xóa phiên này?")) { const sessId = parseFloat(e.target.closest('.session').dataset.sessionId); sessions = sessions.filter(s => s.id !== sessId); saveData('promptSessions', sessions); renderSessions(); } }); });
+        document.querySelectorAll('.copy-all-btn').forEach(btn => { btn.addEventListener('click', (e) => copySessionContent(e.target.closest('.session'))); });
+        document.querySelectorAll('.upload-code-btn').forEach(btn => { btn.addEventListener('click', () => { const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.onchange = e => { const f = e.target.files[0]; if(f) { const reader = new FileReader(); reader.onload = ev => { const ta = btn.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value = ev.target.result; ta.dispatchEvent(new Event('input')); btn.closest('.prompt-row').classList.remove('collapsed'); }; reader.readAsText(f); } }; fileInput.click(); }); });
+        document.querySelectorAll('.toggle-suggestions-btn').forEach(btn => { btn.addEventListener('click', e => { const popup = e.target.closest('.prompt-row').querySelector('.suggestions-popup'); const isVisible = popup.style.display === 'block'; document.querySelectorAll('.suggestions-popup').forEach(p => p.style.display = 'none'); if(!isVisible) { renderSuggestions(popup); popup.style.display = 'block'; } }); });
+        document.querySelectorAll('.supreme-numbering-btn').forEach(btn => { btn.addEventListener('click', (e) => { const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); let counter = 1; const lines = ta.value.split('\n'); const numberedLines = lines.map(line => { const trimmedLine = line.trim(); if (trimmedLine === '') return ''; const lineWithoutNumber = trimmedLine.replace(/^\d+\.\s*/, ''); return `${counter++}. ${lineWithoutNumber}`; }); ta.value = numberedLines.join('\n'); ta.dispatchEvent(new Event('input')); }); });
+        document.querySelectorAll('.supreme-unnumbering-btn').forEach(btn => { btn.addEventListener('click', (e) => { const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const lines = ta.value.split('\n'); const unnumberedLines = lines.map(line => line.replace(/^\s*\d+\.\s*/, '')); ta.value = unnumberedLines.join('\n'); ta.dispatchEvent(new Event('input')); }); });
+        document.querySelectorAll('.selective-numbering-btn').forEach(btn => { btn.addEventListener('mousedown', (e) => { e.preventDefault(); const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const start = ta.selectionStart, end = ta.selectionEnd; if (start === end) return; const fullText = ta.value, before = fullText.substring(0, start), selected = fullText.substring(start, end), after = fullText.substring(end); const beforeLines = before.trimEnd().split('\n'); let lastNumber = 0; for (let i = beforeLines.length - 1; i >= 0; i--) { const match = beforeLines[i].match(/^\s*(\d+)\./); if (match) { lastNumber = parseInt(match[1], 10); break; } } let counter = lastNumber + 1; const selectedLines = selected.split('\n'); const numberedSelected = selectedLines.map(line => { if (line.trim() === '') return line; const lineWithoutNumber = line.trim().replace(/^\d+\.\s*/, ''); return `${counter++}. ${lineWithoutNumber}`; }).join('\n'); ta.value = before + numberedSelected + after; ta.dispatchEvent(new Event('input')); ta.focus(); ta.selectionStart = start; ta.selectionEnd = before.length + numberedSelected.length; }); });
+        document.querySelectorAll('.selective-unnumbering-btn').forEach(btn => { btn.addEventListener('mousedown', (e) => { e.preventDefault(); const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const start = ta.selectionStart, end = ta.selectionEnd; if (start === end) return; const fullText = ta.value, before = fullText.substring(0, start), selected = fullText.substring(start, end), after = fullText.substring(end); const selectedLines = selected.split('\n'); const unnumberedSelected = selectedLines.map(line => line.replace(/^\s*\d+\.\s*/, '')).join('\n'); ta.value = before + unnumberedSelected + after; ta.dispatchEvent(new Event('input')); ta.focus(); ta.selectionStart = start; ta.selectionEnd = before.length + unnumberedSelected.length; }); });
+        document.querySelectorAll('.renumber-btn').forEach(btn => { btn.addEventListener('click', e => { const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value = renumberContent(ta.value); ta.dispatchEvent(new Event('input')); }); });
+        document.querySelectorAll('.numbering-chk').forEach(chk => { chk.addEventListener('change', function() { updateSessionData(this); }); });
+        document.querySelectorAll('textarea[data-row-type="numbered"]').forEach(ta => { if(!ta.closest('#voice-ai-panel')) ta.addEventListener('keydown', handleNumberedInput); });
+    }
+    function renumberContent(text) { const lines = text.split('\n'); let counter = 1; return lines.map(line => { if (line.trim() === '') return line; const match = line.match(/^(\s*)(\d+)\.(.*)/); if (match) return `${match[1]}${counter++}.${match[3]}`; const trimmedLine = line.trim(); if(trimmedLine) return `${counter++}. ${trimmedLine}`; return line; }).join('\n'); }
+    function updateSessionData(el) { const sessEl = el.closest('.session'), rowEl = el.closest('.prompt-row'); if(!sessEl || !rowEl) return; const sessId = parseFloat(sessEl.dataset.sessionId), rowId = parseInt(rowEl.dataset.rowId); const sess = sessions.find(s => s.id === sessId); if (!sess) return; const row = sess.rows.find(r => r.id === rowId); if (!row) return; if(el.tagName === 'TEXTAREA') { expandTextarea(el); row.content = el.value; } if(el.type === 'checkbox') row.isNumbered = el.checked; saveData('promptSessions', sessions); }
+    function handleNumberedInput(e) { if (e.key !== 'Enter') return; const el = e.target; const isNumbered = el.closest('.prompt-row').querySelector('.numbering-chk')?.checked; if(!isNumbered) return; e.preventDefault(); expandTextarea(el); const cursorPos = el.selectionStart, text = el.value, before = text.substring(0, cursorPos), after = text.substring(cursorPos); const currentLine = before.split('\n').pop(), match = currentLine.match(/^(\s*)(\d+)\.\s*/); if (match) { if (currentLine.trim() === match[0].trim()) { const lines = before.split('\n'); lines.pop(); let newBefore = lines.join('\n'); el.value = newBefore + '\n' + after; el.value = renumberContent(el.value); el.selectionStart = el.selectionEnd = newBefore.length + 1; el.dispatchEvent(new Event('input')); return; } const nextNum = parseInt(match[2]) + 1; const insert = `\n${match[1]}${nextNum}. `; el.value = before + insert + after; el.selectionStart = el.selectionEnd = cursorPos + insert.length; } else { el.value = before + '\n' + after; el.selectionStart = el.selectionEnd = cursorPos + 1; } const oldLength = el.value.length, oldCursorPos = el.selectionStart; el.value = renumberContent(el.value); const newLength = el.value.length; el.selectionStart = el.selectionEnd = oldCursorPos + (newLength - oldLength); el.dispatchEvent(new Event('input')); }
+    function copySessionContent(sessionEl) { const sessId = parseFloat(sessionEl.dataset.sessionId); const sess = sessions.find(s => s.id === sessId); if(!sess) return; let text = ''; sess.rows.forEach(row => { let content = (row.content || '').trim(); if(!content) return; if(row.isNumbered) { const lines = content.split('\n'); const filteredLines = lines.filter(line => !line.trim().match(/^\d+\.\s*$/)); content = filteredLines.join('\n').trim(); if(!content) return; } if(row.type === 'general') text += content + '\n\n'; else if(row.type === 'code') text += '```\n' + content + '\n```\n\n'; else text += content + '\n\n'; }); navigator.clipboard.writeText(text.trim()).then(() => { const tick = sessionEl.querySelector('.copy-success-icon'); tick.style.display = 'inline-block'; setTimeout(() => { tick.style.display = 'none'; }, 1500); addToHistory(text.trim(), `Bản sao: ${sess.customTitle}`); }); }
+    function renderSuggestions(popup) { const list = popup.querySelector('.suggestion-list'); list.innerHTML = ''; suggestions.forEach((s, idx) => { const div = document.createElement('div'); div.className = 'suggestion-item'; div.dataset.id = idx; div.innerHTML = `<span class="suggestion-item-text">${escapeHtml(s)}</span> <span class="btn-delete" style="cursor:pointer; color:red;">&times;</span>`; div.querySelector('.suggestion-item-text').addEventListener('click', () => { const ta = popup.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const currentVal = ta.value.trim(); ta.value = currentVal ? (currentVal + ' ' + s) : s; ta.dispatchEvent(new Event('input')); popup.style.display = 'none'; }); div.querySelector('.btn-delete').addEventListener('click', () => { suggestions.splice(idx, 1); saveData('promptSuggestions', suggestions); renderSuggestions(popup); }); list.appendChild(div); }); new Sortable(list, { animation: 150, onEnd: function (evt) { const movedItem = suggestions.splice(evt.oldIndex, 1)[0]; suggestions.splice(evt.newIndex, 0, movedItem); saveData('promptSuggestions', suggestions); } }); const input = popup.querySelector('.add-new-sug-input'), saveBtn = popup.querySelector('.save-sug-btn'); const newSaveBtn = saveBtn.cloneNode(true); saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn); newSaveBtn.addEventListener('click', () => { if(input.value.trim()) { suggestions.unshift(input.value.trim()); saveData('promptSuggestions', suggestions); input.value = ''; renderSuggestions(popup); } }); }
+    document.getElementById('file-upload').addEventListener('change', (e) => { Array.from(e.target.files).forEach(f => { const reader = new FileReader(); reader.onload = ev => { files.push({ id: Date.now() + Math.random(), name: f.name, content: ev.target.result, timestamp: getFormattedTime() }); saveData('promptFiles', files); renderFileList(); }; reader.readAsDataURL(f); }); });
+    function renderFileList() { const container = document.getElementById('file-list'); container.innerHTML = ''; files.forEach((f, idx) => { const div = document.createElement('div'); div.className = 'storage-item'; div.innerHTML = `<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(f.name)}" spellcheck="false"><span class="item-time">${f.timestamp || ''}</span><button class="btn-sm btn-download" title="Tải về">⬇</button><button class="btn-sm btn-delete" title="Xóa">✕</button></div>`; div.querySelector('.item-name-input').addEventListener('change', (e) => { files[idx].name = e.target.value; saveData('promptFiles', files); }); div.querySelector('.btn-delete').addEventListener('click', () => { if(confirm('Xóa file này?')) { files.splice(idx, 1); saveData('promptFiles', files); renderFileList(); } }); div.querySelector('.btn-download').addEventListener('click', () => { const a = document.createElement('a'); a.href = f.content; a.download = f.name; a.click(); }); container.appendChild(div); }); }
+    function addToHistory(text, defaultTitle) { history.unshift({ id: Date.now(), title: defaultTitle || new Date().toLocaleString(), content: text, timestamp: getFormattedTime() }); if(history.length > 50) history.pop(); saveData('promptHistory', history); renderHistoryList(); }
+    function renderHistoryList() { const container = document.getElementById('history-list'); container.innerHTML = ''; history.forEach((h, idx) => { const div = document.createElement('div'); div.className = 'storage-item'; div.innerHTML = `<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(h.title)}" spellcheck="false"><span class="item-time">${h.timestamp || ''}</span><button class="btn-sm btn-delete">✕</button></div><div class="history-content" title="Click để mở rộng">${escapeHtml(h.content.substring(0, 100))}${h.content.length>100?'...':''}</div>`; div.querySelector('.item-name-input').addEventListener('change', (e) => { history[idx].title = e.target.value; saveData('promptHistory', history); }); div.querySelector('.btn-delete').addEventListener('click', () => { history.splice(idx, 1); saveData('promptHistory', history); renderHistoryList(); }); const contentDiv = div.querySelector('.history-content'); contentDiv.addEventListener('click', () => { contentDiv.classList.toggle('expanded'); contentDiv.textContent = contentDiv.classList.contains('expanded') ? h.content : h.content.substring(0, 100) + (h.content.length>100?'...':''); }); container.appendChild(div); }); }
+    document.getElementById('add-note-btn').addEventListener('click', () => { notes.unshift({ id: Date.now(), title: 'Ghi chú mới', content: '', timestamp: getFormattedTime() }); saveData('promptNotes', notes); renderNotes(); });
+    function renderNotes() { const container = document.getElementById('notes-container'); container.innerHTML = ''; notes.forEach((n, idx) => { const div = document.createElement('div'); div.className = 'storage-item'; div.innerHTML = `<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(n.title)}" placeholder="Tên ghi chú" spellcheck="false"><span class="item-time">${n.timestamp || ''}</span><button class="btn-sm btn-delete">✕</button></div><textarea class="note-content-area" placeholder="Nội dung..." spellcheck="false">${escapeHtml(n.content)}</textarea>`; div.querySelector('.item-name-input').addEventListener('change', (e) => { notes[idx].title = e.target.value; saveData('promptNotes', notes); }); div.querySelector('textarea').addEventListener('input', (e) => { notes[idx].content = e.target.value; saveData('promptNotes', notes); }); div.querySelector('.btn-delete').addEventListener('click', () => { if(confirm('Xóa ghi chú này?')) { notes.splice(idx, 1); saveData('promptNotes', notes); renderNotes();} }); container.appendChild(div); }); }
+    addSessionBtn.addEventListener('click', () => { const newSession = createNewSessionData(`Phiên ${new Date().toLocaleTimeString()}`); const lastPinnedIndex = sessions.map(s => s.isPinned).lastIndexOf(true); const insertIndex = lastPinnedIndex === -1 ? 0 : lastPinnedIndex + 1; sessions.splice(insertIndex, 0, newSession); saveData('promptSessions', sessions); renderSessions(); window.scrollTo(0,0); });
+    collapseAllBtn.addEventListener('click', () => { const allRows = document.querySelectorAll('#prompt-view .prompt-row'); const hasExpanded = [...allRows].some(r => !r.classList.contains('collapsed')); allRows.forEach(r => r.classList.toggle('collapsed', hasExpanded)); });
+    window.openTab = (evt, tabId) => { document.querySelectorAll('.tab-content, .tab-button').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); evt.currentTarget.classList.add('active'); };
+    document.addEventListener('click', (e) => { if (!e.target.closest('.suggestions-popup, .toggle-suggestions-btn')) { document.querySelectorAll('.suggestions-popup').forEach(p => p.style.display = 'none'); } });
+
+    loadState();
+});
+</script>
 </body>
 </html>
