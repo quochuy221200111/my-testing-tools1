@@ -285,7 +285,11 @@
         </div>
         <div id="prompt-view-controls">
             <span class="shortcut-hint" id="shortcut-display">Alt+1 (Copy), Alt+2 (Upload), Alt+3 (Focus)</span>
-            <button class="main-button" id="import-data-btn" title="Nhập dữ liệu từ file backup">Nhập Backup</button>
+            <!-- START: NÚT NHẬP/XUẤT MỚI CHO PHIÊN PROMPT -->
+            <button class="main-button" id="import-sessions-btn" title="Nhập và thêm các phiên từ file .json">Nhập Phiên</button>
+            <button class="main-button" id="export-sessions-btn" title="Chỉ xuất tất cả các phiên hiện tại ra file .json">Xuất Phiên</button>
+            <!-- END: NÚT NHẬP/XUẤT MỚI CHO PHIÊN PROMPT -->
+            <button class="main-button" id="import-data-btn" title="Nhập toàn bộ dữ liệu từ file backup (ghi đè)">Nhập Backup</button>
             <button class="main-button" id="export-data-btn" title="Xuất toàn bộ dữ liệu ra file backup">Xuất Backup</button>
             <button class="main-button icon-btn" id="settings-btn" title="Cài đặt">⚙️</button>
             <button class="main-button" id="add-session-btn" title="Thêm phiên mới vào đầu">+ Thêm Phiên</button>
@@ -343,6 +347,9 @@
         </div>
     </div>
 </div>
+<!-- START: INPUT FILE MỚI CHO NHẬP PHIÊN -->
+<input type="file" id="import-sessions-file-input" accept=".json" style="display: none;">
+<!-- END: INPUT FILE MỚI CHO NHẬP PHIÊN -->
 <input type="file" id="import-file-input" accept=".json" style="display: none;">
 
 
@@ -415,6 +422,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportDataBtn = document.getElementById('export-data-btn');
     const importDataBtn = document.getElementById('import-data-btn');
     const importFileInput = document.getElementById('import-file-input');
+    
+    // START: DOM ELEMENTS MỚI CHO NHẬP/XUẤT PHIÊN
+    const exportSessionsBtn = document.getElementById('export-sessions-btn');
+    const importSessionsBtn = document.getElementById('import-sessions-btn');
+    const importSessionsFileInput = document.getElementById('import-sessions-file-input');
+    // END: DOM ELEMENTS MỚI
     
     let sessions = [];
     let files = [];
@@ -789,6 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAiActions();
     }
     
+    // Xuất Backup (Toàn bộ dữ liệu)
     exportDataBtn.addEventListener('click', () => {
         const allData = { sessions, files, history, notes, suggestions, shortcuts, settings,
             geminiApiKey: localStorage.getItem('geminiApiKey'),
@@ -804,6 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(a.href);
     });
 
+    // Nhập Backup (Toàn bộ dữ liệu)
     importDataBtn.addEventListener('click', () => importFileInput.click());
 
     importFileInput.addEventListener('change', (e) => {
@@ -813,7 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (event) => {
             try {
                 const importedData = JSON.parse(event.target.result);
-                if (confirm("GHI ĐÈ DỮ LIỆU? Hành động này KHÔNG THỂ hoàn tác.")) {
+                if (confirm("GHI ĐÈ DỮ LIỆU? Hành động này sẽ xóa toàn bộ dữ liệu hiện tại và thay thế bằng dữ liệu từ file backup. KHÔNG THỂ hoàn tác.")) {
                     sessions = importedData.sessions || [];
                     files = importedData.files || [];
                     history = importedData.history || [];
@@ -836,6 +851,51 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         reader.readAsText(file);
     });
+
+    // START: LOGIC MỚI CHO NHẬP/XUẤT CHỈ CÁC PHIÊN
+    // Xuất chỉ các phiên
+    exportSessionsBtn.addEventListener('click', () => {
+        if (!sessions || sessions.length === 0) {
+            alert("Không có phiên nào để xuất.");
+            return;
+        }
+        const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.download = `prompt_pro_sessions_${new Date().toISOString().slice(0, 10)}.json`;
+        a.href = URL.createObjectURL(blob);
+        a.click();
+        URL.revokeObjectURL(a.href);
+    });
+    
+    // Nhập và thêm các phiên (không xóa dữ liệu cũ)
+    importSessionsBtn.addEventListener('click', () => importSessionsFileInput.click());
+
+    importSessionsFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedSessions = JSON.parse(event.target.result);
+                if (!Array.isArray(importedSessions)) {
+                    throw new Error("File không chứa một danh sách các phiên hợp lệ.");
+                }
+                if (confirm(`Bạn có muốn THÊM ${importedSessions.length} phiên mới vào dữ liệu hiện tại không? Dữ liệu cũ sẽ được giữ lại.`)) {
+                    sessions = sessions.concat(importedSessions); // Nối mảng phiên mới vào mảng hiện tại
+                    saveData('promptSessions', sessions); // Lưu lại dữ liệu đã gộp
+                    renderSessions(); // Vẽ lại giao diện
+                    alert("Đã nhập thêm các phiên mới thành công!");
+                }
+            } catch (error) {
+                alert("Lỗi: File không hợp lệ hoặc không đúng định dạng. " + error.message);
+                console.error("Session Import error:", error);
+            } finally {
+                importSessionsFileInput.value = ''; // Reset input để có thể chọn lại file cũ
+            }
+        };
+        reader.readAsText(file);
+    });
+    // END: LOGIC MỚI
 
     function updateShortcutDisplay() {
         shortcutDisplay.textContent = `Phím tắt: Alt+${shortcuts.copy} (Copy), Alt+${shortcuts.upload} (Code), Alt+${shortcuts.focus} (Focus), Alt+${shortcuts.voice} (Voice)`;
