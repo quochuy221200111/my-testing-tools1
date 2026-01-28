@@ -359,25 +359,25 @@
         // --- HÀM LOGIC TỪ WEB CŨ (TRIM/CLEAN CODE) ---
         // Hàm này sẽ tự động tìm phần code HTML trong mớ văn bản hỗn độn
         const extractCode = (inputText) => {
-            let cleanedCode = '';
-            
-            // Regex tìm khối code markdown (```html ... ```)
-            const fenceMatch = inputText.match(/```(?:\w*)\s*\n([\s\S]*?)\n```/);
+            let potentialCode = inputText; // Bắt đầu bằng toàn bộ văn bản đầu vào
 
+            // Ưu tiên tìm trong khối markdown trước nếu có
+            const fenceMatch = inputText.match(/```(?:html)?\s*\n([\s\S]*?)\n```/);
             if (fenceMatch && fenceMatch[1]) {
-                cleanedCode = fenceMatch[1].trim();
-            } else {
-                // Nếu không có markdown, tìm thẻ HTML
-                const startIndex = inputText.indexOf('<!DOCTYPE html>');
-                const endIndex = inputText.lastIndexOf('</html>');
-                if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-                    cleanedCode = inputText.substring(startIndex, endIndex + '</html>'.length).trim();
-                } else {
-                    // Nếu không tìm thấy gì đặc biệt, trả về nguyên gốc (có thể là code JS/CSS thuần)
-                    cleanedCode = inputText;
-                }
+                potentialCode = fenceMatch[1]; // Nếu tìm thấy, chỉ tìm kiếm bên trong khối này
             }
-            return cleanedCode;
+
+            // Áp dụng điều kiện: tìm code bắt đầu bằng <!DOCTYPE html> và kết thúc bằng </html>
+            const startIndex = potentialCode.indexOf('<!DOCTYPE html>');
+            const endIndex = potentialCode.lastIndexOf('</html>');
+
+            if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+                // Nếu tìm thấy một khối HTML hoàn chỉnh, trích xuất nó
+                return potentialCode.substring(startIndex, endIndex + '</html>'.length).trim();
+            }
+
+            // Nếu không tìm thấy khối HTML hoàn chỉnh nào, trả về văn bản gốc để tránh mất dữ liệu
+            return inputText;
         };
 
         // Hàm tải file từ web cũ
