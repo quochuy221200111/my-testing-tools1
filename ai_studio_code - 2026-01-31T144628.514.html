@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hệ thống Quản lý Dự án & Chi phí Hợp nhất (Pro Version)</title>
+<!-- Thư viện Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* =========================================
+   GLOBAL VARIABLES & RESET
+   ========================================= */
+:root {
+    --primary-color: #007bff; --primary-hover: #0056b3; --secondary-color: #6c757d;
+    --success-color: #28a745; --danger-color: #dc3545; --warning-bg: #fff3cd;
+    --warning-text: #856404; --info-bg: #d1ecf1; --info-text: #0c5460;
+    --light-bg: #f8f9fa; --border-color: #dee2e6; --highlight-red: #d63384;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --modal-bg: rgba(0, 0, 0, 0.55);
+}
+
+body {
+    font-family: var(--font-family); margin: 0; padding: 10px;
+    background-color: #f4f6f9; color: #333; font-size: 14px;
+}
+
+button { cursor: pointer; transition: all 0.2s; }
+input, select, button { font-family: inherit; font-size: inherit; }
+* { box-sizing: border-box; } /* Added for better layout control */
+
+/* =========================================
+   LAYOUT: TABS & CONTAINER
+   ========================================= */
+.app-container {
+    max-width: 1800px; margin: 0 auto; background: white; border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08); overflow: hidden; min-height: 800px;
+    display: flex; flex-direction: column;
+}
+.tab-header { display: flex; background-color: #fff; border-bottom: 2px solid var(--border-color); padding: 0 20px; flex-wrap: wrap; }
+.tab-btn { padding: 15px 25px; background: none; border: none; font-size: 16px; font-weight: 600; color: var(--secondary-color); border-bottom: 4px solid transparent; margin-bottom: -2px; }
+.tab-btn:hover { color: var(--primary-color); background-color: #f8f9fa; }
+.tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+.tab-content-wrapper { padding: 20px; flex-grow: 1; background-color: #fff; position: relative; }
+.tab-pane { display: none; animation: fadeIn 0.3s ease-in-out; }
+.tab-pane.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* =========================================
+   MODULE 1: LỊCH TRÌNH (CALENDAR)
+   ========================================= */
+#tab-schedule {
+    overflow-x: hidden; /* Fixes right side being cut off */
+}
+.calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: var(--light-bg); padding: 10px; border-radius: 8px; flex-wrap: wrap; gap: 10px; }
+.calendar-controls h2 { margin: 0; color: var(--primary-color); font-size: 1.5rem; }
+.nav-group { display: flex; gap: 10px; align-items: center; }
+.btn-primary, .btn-secondary, .btn-info, .btn-success, .btn-danger {
+    color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 500;
+}
+.btn-primary { background: var(--primary-color); }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary { background: var(--secondary-color); }
+.btn-secondary:hover { background: #5a6268; }
+.btn-info { background: #17a2b8; }
+.btn-info:hover { background: #138496; }
+.btn-danger { background: var(--danger-color); }
+
+/* Grid Lịch */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); }
+.cal-header { background-color: #e9ecef; text-align: center; padding: 10px; font-weight: bold; color: #495057; }
+.cal-day { background-color: white; min-height: 140px; padding: 5px; position: relative; display: flex; flex-direction: column; }
+.cal-day:hover { background-color: #fcfcfc; }
+.cal-day.today { background-color: #fff3cd; }
+.cal-day.other-month { background-color: #f4f4f4; color: #ccc; pointer-events: none; }
+.day-num { font-weight: bold; font-size: 1.1em; margin-bottom: 5px; display: flex; justify-content: space-between; }
+/* .lunar-day has been removed */
+.holiday-text { font-size: 0.7em; color: var(--success-color); font-weight: bold; display: block; text-align: right; }
+
+/* Sự kiện trong lịch */
+.event-tag { background-color: #e7f5ff; border-left: 4px solid var(--primary-color); padding: 4px; margin-bottom: 4px; border-radius: 2px; font-size: 0.85em; cursor: pointer; transition: transform 0.1s; overflow: hidden; }
+.event-tag:hover { transform: scale(1.02); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.event-title { font-weight: bold; color: #004085; }
+.event-loc { font-style: italic; color: #555; font-size: 0.9em; }
+.todo-preview { font-size: 0.85em; color: #555; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.weather-display { margin-top: 4px; background-color: #f0f4f8; border: 1px solid #d6e0ea; border-radius: 4px; padding: 4px; font-size: 0.75em; color: #334; line-height: 1.3; }
+
+/* =========================================
+   SETTINGS (FROM OLD CODE)
+   ========================================= */
+.settings-panel { padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; margin-top: 15px; background: #fdfdff; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.settings-card { border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; background: #fff; }
+.settings-card h3 { margin-top: 0; color: var(--primary-color); }
+.color-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.color-swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+.color-swatch.selected { border-color: var(--primary-color); }
+.holiday-list-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+
+/* =========================================
+   MODULE 2: QUẢN LÝ CHI PHÍ (EXPENSES)
+   ========================================= */
+.expense-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; position: relative; }
+.expense-form-card { background: white; border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; transition: all 0.3s ease-in-out; }
+.expense-table-container { overflow-x: auto; background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9em; }
+.input-control { width: 100%; padding: 8px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; }
+.input-control:focus { border-color: var(--primary-color); outline: none; }
+.input-group { display: flex; gap: 5px; align-items: center; }
+.input-group .btn-secondary { padding: 8px 12px; }
+.btn-add { background: var(--success-color); color: white; border: none; padding: 10px 15px; border-radius: 4px; width: 100%; margin-top: 10px; font-weight: bold; }
+.btn-add:hover { background: #218838; }
+.history-buttons button { padding: 5px 10px; font-weight: bold; }
+.history-buttons button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Linking & Prefix Styles --- */
+.link-suggestion { font-size: 0.85em; color: var(--primary-color); margin-top: 4px; font-weight: 600; display: none; background-color: #e7f5ff; padding: 4px 8px; border-radius: 4px; border-left: 3px solid var(--primary-color); }
+.suggestion-container { margin-top: 8px; }
+.suggestion-container h4 { font-size: 0.9em; margin: 8px 0 4px 0; color: var(--secondary-color); }
+.suggestion-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.suggestion-btn { background-color: #e7f3ff; color: #1b74e4; border: 1px solid #cce0ff; border-radius: 12px; padding: 4px 10px; font-size: 0.85em; cursor: pointer; }
+.suggestion-btn.cost-btn { background-color: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+.suggestion-btn.combo-btn { background-color: #fff3e0; color: #ef6c00; border-color: #ffe0b2; font-weight: 500; }
+
+/* Table Styles */
+.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.data-table th, .data-table td { border: 1px solid #dee2e6; padding: 8px; text-align: left; font-size: 0.95em; }
+.data-table th { background-color: #f8f9fa; font-weight: 600; }
+.data-table tr:hover { background-color: #f1f1f1; }
+/* New class for clickable rows */
+.clickable-row { cursor: pointer; }
+.cost-col { text-align: right; font-family: monospace, sans-serif; font-size: 1.1em; }
+.desc-col { color: #333; }
+.auto-linked-text { color: var(--danger-color); font-weight: 500; }
+td[contenteditable="true"] { background-color: #fef9e7; cursor: cell; }
+td[contenteditable="true"]:focus { background-color: #eaf2f8; outline: 2px solid var(--primary-color); }
+.total-row td { font-weight: bold; background-color: #e7f3ff; }
+
+/* --- Floating Toggle Button for Expense Form --- */
+.floating-btn {
+    position: fixed; top: 75px; right: 15px; z-index: 1001;
+    background-color: var(--primary-color); color: white; border: none;
+    width: 45px; height: 45px; border-radius: 50%;
+    font-size: 24px; display: none; /* Hidden by default */
+    justify-content: center; align-items: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* =========================================
+   MODAL (Popup)
+   ========================================= */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-bg); z-index: 1000; justify-content: center; align-items: center; }
+.modal-box { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: fadeIn 0.3s; max-height: 90vh; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+.modal-body { overflow-y: auto; }
+.modal-footer { margin-top: 20px; text-align: right; }
+.close-modal { background: none; border: none; font-size: 24px; cursor: pointer; }
+.spinner { display: none; border: 2px solid #f3f3f3; border-top: 2px solid #555; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; margin-right: 8px; }
+button.loading .spinner { display: inline-block; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+
+/* =========================================
+   *** NEW: GOOGLE SHEET SYNC STYLES ***
+   ========================================= */
+#system-status { padding: 10px; margin-bottom: 15px; border-radius: 5px; font-size: 14px; display: none; text-align: center; }
+.status-loading { background: #cff4fc; color: #055160; border: 1px solid #b6effb; }
+.status-error { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+.status-success { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+.auth-buttons-container button { width: 100%; margin-bottom: 5px; padding: 10px; }
+.auth-buttons-container .btn-danger { background: #6c757d; } /* Make signout secondary color */
+
+
+/* =========================================
+   MOBILE RESPONSIVE STYLES
+   ========================================= */
+@media (max-width: 900px) {
+    .expense-layout {
+        grid-template-columns: 1fr; /* Stack form and table vertically */
+    }
+    .floating-btn {
+        display: flex; /* Show floating button on mobile */
+    }
+    .expense-form-card.collapsed {
+        display: none;
+    }
+}
+@media (max-width: 600px) {
+    body { padding: 5px; }
+    .tab-header { padding: 0 5px; }
+    .tab-btn { padding: 12px 10px; font-size: 14px; }
+    .tab-content-wrapper { padding: 10px; }
+    .calendar-controls { flex-direction: column; align-items: stretch; }
+    .nav-group { justify-content: space-between; }
+    .cal-day { min-height: 100px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Header Tabs -->
+    <div class="tab-header">
+        <button class="tab-btn active" onclick="app.switchTab('schedule')">Lịch trình Tháng</button>
+        <button class="tab-btn" onclick="app.switchTab('expenses')">Quản lý Chi phí</button>
+    </div>
+
+    <div class="tab-content-wrapper">
+        <!-- TAB 1: SCHEDULE -->
+        <div id="tab-schedule" class="tab-pane active">
+            <div class="calendar-controls">
+                <div class="nav-group">
+                    <button class="btn-secondary" onclick="cal.prevMonth()">&lt;</button>
+                    <h2 id="current-month-display">Tháng 1 năm 2026</h2>
+                    <button class="btn-secondary" onclick="cal.nextMonth()">&gt;</button>
+                </div>
+                <div class="nav-group">
+                    <button class="btn-primary" onclick="cal.openAddModal()">+ Thêm Sự Kiện</button>
+                    <button class="btn-secondary" onclick="cal.toggleSettings()">Cài đặt & AI</button>
+                </div>
+            </div>
+
+            <!-- Settings Panel (hidden by default) -->
+            <div id="settings-panel" class="settings-panel" style="display: none;">
+                <div class="settings-grid">
+                    <!-- *** NEW: GOOGLE SHEET SYNC SETTINGS CARD *** -->
+                    <div class="settings-card">
+                        <h3>Đồng bộ Google Sheet</h3>
+                        <div id="system-status" class="status-loading">Đang tải...</div>
+                        <div class="form-group"><label>API Key</label><input type="password" id="gs-api-key" class="input-control"></div>
+                        <div class="form-group"><label>Client ID</label><input type="password" id="gs-client-id" class="input-control"></div>
+                        <div class="form-group"><label>Spreadsheet ID</label><input type="text" id="gs-sheet-id" class="input-control"></div>
+                        <div class="auth-buttons-container">
+                            <button id="auth-btn" onclick="googleSheetSync.handleAuth()" style="background: #333;">Đăng nhập Google</button>
+                            <button id="signout-btn" class="btn-danger" onclick="googleSheetSync.handleSignout()" style="display:none;">Đăng xuất</button>
+                        </div>
+                        <button class="btn-secondary" onclick="googleSheetSync.resetSettings()" style="width: 100%; margin-top: 5px; font-size:12px; padding: 5px 10px;">Reset Cài đặt Sheet</button>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Cấu hình API</h3>
+                        <div class="form-group"><label>Gemini API Key</label><input type="password" id="gemini-api-key" class="input-control"></div>
+                        <div class="form-group"><label>Weather API Key (weatherapi.com)</label><input type="password" id="weather-api-key" class="input-control"></div>
+                        <button id="run-ai-analysis-btn" class="btn-primary"><span class="spinner"></span>Chạy Phân tích Lịch trình</button>
+                    </div>
+                     <div class="settings-card">
+                        <h3>Tùy chỉnh Giao diện</h3>
+                        <p><i>Phần tùy chỉnh màu đã được chuyển vào "Cài đặt" của tab "Quản lý Chi phí" để quản lý tập trung.</i></p>
+                    </div>
+                    <div class="settings-card">
+                        <h3>Cài đặt Gõ tắt (Shortcuts)</h3>
+                        <div id="shortcuts-container"></div>
+                        <button onclick="cal.addShortcutInput()" class="btn-secondary" style="margin-top: 10px; font-size:12px; padding: 5px 10px;">Thêm</button>
+                    </div>
+                    <div class="settings-card">
+                        <h3>Quản lý Ngày lễ</h3>
+                        <div id="holidays-container" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
+                        <button onclick="cal.openHolidayModal()" class="btn-secondary" style="font-size:12px; padding: 5px 10px;">Thêm Ngày lễ</button>
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button onclick="cal.saveAllSettings()" class="btn-success">Lưu Tất Cả Cài Đặt</button>
+                </div>
+            </div>
+            
+            <div id="calendar-grid" class="calendar-grid">
+                <!-- Headers injected by JS -->
+            </div>
+        </div>
+
+        <!-- TAB 2: EXPENSES -->
+        <div id="tab-expenses" class="tab-pane">
+            <button id="toggle-form-btn" class="floating-btn" onclick="exp.toggleForm()">☰</button>
+            <div class="expense-layout">
+                <!-- Left: Form -->
+                <div id="expense-form-card" class="expense-form-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin-top:0; color: var(--primary-color);">Nhập liệu</h3>
+                        <button class="btn-secondary" onclick="exp.openSettingsModal()" style="padding: 5px 10px;">Cài đặt</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Chọn hoặc Thêm Dự án:</label>
+                        <div class="input-group">
+                            <input type="text" id="project-name-input" class="input-control" placeholder="Nhập tên dự án mới...">
+                            <button class="btn-secondary" onclick="exp.handleProject()">Thêm</button>
+                        </div>
+                        <select id="exp-project-select" class="input-control" onchange="exp.switchProject(this.value)" style="margin-top: 5px;"></select>
+                    </div>
+
+                    <div class="form-group"><label>Ngày:</label><input type="date" id="exp-date" class="input-control" onchange="exp.checkLink()"></div>
+                    <div id="link-suggestion" class="link-suggestion"></div>
+                    
+                    <div class="form-group"><label>Chi phí (k VNĐ):</label>
+                        <div class="input-group"><input type="number" id="exp-amount" class="input-control" placeholder="VD: 50"><span>k</span></div>
+                    </div>
+
+                    <div class="form-group"><label>Ngày công:</label>
+                        <div class="input-group">
+                            <button type="button" class="btn-secondary" onclick="exp.setWorkday(0.5)">0.5</button>
+                            <button type="button" class="btn-secondary" onclick="exp.setWorkday(1)">1.0</button>
+                            <input type="number" id="exp-workday" class="input-control" placeholder="Số ngày" step="0.5">
+                        </div>
+                    </div>
+
+                    <div class="form-group"><label>Mô tả chi tiết:</label><input type="text" id="exp-desc" class="input-control" placeholder="Ăn uống, taxi..."></div>
+                    
+                    <!-- NEW: Company Loan Input -->
+                    <div class="form-group"><label>Ứng trước của Cty (VNĐ):</label>
+                        <input type="number" id="exp-loan" class="input-control" placeholder="Nhập số tiền ứng trước...">
+                    </div>
+
+                    <!-- Suggestion Containers -->
+                    <div id="suggestion-container" class="suggestion-container"></div>
+
+                    <div class="form-group input-group" style="margin-top: 15px;">
+                        <button type="button" id="micBtn" class="btn-secondary" title="Ghi âm giọng nói">🎤</button>
+                        <div class="history-buttons">
+                            <button id="undoBtn" onclick="exp.undo()" title="Ctrl+Z" class="btn-secondary" disabled>↶</button>
+                            <button id="redoBtn" onclick="exp.redo()" title="Ctrl+Y" class="btn-secondary" disabled>↷</button>
+                        </div>
+                    </div>
+
+                    <button class="btn-add" onclick="exp.addEntry()">THÊM MỤC</button>
+                    <hr>
+                    <!-- Excel Import/Export Buttons -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                        <input type="file" id="excel-import-input" accept=".xlsx, .xls" style="display:none;" onchange="exp.importFromExcel(event)">
+                        <button class="btn-info" onclick="document.getElementById('excel-import-input').click()">Import Excel</button>
+                        <button class="btn-primary" onclick="exp.exportToExcelStyled()">Xuất Excel Pro</button>
+                        <button class="btn-secondary" id="translateBtn" onclick="exp.translateAllDescriptions()">Dịch sang Anh</button>
+                        <button class="btn-danger" onclick="exp.clearData()">Xóa Toàn Bộ Data</button>
+                    </div>
+                </div>
+
+                <!-- Right: Table -->
+                <div id="expense-table-container" class="expense-table-container">
+                    <!-- Tables injected by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Modals -->
+<div id="modal-event" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"> <h3 id="modal-title">Thêm Lịch Trình</h3> <button class="close-modal" onclick="app.closeModal('modal-event')">&times;</button> </div> <div class="modal-body"> <input type="hidden" id="event-id"><input type="hidden" id="event-date-hidden"> <div class="form-group"><label>Tên Dự Án / Sự Kiện:</label><input type="text" id="evt-title" class="input-control"></div> <div class="form-group"><label>Ngày:</label><input type="date" id="evt-date" class="input-control"></div> <div class="form-group"><label>Địa điểm:</label><input type="text" id="evt-loc" class="input-control" placeholder="VD: Hà Nội (Để lấy thời tiết)"></div> <div class="form-group"><label>Màu sắc:</label><div id="event-color-picker" class="color-picker"></div><input type="hidden" id="evt-color"></div> <div class="form-group"> <label>Ghi chú (To-do list):</label> <div id="todo-list-container"></div> <button type="button" onclick="cal.addTodoItem()" class="btn-secondary" style="margin-top: 10px; font-size:12px; padding: 5px 10px;">+ Thêm mục</button> </div> </div> <div class="modal-footer"> <button id="delete-event-btn" class="btn-danger" style="float: left;" onclick="cal.deleteEvent()">Xóa</button> <button class="btn-success" onclick="cal.saveEvent()">Lưu Sự Kiện</button> <!-- *** NEW BUTTON *** --> <button class="btn-primary" onclick="cal.saveAndSyncEvent()">Lưu & Gửi Sheet</button> </div> </div> </div>
+<div id="ai-alert-modal" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"><h3>Phân tích & Gợi ý từ AI</h3><button class="close-modal" onclick="app.closeModal('ai-alert-modal')">&times;</button></div> <div class="modal-body" id="ai-alert-content" style="white-space: pre-wrap; max-height: 60vh;"></div> </div> </div>
+<div id="holiday-modal" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"><h3>Thêm Ngày lễ</h3><button class="close-modal" onclick="app.closeModal('holiday-modal')">&times;</button></div> <div class="modal-body"> <div class="form-group"><label>Tên ngày lễ</label><input type="text" id="holiday-name" class="input-control" required></div> <div class="form-group input-group"><input type="number" id="holiday-day" placeholder="Ngày" class="input-control"><input type="number" id="holiday-month" placeholder="Tháng" class="input-control"></div> <p style="font-size:12px; color: #6c757d;">Chỉ hỗ trợ Lịch Dương</p> </div> <div class="modal-footer"><button class="btn-success" onclick="cal.saveHoliday()">Lưu</button></div> </div> </div>
+<!-- NEW: Expense Settings Modal -->
+<div id="expense-settings-modal" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"><h3>Cài đặt Chi phí & Giao diện</h3><button class="close-modal" onclick="app.closeModal('expense-settings-modal')">&times;</button></div> <div class="modal-body" id="expense-settings-body"></div> <div class="modal-footer"><button class="btn-success" onclick="exp.saveSettings()">Lưu Cài đặt</button></div> </div> </div>
+
+
+<script>
+/**
+ * =============================================================================
+ * CORE APPLICATION LOGIC (MERGED & ENHANCED - FINAL VERSION)
+ * =============================================================================
+ */
+
+// --- 1. UTILS: LUNAR CALENDAR (REMOVED) ---
+// Lunar calendar logic has been removed as per request.
+
+// --- 2. STORAGE & STATE ---
+const Store = {
+    get: (key, defaultValue) => JSON.parse(localStorage.getItem(key) || JSON.stringify(defaultValue)),
+    set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
+};
+
+// --- 3. CALENDAR MODULE ---
+const cal = {
+    currentDate: new Date(),
+    events: Store.get('events_vFinal', {}),
+    settings: Store.get('calendarSettings_vFinal', {
+        geminiApiKey: '',
+        weatherApiKey: '',
+        shortcuts: { 'hn': 'Hà Nội', 'hcm': 'TP. Hồ Chí Minh' },
+        holidays: { 
+            '01-01': { name: 'Tết Dương lịch', type: 'gregorian' }, 
+            '04-30': { name: 'Thống nhất', type: 'gregorian' }, 
+            '05-01': { name: 'Lao động', type: 'gregorian' }, 
+            '09-02': { name: 'Quốc khánh', type: 'gregorian' },
+            '03-10': { name: 'Giỗ Tổ HV', type: 'gregorian' }
+        }
+    }),
+    COLOR_PALETTE: ['#0d6efd', '#6f42c1', '#198754', '#dc3545', '#fd7e14', '#ffc107', '#0dcaf0', '#6c757d'],
+
+    init: function() {
+        this.render();
+        // CHANGED: Using 'input' event for better mobile compatibility
+        document.addEventListener('input', this.applyShortcutsOnInput.bind(this));
+    },
+    prevMonth: function() { this.currentDate.setMonth(this.currentDate.getMonth() - 1); this.render(); },
+    nextMonth: function() { this.currentDate.setMonth(this.currentDate.getMonth() + 1); this.render(); },
+
+    render: function() {
+        const year = this.currentDate.getFullYear();
+        const month = this.currentDate.getMonth();
+        document.getElementById('current-month-display').innerText = `Tháng ${month + 1} năm ${year}`;
+        const grid = document.getElementById('calendar-grid');
+        grid.innerHTML = ''; 
+
+        ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].forEach(day => grid.appendChild(Object.assign(document.createElement('div'), {className: 'cal-header', textContent: day})));
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for(let i=0; i<firstDay; i++) grid.appendChild(Object.assign(document.createElement('div'), {className: 'cal-day other-month'}));
+
+        for(let i=1; i<=daysInMonth; i++) {
+            const date = new Date(year, month, i);
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+            const div = document.createElement('div');
+            div.className = 'cal-day';
+            if (date.toDateString() === new Date().toDateString()) div.classList.add('today');
+
+            const gregorianKey = `${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            let holidayName = this.settings.holidays[gregorianKey]?.name || '';
+
+            div.innerHTML = `<div class="day-num"><span>${i}</span></div>
+                ${holidayName ? `<span class="holiday-text">${holidayName}</span>` : ''}
+                <div class="events-container" id="ev-cont-${dateStr}"></div>`;
+            div.onclick = (e) => { if(!e.target.closest('.event-tag')) this.openAddModal(dateStr); };
+            
+            // Apply conditional coloring
+            const dayEvents = this.events[dateStr] || [];
+            const dayText = dayEvents.map(e => `${e.title} ${e.location}`).join(' ').toLowerCase();
+            const colorStyles = exp.getColorStyles(dayText);
+            div.style.cssText = colorStyles.bg; // Background on the whole day cell
+            if(colorStyles.text) div.style.color = colorStyles.textColorValue;
+            if(colorStyles.border) div.style.border = colorStyles.borderValue;
+            
+            grid.appendChild(div);
+
+            if (this.events[dateStr]) this.events[dateStr].forEach(ev => this.renderEventTag(ev, dateStr));
+        }
+    },
+
+    renderEventTag: function(ev, dateStr) {
+        const container = document.getElementById(`ev-cont-${dateStr}`);
+        if(!container) return;
+        const tag = document.createElement('div');
+        tag.className = 'event-tag';
+        tag.style.borderLeftColor = ev.color;
+        
+        let locHtml = ev.location ? `<div class="event-loc">${ev.location}</div>` : '';
+        const todosPreview = ev.todos?.length > 0 ? `<div class="todo-preview">📝 ${ev.todos.filter(t=>t).length} mục</div>` : '';
+        
+        tag.innerHTML = `<div class="event-title">${ev.title}</div> ${locHtml} ${todosPreview}
+            <div class="weather-display" id="weather-${ev.id}"></div>`;
+        tag.onclick = () => this.openAddModal(dateStr, ev.id);
+        
+        const eventText = `${ev.title} ${ev.location}`.toLowerCase();
+        const colorStyles = exp.getColorStyles(eventText);
+        // Apply styles to the event tag itself
+        tag.style.cssText += colorStyles.bg; // += to not overwrite border-left
+        if(colorStyles.text) tag.style.color = colorStyles.textColorValue;
+        if(colorStyles.border) tag.style.border = colorStyles.borderValue;
+
+
+        container.appendChild(tag);
+        if (ev.location && this.settings.weatherApiKey) this.fetchWeather(ev, dateStr);
+    },
+
+    openAddModal: function(dateStr, eventId = null) {
+        app.closeAllModals(); 
+        const isEdit = eventId !== null;
+        const event = isEdit ? this.events[dateStr].find(e => e.id == eventId) : null;
+
+        document.getElementById('modal-title').innerText = isEdit ? 'Sửa Lịch trình' : 'Thêm Lịch trình';
+        document.getElementById('evt-date').value = dateStr || new Date().toISOString().split('T')[0];
+        document.getElementById('event-date-hidden').value = dateStr;
+        document.getElementById('event-id').value = eventId || '';
+        document.getElementById('evt-title').value = event?.title || '';
+        document.getElementById('evt-loc').value = event?.location || '';
+        document.getElementById('delete-event-btn').style.display = isEdit ? 'inline-block' : 'none';
+        
+        const colorPicker = document.getElementById('event-color-picker');
+        this.renderColorPicker(colorPicker, this.COLOR_PALETTE, event?.color || this.COLOR_PALETTE[0], color => { document.getElementById('evt-color').value = color; });
+        document.getElementById('evt-color').value = event?.color || this.COLOR_PALETTE[0];
+
+        const todoContainer = document.getElementById('todo-list-container');
+        todoContainer.innerHTML = '';
+        (event?.todos || ['']).forEach(this.addTodoItem.bind(this));
+
+        app.openModal('modal-event');
+    },
+    
+    addTodoItem: function(text = '') {
+        const div = document.createElement('div');
+        div.className = 'input-group';
+        div.style.marginBottom = '5px';
+        div.innerHTML = `<input type="text" value="${text}" placeholder="Nội dung công việc..." class="input-control todo-item-input">
+            <button type="button" class="btn-danger" style="padding: 5px 10px;" onclick="this.parentElement.remove()">X</button>`;
+        document.getElementById('todo-list-container').appendChild(div);
+    },
+
+    saveEvent: function(closeModalAfterSave = true) {
+        const date = document.getElementById('evt-date').value;
+        const oldDate = document.getElementById('event-date-hidden').value;
+        const id = document.getElementById('event-id').value;
+        if(!date) {
+            alert('Vui lòng nhập ngày!');
+            return false;
+        }
+
+        const todos = Array.from(document.querySelectorAll('.todo-item-input')).map(input => input.value.trim()).filter(Boolean);
+        const newEvent = {
+            id: id ? Number(id) : Date.now(),
+            title: document.getElementById('evt-title').value.trim() || '(Chưa có tên)',
+            location: document.getElementById('evt-loc').value.trim(),
+            color: document.getElementById('evt-color').value,
+            todos: todos,
+        };
+
+        if (id && date !== oldDate && this.events[oldDate]) {
+            this.events[oldDate] = this.events[oldDate].filter(e => e.id != id);
+            if(this.events[oldDate].length === 0) delete this.events[oldDate];
+        }
+        if (!this.events[date]) this.events[date] = [];
+        const eventIndex = id ? this.events[date].findIndex(e => e.id == id) : -1;
+        if (eventIndex > -1) this.events[date][eventIndex] = newEvent;
+        else this.events[date].push(newEvent);
+        
+        Store.set('events_vFinal', this.events);
+        if(closeModalAfterSave) app.closeModal('modal-event');
+        this.render();
+        exp.checkLink();
+        return true; // Indicate success
+    },
+
+    saveAndSyncEvent: function() {
+        const saved = this.saveEvent(false);
+        if (!saved) return; 
+
+        const date = document.getElementById('evt-date').value;
+        const title = document.getElementById('evt-title').value.trim() || '(Chưa có tên)';
+        const location = document.getElementById('evt-loc').value.trim();
+        const fullEventText = location ? `${title} (${location})` : title;
+        
+        googleSheetSync.sendEvent(date, fullEventText);
+        
+        app.closeModal('modal-event');
+    },
+
+    deleteEvent: function() {
+        const date = document.getElementById('event-date-hidden').value;
+        const id = document.getElementById('event-id').value;
+        if(confirm('Xóa sự kiện này?')) {
+            this.events[date] = this.events[date].filter(e => e.id != id);
+            if(this.events[date].length === 0) delete this.events[date];
+            Store.set('events_vFinal', this.events);
+            app.closeModal('modal-event');
+            this.render();
+        }
+    },
+    
+    toggleSettings: function() {
+        const panel = document.getElementById('settings-panel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        if(panel.style.display === 'block') this.renderSettings();
+    },
+
+    renderSettings: function() {
+        document.getElementById('gemini-api-key').value = this.settings.geminiApiKey;
+        document.getElementById('weather-api-key').value = this.settings.weatherApiKey;
+        const shortcutsContainer = document.getElementById('shortcuts-container');
+        shortcutsContainer.innerHTML = '';
+        Object.entries(this.settings.shortcuts).forEach(([key, value]) => this.addShortcutInput(key, value));
+        this.renderHolidaysList();
+
+        document.getElementById('gs-api-key').value = localStorage.getItem('gs_api_key') || '';
+        document.getElementById('gs-client-id').value = localStorage.getItem('gs_client_id') || '';
+        document.getElementById('gs-sheet-id').value = localStorage.getItem('gs_sheet_id') || '';
+    },
+    
+    addShortcutInput: function(key = '', value = '') {
+        const div = document.createElement('div');
+        div.className = 'input-group'; div.style.marginBottom = '5px';
+        div.innerHTML = `<input type="text" class="shortcut-key input-control" value="${key}"><input type="text" class="shortcut-value input-control" value="${value}"><button type="button" class="btn-danger" style="padding: 5px 10px;" onclick="this.parentElement.remove()">X</button>`;
+        document.getElementById('shortcuts-container').appendChild(div);
+    },
+    
+    renderHolidaysList: function() {
+        const container = document.getElementById('holidays-container');
+        container.innerHTML = '';
+        Object.entries(this.settings.holidays).forEach(([key, holiday]) => {
+            const dateStr = `${key.split('-')[1]}/${key.split('-')[0]}`;
+            container.innerHTML += `<div class="holiday-list-item"><span><b>${holiday.name}</b> (${dateStr})</span><button class="btn-danger" style="padding: 2px 6px; font-size:12px;" onclick="cal.deleteHoliday('${key}')">Xóa</button></div>`;
+        });
+    },
+    deleteHoliday: function(key) { delete this.settings.holidays[key]; this.renderHolidaysList(); this.render(); },
+    openHolidayModal: function() { app.openModal('holiday-modal'); },
+    saveHoliday: function() {
+        const name = document.getElementById('holiday-name').value;
+        const day = String(document.getElementById('holiday-day').value).padStart(2, '0');
+        const month = String(document.getElementById('holiday-month').value).padStart(2, '0');
+        if(!name || !day || !month) { return alert("Vui lòng nhập đủ thông tin."); }
+        const key = `${month}-${day}`;
+        this.settings.holidays[key] = { name, type: 'gregorian' };
+        this.renderHolidaysList(); this.render(); app.closeModal('holiday-modal');
+    },
+    
+    saveAllSettings: function() {
+        this.settings.geminiApiKey = document.getElementById('gemini-api-key').value.trim();
+        this.settings.weatherApiKey = document.getElementById('weather-api-key').value.trim();
+        this.settings.shortcuts = {};
+        document.querySelectorAll('#shortcuts-container .input-group').forEach(d => { const k = d.querySelector('.shortcut-key').value.trim(); const v = d.querySelector('.shortcut-value').value.trim(); if (k&&v) this.settings.shortcuts[k] = v; });
+        Store.set('calendarSettings_vFinal', this.settings);
+        
+        googleSheetSync.saveSettings();
+
+        alert('Tất cả cài đặt đã được lưu!');
+        this.render();
+    },
+
+    // NEW: Handles shortcuts on 'input' event for mobile/desktop compatibility
+    applyShortcutsOnInput: function(e) {
+        const target = e.target;
+        const isEditable = target.matches('input[type="text"], textarea, [contenteditable="true"]');
+        if (!isEditable) return;
+
+        const isContentEditable = target.hasAttribute('contenteditable');
+        const currentText = isContentEditable ? target.textContent : target.value;
+
+        if (currentText.slice(-1) === ' ') {
+            const lastWord = currentText.trim().split(' ').pop();
+            if (lastWord && this.settings.shortcuts[lastWord]) {
+                const replacement = this.settings.shortcuts[lastWord];
+                const textBefore = currentText.substring(0, currentText.lastIndexOf(lastWord));
+                const newText = textBefore + replacement + ' ';
+
+                if (isContentEditable) {
+                    target.textContent = newText;
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    range.selectNodeContents(target);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } else {
+                    target.value = newText;
+                }
+            }
+        }
+    },
+
+    renderColorPicker: function(c, o, s, l) { c.innerHTML = ''; o.forEach(o => { const r = document.createElement('div'); r.className = 'color-swatch'; r.style.backgroundColor = o; if (o === s) r.classList.add('selected'); r.onclick = () => { c.querySelector('.selected')?.classList.remove('selected'); r.classList.add('selected'); l(o); }; c.appendChild(r); }); },
+
+    fetchWeather: async function(event, dateStr) {
+        const weatherBox = document.getElementById(`weather-${event.id}`);
+        if (!weatherBox) return; weatherBox.textContent = '...';
+        try {
+            const url = `https://api.weatherapi.com/v1/forecast.json?key=${this.settings.weatherApiKey}&q=${encodeURIComponent(event.location)}&dt=${dateStr}&aqi=no&alerts=no`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('API request failed');
+            const data = await response.json();
+            const day = data.forecast.forecastday[0]?.day;
+            if (day) weatherBox.innerHTML = `🌡️ ${day.avgtemp_c}°C &nbsp; 🌧️ ${day.daily_chance_of_rain}%`;
+            else weatherBox.textContent = 'N/A';
+        } catch (e) { weatherBox.textContent = 'Lỗi'; }
+    },
+    
+    callGeminiAPI: async function(prompt) {
+        if (!this.settings.geminiApiKey) return { error: 'Vui lòng cung cấp Gemini API Key trong Cài đặt.' };
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.settings.geminiApiKey}`;
+        try {
+            const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+            const data = await response.json();
+            if (!response.ok || !data.candidates) return { error: `Lỗi từ API Gemini: ${data.error?.message || 'Không rõ lỗi'}` };
+            return data.candidates[0].content.parts[0].text;
+        } catch (error) { return { error: 'Lỗi mạng hoặc không thể kết nối tới API Gemini.' }; }
+    },
+
+    runAIAnalysis: async function() {
+        const btn = document.getElementById('run-ai-analysis-btn');
+        btn.classList.add('loading'); btn.disabled = true;
+        const prompt = `Phân tích lịch trình JSON sau và cảnh báo xung đột, ngày quá tải, chuyến đi liên tục. Gợi ý tối ưu. Trả lời tiếng Việt.\n\nDữ liệu:\n${JSON.stringify(this.events, null, 2)}`;
+        const aiContent = document.getElementById('ai-alert-content');
+        aiContent.textContent = 'AI đang phân tích...';
+        app.openModal('ai-alert-modal');
+        const result = await this.callGeminiAPI(prompt);
+        aiContent.textContent = result.error || result;
+        btn.classList.remove('loading'); btn.disabled = false;
+    },
+};
+document.getElementById('run-ai-analysis-btn').onclick = () => cal.runAIAnalysis();
+
+// --- 4. EXPENSE MODULE ---
+const exp = {
+    data: Store.get('expenses_vFinal', {'Lê Quốc Huy': []}),
+    settings: Store.get('expenseSettings_vFinal', {
+        prefixes: ['Đi lại', 'Ăn uống', 'Data 4G', 'Taxi', 'Lưu trú'],
+        costs: [50000, 100000, 200000],
+        combos: [{desc: 'Ăn sáng', amount: 35000}, {desc: 'Ăn trưa', amount: 50000}],
+        // UPDATED: New color rule structure
+        colorRules: [
+            {text: 'gấp', applyBg: true, bgColor: '#ffcdd2', applyText: true, textColor: '#b71c1c', applyBorder: true, borderColor: '#ef9a9a'},
+            {text: 'hà nội', applyBg: false, applyText: true, textColor: '#2e7d32', applyBorder: false, borderColor: '#000000'},
+            {text: 'hcm', applyBg: false, applyText: true, textColor: '#d32f2f', applyBorder: false, borderColor: '#000000'}
+        ]
+    }),
+    undoStack: [], redoStack: [], recognition: null,
+    
+    init: function() {
+        document.getElementById('exp-date').valueAsDate = new Date();
+        this.renderProjects();
+        this.switchProject(document.getElementById('exp-project-select').value);
+        this.initializeSpeechRecognition();
+        this.renderSuggestions();
+    },
+    
+    saveStateToHistory: function() { this.redoStack = []; this.undoStack.push(JSON.stringify(this.data)); if (this.undoStack.length > 30) this.undoStack.shift(); this.updateHistoryButtons(); },
+    undo: function() { if (this.undoStack.length > 0) { this.redoStack.push(JSON.stringify(this.data)); this.data = JSON.parse(this.undoStack.pop()); Store.set('expenses_vFinal', this.data); this.renderProjects(); this.renderTable(); } },
+    redo: function() { if (this.redoStack.length > 0) { this.undoStack.push(JSON.stringify(this.data)); this.data = JSON.parse(this.redoStack.pop()); Store.set('expenses_vFinal', this.data); this.renderProjects(); this.renderTable(); } },
+    updateHistoryButtons: function() { document.getElementById('undoBtn').disabled = this.undoStack.length === 0; document.getElementById('redoBtn').disabled = this.redoStack.length === 0; },
+    
+    handleProject: function() {
+        const name = document.getElementById('project-name-input').value.trim();
+        if (!name) return alert('Vui lòng nhập tên dự án');
+        this.saveStateToHistory();
+        if (!this.data[name]) this.data[name] = [];
+        Store.set('expenses_vFinal', this.data);
+        this.renderProjects(name);
+        this.switchProject(name);
+        document.getElementById('project-name-input').value = '';
+    },
+    switchProject: function(name) { this.renderTable(); },
+
+    renderProjects: function(selectedProject) {
+        const select = document.getElementById('exp-project-select');
+        const projects = Object.keys(this.data);
+        const currentProject = selectedProject || select.value || projects[0];
+        select.innerHTML = projects.map(p => `<option value="${p}" ${p === currentProject ? 'selected' : ''}>${p}</option>`).join('');
+    },
+    
+    renderSuggestions: function() {
+        const container = document.getElementById('suggestion-container');
+        container.innerHTML = '';
+        if (this.settings.prefixes?.length > 0) {
+            container.innerHTML += `<h4>Gợi ý mô tả:</h4><div class="suggestion-list">${this.settings.prefixes.map(p => `<button class="suggestion-btn" onclick="exp.insertSuggestion('${p}', 'desc')">${p}</button>`).join('')}</div>`;
+        }
+        if (this.settings.costs?.length > 0) {
+            container.innerHTML += `<h4>Gợi ý chi phí:</h4><div class="suggestion-list">${this.settings.costs.map(c => `<button class="suggestion-btn cost-btn" onclick="exp.insertSuggestion(${c}, 'cost')">${(c/1000)}k</button>`).join('')}</div>`;
+        }
+        if (this.settings.combos?.length > 0) {
+            container.innerHTML += `<h4>Combo:</h4><div class="suggestion-list">${this.settings.combos.map((c, i) => `<button class="suggestion-btn combo-btn" onclick='exp.insertCombo(${i})'>${c.desc} (${c.amount/1000}k)</button>`).join('')}</div>`;
+        }
+    },
+    insertSuggestion: function(val, type) {
+        if (type === 'desc') {
+            const i = document.getElementById('exp-desc');
+            i.value += (i.value ? ' ' : '') + val; i.focus();
+        } else if (type === 'cost') {
+            document.getElementById('exp-amount').value = val / 1000;
+        }
+    },
+    insertCombo: function(index) {
+        const combo = this.settings.combos[index];
+        if (combo) {
+            document.getElementById('exp-desc').value = combo.desc;
+            document.getElementById('exp-amount').value = combo.amount / 1000;
+        }
+    },
+
+    checkLink: function() {
+        const dateStr = document.getElementById('exp-date').value;
+        const suggestionBox = document.getElementById('link-suggestion');
+        const eventList = Store.get('events_vFinal', {})[dateStr];
+        if (eventList && eventList.length > 0) {
+            const ev = eventList[0]; const linkText = `${ev.title}${ev.location ? ' - ' + ev.location : ''}`;
+            suggestionBox.style.display = 'block'; suggestionBox.innerHTML = `🔗 Liên kết: <b>${linkText}</b>`; suggestionBox.dataset.link = linkText;
+        } else {
+            suggestionBox.style.display = 'none'; suggestionBox.dataset.link = '';
+        }
+    },
+
+    addEntry: function() {
+        this.saveStateToHistory();
+        const project = document.getElementById('exp-project-select').value;
+        const date = document.getElementById('exp-date').value;
+        const amount = parseFloat(document.getElementById('exp-amount').value) || 0;
+        const workday = parseFloat(document.getElementById('exp-workday').value) || 0;
+        let desc = document.getElementById('exp-desc').value;
+        if (!date || (!amount && !workday)) return alert('Nhập ngày và chi phí hoặc ngày công!');
+
+        const linkText = document.getElementById('link-suggestion').dataset.link;
+        if (linkText && !desc.includes(linkText)) desc = `${desc} - <span class="auto-linked-text">${linkText}</span>`; 
+
+        if (!this.data[project]) this.data[project] = [];
+        this.data[project].push({ id: Date.now(), date, amount: amount * 1000, workday, desc });
+        Store.set('expenses_vFinal', this.data);
+        this.renderTable();
+        document.getElementById('exp-amount').value = '';
+        document.getElementById('exp-desc').value = '';
+        document.getElementById('exp-workday').value = '';
+    },
+    
+    updateEntry: function(element) {
+        this.saveStateToHistory();
+        const { id, field } = element.dataset;
+        const project = document.getElementById('exp-project-select').value;
+        const entry = this.data[project].find(item => item.id == id);
+        
+        if(entry) {
+            let newValue = field === 'desc' ? element.innerHTML : element.textContent.trim();
+            if (field === 'amount') {
+                newValue = (parseFloat(newValue.replace(/,/g, '')) || 0) * 1000;
+            } else if (field === 'workday') {
+                newValue = parseFloat(newValue) || 0;
+            } else if (field === 'date') { 
+                const p = newValue.match(/^(\d{1,2})\/(\d{1,2})$/); 
+                newValue = p ? `${new Date(entry.date).getFullYear()}-${String(p[2]).padStart(2,'0')}-${String(p[1]).padStart(2,'0')}`: entry.date; 
+            }
+            entry[field] = newValue;
+            Store.set('expenses_vFinal', this.data);
+        }
+        this.renderTable();
+    },
+
+    renderTable: function() {
+        const project = document.getElementById('exp-project-select').value;
+        const container = document.getElementById('expense-table-container');
+        const list = (this.data[project] || []).slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+        
+        const costs = list.filter(i => i.amount > 0);
+        const workdays = list.filter(i => i.workday > 0);
+        let totalVND = 0, totalWorkday = 0;
+
+        let costHtml = `<h3 style="margin-top:0;">Chi phí phát sinh: ${project}</h3><table class="data-table"><thead><tr><th>Ngày</th><th>Mô tả</th><th>VNĐ</th><th>Xóa</th></tr></thead><tbody>`;
+        costs.forEach(item => {
+            totalVND += item.amount;
+            const d = new Date(item.date); const dateFmt = `${d.getUTCDate().toString().padStart(2,'0')}/${(d.getUTCMonth()+1).toString().padStart(2,'0')}`;
+            const colorStyles = this.getColorStyles(item.desc);
+            // MODIFIED: Apply BG to TR, text/border to TD
+            costHtml += `<tr class="clickable-row" style="${colorStyles.bg}" onclick="exp.addComboFromRow(this, ${item.amount}, '${item.desc.replace(/'/g, "\\'")}')">
+                <td style="${colorStyles.text} ${colorStyles.border}" contenteditable="true" data-id="${item.id}" data-field="date" onblur="exp.updateEntry(this)" onclick="event.stopPropagation()">${dateFmt}</td>
+                <td style="${colorStyles.text} ${colorStyles.border}" contenteditable="true" data-id="${item.id}" data-field="desc" onblur="exp.updateEntry(this)" onclick="event.stopPropagation()">${item.desc}</td>
+                <td style="${colorStyles.text} ${colorStyles.border}" class="cost-col" contenteditable="true" data-id="${item.id}" data-field="amount" onblur="exp.updateEntry(this)" onclick="event.stopPropagation()">${item.amount.toLocaleString()}</td>
+                <td style="text-align:center; ${colorStyles.border}"><button class="btn-danger" style="padding:2px 8px" onclick="event.stopPropagation(); exp.deleteItem(${item.id})">&times;</button></td>
+            </tr>`;
+        });
+        costHtml += `<tr class="total-row"><td colspan="2">TỔNG CHI PHÍ</td><td class="cost-col">${totalVND.toLocaleString()}</td><td></td></tr></tbody></table>`;
+
+        let workdayHtml = `<h3 style="margin-top:20px;">Bảng kê ngày công</h3><table class="data-table"><thead><tr><th>Ngày</th><th>Mô tả</th><th>Ngày công</th><th>Xóa</th></tr></thead><tbody>`;
+        workdays.forEach(item => {
+            totalWorkday += parseFloat(item.workday) || 0;
+            const d = new Date(item.date); const dateFmt = `${d.getUTCDate().toString().padStart(2,'0')}/${(d.getUTCMonth()+1).toString().padStart(2,'0')}`;
+            const colorStyles = this.getColorStyles(item.desc);
+            // MODIFIED: Apply BG to TR, text/border to TD
+            workdayHtml += `<tr style="${colorStyles.bg}">
+                <td style="${colorStyles.text} ${colorStyles.border}" contenteditable="true" data-id="${item.id}" data-field="date" onblur="exp.updateEntry(this)">${dateFmt}</td>
+                <td style="${colorStyles.text} ${colorStyles.border}" contenteditable="true" data-id="${item.id}" data-field="desc" onblur="exp.updateEntry(this)">${item.desc}</td>
+                <td style="${colorStyles.text} ${colorStyles.border}" class="cost-col" contenteditable="true" data-id="${item.id}" data-field="workday" onblur="exp.updateEntry(this)">${item.workday || ''}</td>
+                <td style="text-align:center; ${colorStyles.border}"><button class="btn-danger" style="padding:2px 8px" onclick="exp.deleteItem(${item.id})">&times;</button></td>
+            </tr>`;
+        });
+        workdayHtml += `<tr class="total-row"><td colspan="2">TỔNG NGÀY CÔNG</td><td class="cost-col">${totalWorkday.toFixed(1)}</td><td></td></tr></tbody></table>`;
+        
+        container.innerHTML = costHtml + workdayHtml;
+    },
+    
+    // NEW: Function to add combo suggestion from a table row click
+    addComboFromRow: function(rowElement, amount, desc) {
+        const cleanDesc = desc.replace(/<[^>]*>?/gm, '').trim();
+        if (!cleanDesc || !amount) return;
+
+        if (confirm(`Thêm combo "${cleanDesc} - ${amount.toLocaleString()} VNĐ" vào danh sách gợi ý?`)) {
+            const exists = this.settings.combos.some(c => c.desc === cleanDesc && c.amount === amount);
+            if (exists) {
+                alert("Combo này đã tồn tại trong danh sách.");
+                return;
+            }
+            this.settings.combos.push({ desc: cleanDesc, amount });
+            this.saveSettings(false); // Save without showing alert
+            this.renderSuggestions();
+            alert("Đã thêm combo thành công!");
+        }
+    },
+
+    // UPDATED: getColorStyles now handles background, text, and border separately.
+    getColorStyles: function(text) {
+        let styles = { bg: '', text: '', border: '', textColorValue: '', borderValue: '' };
+        const lowerText = text.toLowerCase().replace(/<[^>]*>?/gm, '');
+
+        (this.settings.colorRules || []).forEach(rule => {
+            if (rule.text && lowerText.includes(rule.text.toLowerCase())) {
+                if (rule.applyBg) {
+                    styles.bg += `background-color: ${rule.bgColor};`;
+                }
+                if (rule.applyText) {
+                    styles.text += `color: ${rule.textColor};`;
+                    styles.textColorValue = rule.textColor;
+                }
+                if (rule.applyBorder) {
+                    styles.border += `border: 2px solid ${rule.borderColor}; margin: -1px;`; // margin to prevent layout shift
+                    styles.borderValue = `2px solid ${rule.borderColor}`;
+                }
+            }
+        });
+        return styles;
+    },
+
+    deleteItem: function(id) {
+        if(confirm('Xóa mục này?')) {
+            this.saveStateToHistory();
+            const project = document.getElementById('exp-project-select').value;
+            this.data[project] = this.data[project].filter(i => i.id !== id);
+            Store.set('expenses_vFinal', this.data);
+            this.renderTable();
+        }
+    },
+    
+    setWorkday: function(val) { document.getElementById('exp-workday').value = val; },
+    
+    initializeSpeechRecognition: function() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
+        this.recognition = new SpeechRecognition(); this.recognition.continuous = false; this.recognition.lang = 'vi-VN';
+        const micBtn = document.getElementById('micBtn');
+        micBtn.onclick = () => { this.recognition.start(); micBtn.textContent = '…'; };
+        this.recognition.onresult = (e) => { const i = document.getElementById('exp-desc'); i.value += (i.value ? ' ' : '') + e.results[0][0].transcript; };
+        this.recognition.onend = () => { micBtn.textContent = '🎤'; };
+    },
+    
+    translateAllDescriptions: async function() {
+        if (!confirm('Dịch tất cả mô tả sang tiếng Anh?')) return;
+        this.saveStateToHistory();
+        const project = document.getElementById('exp-project-select').value;
+        const btn = document.getElementById('translateBtn');
+        btn.textContent = 'Đang dịch...'; btn.disabled = true;
+
+        const promises = (this.data[project]||[]).map(item => {
+            const text = item.desc.replace(/<[^>]*>?/gm, '');
+            if (!text) return Promise.resolve();
+            return fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=vi|en`).then(res => res.json()).then(data => { if (data.responseData?.translatedText) item.desc = data.responseData.translatedText; });
+        });
+        await Promise.all(promises);
+        Store.set('expenses_vFinal', this.data); this.renderTable();
+        btn.textContent = 'Dịch sang Anh'; btn.disabled = false; alert('Dịch hoàn tất!');
+    },
+
+    // UPDATED: Excel export with RMB and Company Loan
+    exportToExcelStyled: function() {
+        const project = document.getElementById('exp-project-select').value;
+        const list = this.data[project] || [];
+        if (list.length === 0) return alert("Không có dữ liệu.");
+
+        const rmbRate = parseFloat(prompt("Nhập tỷ giá hiện tại (1 RMB = ? VND):", "3500"));
+        if (isNaN(rmbRate) || rmbRate <= 0) {
+            alert("Tỷ giá không hợp lệ. Hủy xuất file.");
+            return;
+        }
+
+        // Get company loan from UI input first, then prompt to confirm/edit
+        const loanFromUI = parseFloat(document.getElementById('exp-loan').value) || 0;
+        const companyLoan = parseFloat(prompt("Nhập số tiền đã ứng trước của công ty (VND):", loanFromUI));
+        if (isNaN(companyLoan)) return;
+
+
+        const monthlySalary = parseFloat(prompt("Nhập lương tháng (VND):", "18000000"));
+        if (isNaN(monthlySalary)) return;
+        const workdaysInMonth = parseFloat(prompt("Nhập số ngày công quy ước trong tháng (vd: 26):", "26"));
+        if (isNaN(workdaysInMonth)) return;
+        const totalDaysInThatMonth = parseFloat(prompt("Nhập tổng số ngày trong tháng (vd: 30, 31):", "31"));
+        if (isNaN(totalDaysInThatMonth)) return;
+
+        const wb = XLSX.utils.book_new();
+        let ws_data = [[`BÁO CÁO CHI PHÍ & LƯƠNG: ${project}`], []];
+        
+        ws_data.push(["A. CHI PHÍ PHÁT SINH"], ["Ngày", "Mô tả", "VNĐ", `RMB (Tỷ giá: ${rmbRate})`]);
+        const costs = list.filter(i => i.amount > 0).sort((a,b) => new Date(a.date) - new Date(b.date));
+        const cost_start_row = 5;
+        costs.forEach((i, index) => {
+            const currentRow = cost_start_row + index;
+            ws_data.push([i.date, i.desc.replace(/<[^>]*>?/gm, ''), i.amount, {f: `C${currentRow}/${rmbRate}`}]);
+        });
+        const cost_end_row = cost_start_row + costs.length - 1;
+        ws_data.push(["Tổng chi phí", "", {f: `SUM(C${cost_start_row}:C${cost_end_row})`}, {f: `SUM(D${cost_start_row}:D${cost_end_row})`}]);
+        ws_data.push([]);
+        
+        const salary_start_row = ws_data.length + 1;
+        ws_data.push(["B. BẢNG KÊ NGÀY CÔNG"], ["Ngày", "Mô tả", "Ngày công"]);
+        const workdays = list.filter(i => i.workday > 0).sort((a,b) => new Date(a.date) - new Date(b.date));
+        workdays.forEach(i => ws_data.push([i.date, i.desc.replace(/<[^>]*>?/gm, ''), i.workday]));
+        const workday_start_row = salary_start_row + 2, workday_end_row = workday_start_row + workdays.length - 1;
+        ws_data.push(["Tổng ngày công", "", {f: `SUM(C${workday_start_row}:C${workday_end_row})`}]);
+        
+        const summary_start_row = ws_data.length + 2;
+        ws_data.push([], ["C. TỔNG KẾT"]);
+        ws_data.push(["Tổng chi phí (A)", "", {f: `C${cost_end_row + 1}`}]);
+        ws_data.push(["Lương theo ngày công (B)", "", {f: `(${monthlySalary}/${workdaysInMonth}) * C${workday_end_row + 1}`}]);
+        ws_data.push(["Khấu trừ ứng trước", "", companyLoan > 0 ? -companyLoan : 0]);
+        ws_data.push(["TỔNG CỘNG THANH TOÁN (A+B-Khấu trừ)", "", {f: `SUM(C${summary_start_row + 1}:C${summary_start_row + 3})`}]);
+
+        const ws = XLSX.utils.aoa_to_sheet(ws_data, { cellDates: true });
+        ws['!cols'] = [ {wch:12}, {wch:50}, {wch:15}, {wch:25} ];
+        XLSX.utils.book_append_sheet(wb, ws, "BaoCao");
+        XLSX.writeFile(wb, `BaoCao_${project}.xlsx`);
+    },
+    
+    // NEW: Function to import data from an Excel file
+    importFromExcel: function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const projectName = prompt("Nhập tên dự án bạn muốn import dữ liệu vào:", document.getElementById('exp-project-select').value);
+        if (!projectName) {
+            alert("Cần có tên dự án để import.");
+            event.target.value = ''; // Reset file input
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                let newEntries = [];
+                let readingCosts = false;
+                let readingWorkdays = false;
+
+                for (const row of json) {
+                    if (row[0] && typeof row[0] === 'string') {
+                         if (row[0].includes("A. CHI PHÍ PHÁT SINH")) { readingCosts = true; readingWorkdays = false; continue; }
+                         if (row[0].includes("B. BẢNG KÊ NGÀY CÔNG")) { readingCosts = false; readingWorkdays = true; continue; }
+                         if (row[0].includes("Tổng chi phí") || row[0].includes("Tổng ngày công")) { readingCosts = false; readingWorkdays = false; continue; }
+                    }
+                    
+                    if ((readingCosts || readingWorkdays) && row[0] instanceof Date) {
+                        const entry = { id: Date.now() + Math.random() };
+                        const date = new Date(Date.UTC(row[0].getFullYear(), row[0].getMonth(), row[0].getDate()));
+                        entry.date = date.toISOString().split('T')[0];
+                        entry.desc = row[1] || '';
+                        entry.amount = readingCosts ? (parseFloat(row[2]) || 0) : 0;
+                        entry.workday = readingWorkdays ? (parseFloat(row[2]) || 0) : 0;
+                        newEntries.push(entry);
+                    }
+                }
+
+                if(newEntries.length > 0) {
+                    this.saveStateToHistory();
+                    if (!this.data[projectName]) {
+                        this.data[projectName] = [];
+                    }
+                    this.data[projectName].push(...newEntries);
+                    Store.set('expenses_vFinal', this.data);
+                    this.renderProjects(projectName);
+                    this.switchProject(projectName);
+                    alert(`Đã import thành công ${newEntries.length} mục vào dự án "${projectName}".`);
+                } else {
+                    alert("Không tìm thấy dữ liệu hợp lệ để import trong file.");
+                }
+
+            } catch (error) {
+                console.error("Lỗi khi import file Excel:", error);
+                alert("Đã xảy ra lỗi khi đọc file. Vui lòng đảm bảo file đúng định dạng.");
+            } finally {
+                event.target.value = ''; // Reset file input
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    },
+
+    toggleForm: function() {
+        document.getElementById('expense-form-card').classList.toggle('collapsed');
+    },
+    openSettingsModal: function() {
+        this.renderSettings();
+        app.openModal('expense-settings-modal');
+    },
+    renderSettings: function() {
+        const body = document.getElementById('expense-settings-body');
+        body.innerHTML = `
+            <div class="settings-card">
+                <h3>Gợi ý Mô tả</h3>
+                <div id="settings-prefixes-list"></div>
+                <div class="input-group"><input type="text" id="new-prefix-input" class="input-control" placeholder="Thêm gợi ý mới..."><button class="btn-secondary" onclick="exp.addSettingItem('prefix')">Thêm</button></div>
+            </div>
+            <div class="settings-card" style="margin-top:15px;">
+                <h3>Gợi ý Chi phí (VNĐ)</h3>
+                <div id="settings-costs-list"></div>
+                <div class="input-group"><input type="number" id="new-cost-input" class="input-control" placeholder="Thêm chi phí mới (vd: 50000)"><button class="btn-secondary" onclick="exp.addSettingItem('cost')">Thêm</button></div>
+            </div>
+            <div class="settings-card" style="margin-top:15px;">
+                <h3>Gợi ý Combo (Mô tả & Chi phí)</h3>
+                <div id="settings-combos-list"></div>
+                <div class="input-group"><input type="text" id="new-combo-desc" class="input-control" placeholder="Mô tả"><input type="number" id="new-combo-amount" class="input-control" placeholder="Số tiền"><button class="btn-secondary" onclick="exp.addSettingItem('combo')">Thêm</button></div>
+            </div>
+            <div class="settings-card" style="margin-top:15px;">
+                <h3>Tô màu theo Từ khóa</h3>
+                <div id="settings-color-rules-list" style="max-height: 200px; overflow-y: auto;"></div>
+                <div class="input-group" style="flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="new-rule-text" class="input-control" placeholder="Từ khóa" style="flex-basis: 100%;">
+                    <label style="display:flex; align-items:center; gap: 4px;"><input type="checkbox" id="new-rule-apply-bg" checked> Nền: <input type="color" id="new-rule-bg" value="#ffcdd2"></label>
+                    <label style="display:flex; align-items:center; gap: 4px;"><input type="checkbox" id="new-rule-apply-text" checked> Chữ: <input type="color" id="new-rule-text-color" value="#b71c1c"></label>
+                    <label style="display:flex; align-items:center; gap: 4px;"><input type="checkbox" id="new-rule-apply-border"> Viền: <input type="color" id="new-rule-border-color" value="#ef9a9a"></label>
+                    <button class="btn-secondary" onclick="exp.addSettingItem('colorRule')" style="width: 100%;">Thêm</button>
+                </div>
+            </div>
+        `;
+        this.renderSettingItems('prefix'); this.renderSettingItems('cost');
+        this.renderSettingItems('combo'); this.renderSettingItems('colorRule');
+    },
+    renderSettingItems: function(type) {
+        let container, items, html = '';
+        if (type === 'prefix') { container = document.getElementById('settings-prefixes-list'); items = this.settings.prefixes || []; html = items.map((item, i) => `<div class="holiday-list-item"><span>${item}</span><button class="btn-danger" onclick="exp.deleteSettingItem('prefix', ${i})">X</button></div>`).join(''); }
+        if (type === 'cost') { container = document.getElementById('settings-costs-list'); items = this.settings.costs || []; html = items.map((item, i) => `<div class="holiday-list-item"><span>${item.toLocaleString()}</span><button class="btn-danger" onclick="exp.deleteSettingItem('cost', ${i})">X</button></div>`).join(''); }
+        if (type === 'combo') { container = document.getElementById('settings-combos-list'); items = this.settings.combos || []; html = items.map((item, i) => `<div class="holiday-list-item"><span>${item.desc} - ${item.amount.toLocaleString()}</span><button class="btn-danger" onclick="exp.deleteSettingItem('combo', ${i})">X</button></div>`).join(''); }
+        if (type === 'colorRule') {
+            container = document.getElementById('settings-color-rules-list'); items = this.settings.colorRules || [];
+            html = items.map((item, i) => `
+                <div class="holiday-list-item">
+                    <span><b>${item.text}</b>: <span style="background-color:${item.applyBg ? item.bgColor : 'transparent'}; color:${item.applyText ? item.textColor : 'inherit'}; border: ${item.applyBorder ? '2px solid '+item.borderColor : 'none'}; padding: 2px 4px; border-radius:3px;">Demo</span></span>
+                    <div style="display:flex; align-items: center; gap: 8px;">
+                        <label title="Áp dụng màu nền" style="cursor:pointer">Nền <input type="checkbox" onchange="exp.toggleRuleType(${i}, 'bg')" ${item.applyBg ? 'checked' : ''}></label>
+                        <label title="Áp dụng màu chữ" style="cursor:pointer">Chữ <input type="checkbox" onchange="exp.toggleRuleType(${i}, 'text')" ${item.applyText ? 'checked' : ''}></label>
+                        <label title="Áp dụng màu viền" style="cursor:pointer">Viền <input type="checkbox" onchange="exp.toggleRuleType(${i}, 'border')" ${item.applyBorder ? 'checked' : ''}></label>
+                        <button class="btn-danger" onclick="exp.deleteSettingItem('colorRule', ${i})">X</button>
+                    </div>
+                </div>`).join('');
+        }
+        if(container) container.innerHTML = html;
+    },
+    toggleRuleType(index, type) {
+        const rule = this.settings.colorRules[index];
+        if(rule) {
+            if(type === 'bg') rule.applyBg = !rule.applyBg;
+            if(type === 'text') rule.applyText = !rule.applyText;
+            if(type === 'border') rule.applyBorder = !rule.applyBorder;
+            this.renderSettingItems('colorRule'); // Re-render to show changes
+        }
+    },
+    addSettingItem(type) {
+        if(type === 'prefix') { const val = document.getElementById('new-prefix-input').value.trim(); if(val) this.settings.prefixes.push(val); document.getElementById('new-prefix-input').value=''; }
+        if(type === 'cost') { const val = parseInt(document.getElementById('new-cost-input').value); if(val) this.settings.costs.push(val); document.getElementById('new-cost-input').value=''; }
+        if(type === 'combo') { const desc = document.getElementById('new-combo-desc').value.trim(); const amount = parseInt(document.getElementById('new-combo-amount').value); if(desc && amount) this.settings.combos.push({desc, amount}); document.getElementById('new-combo-desc').value=''; document.getElementById('new-combo-amount').value='';}
+        if(type === 'colorRule') {
+            const text = document.getElementById('new-rule-text').value.trim();
+            if(text) this.settings.colorRules.push({
+                text, 
+                applyBg: document.getElementById('new-rule-apply-bg').checked, 
+                bgColor: document.getElementById('new-rule-bg').value, 
+                applyText: document.getElementById('new-rule-apply-text').checked, 
+                textColor: document.getElementById('new-rule-text-color').value,
+                applyBorder: document.getElementById('new-rule-apply-border').checked,
+                borderColor: document.getElementById('new-rule-border-color').value
+            });
+            document.getElementById('new-rule-text').value='';
+        }
+        this.renderSettingItems(type);
+    },
+    deleteSettingItem(type, index) {
+        if(type === 'prefix') this.settings.prefixes.splice(index, 1);
+        if(type === 'cost') this.settings.costs.splice(index, 1);
+        if(type === 'combo') this.settings.combos.splice(index, 1);
+        if(type === 'colorRule') this.settings.colorRules.splice(index, 1);
+        this.renderSettingItems(type);
+    },
+    saveSettings(showAlert = true) {
+        Store.set('expenseSettings_vFinal', this.settings);
+        this.renderSuggestions();
+        this.renderTable();
+        cal.render(); 
+        if(showAlert) alert('Cài đặt đã được lưu!');
+        app.closeModal('expense-settings-modal');
+    },
+
+    clearData: function() {
+        if(confirm('XÓA TOÀN BỘ DỮ LIỆU của TẤT CẢ dự án? Hành động này không thể hoàn tác!')) {
+            this.saveStateToHistory();
+            this.data = {'Lê Quốc Huy': []};
+            Store.set('expenses_vFinal', this.data);
+            this.renderProjects();
+            this.renderTable();
+        }
+    }
+};
+
+// --- 5. APP CONTROLLER ---
+const app = {
+    switchTab: function(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelector(`.tab-btn[onclick="app.switchTab('${tabName}')"]`).classList.add('active');
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+
+        const floatingBtn = document.getElementById('toggle-form-btn');
+        const expenseLayout = document.querySelector('.expense-layout');
+        if (tabName === 'expenses' && expenseLayout) {
+            // Only show floating button if form is not visible (on mobile)
+            if (window.getComputedStyle(expenseLayout).gridTemplateColumns.startsWith('1fr')) {
+                floatingBtn.style.display = 'flex';
+            } else {
+                 floatingBtn.style.display = 'none';
+            }
+        } else {
+            floatingBtn.style.display = 'none';
+        }
+    },
+    openModal: (id) => { document.getElementById(id).style.display = 'flex'; },
+    closeModal: (id) => { document.getElementById(id).style.display = 'none'; },
+    closeAllModals: () => { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
+};
+
+
+// --- 6. *** NEW: GOOGLE SHEET SYNC MODULE *** ---
+const googleSheetSync = {
+    CONFIG: { apiKey: '', clientId: '', sheetId: '' },
+    tokenClient: null,
+    gapiLoaded: false,
+    gisLoaded: false,
+
+    init: function() {
+        this.CONFIG.apiKey = localStorage.getItem('gs_api_key');
+        this.CONFIG.clientId = localStorage.getItem('gs_client_id');
+        this.CONFIG.sheetId = localStorage.getItem('gs_sheet_id');
+
+        if (this.CONFIG.apiKey && this.CONFIG.clientId && this.CONFIG.sheetId) {
+            this.loadGoogleLibs();
+        } else {
+            this.setStatus("Vui lòng nhập đầy đủ thông tin Cài đặt Sheet.", 'status-loading');
+        }
+    },
+
+    saveSettings: function() {
+        localStorage.setItem('gs_api_key', document.getElementById('gs-api-key').value.trim());
+        localStorage.setItem('gs_client_id', document.getElementById('gs-client-id').value.trim());
+        localStorage.setItem('gs_sheet_id', document.getElementById('gs-sheet-id').value.trim());
+        location.reload(); // Reload to apply new settings
+    },
+
+    resetSettings: function() {
+        if(confirm("Bạn muốn xóa cài đặt Google Sheet để nhập lại?")) {
+            localStorage.removeItem('gs_api_key');
+            localStorage.removeItem('gs_client_id');
+            localStorage.removeItem('gs_sheet_id');
+            location.reload();
+        }
+    },
+
+    setStatus: function(msg, type) {
+        const el = document.getElementById('system-status');
+        el.style.display = 'block';
+        el.className = type; 
+        el.innerText = msg;
+    },
+    
+    loadGoogleLibs: function() {
+        const s1 = document.createElement('script');
+        s1.src = "https://apis.google.com/js/api.js";
+        s1.onload = () => gapi.load('client', this.initGapi.bind(this));
+        document.body.appendChild(s1);
+
+        const s2 = document.createElement('script');
+        s2.src = "https://accounts.google.com/gsi/client";
+        s2.onload = this.initGis.bind(this);
+        document.body.appendChild(s2);
+    },
+
+    initGapi: async function() {
+        try {
+            await gapi.client.init({
+                apiKey: this.CONFIG.apiKey,
+                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+            });
+            this.gapiLoaded = true;
+            this.checkReady();
+        } catch (err) {
+            this.setStatus("Lỗi API Key: " + (err.result?.error?.message || err), 'status-error');
+        }
+    },
+
+    initGis: function() {
+        try {
+            this.tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: this.CONFIG.clientId,
+                scope: "https://www.googleapis.com/auth/spreadsheets",
+                callback: (resp) => {
+                    if (resp.error) return this.setStatus("Lỗi Đăng nhập: " + resp.error, 'status-error');
+                    document.getElementById('auth-btn').style.display = 'none';
+                    document.getElementById('signout-btn').style.display = 'block';
+                    this.setStatus("Đã đăng nhập thành công. Sẵn sàng ghi dữ liệu.", 'status-success');
+                },
+            });
+            this.gisLoaded = true;
+            this.checkReady();
+        } catch (err) {
+            this.setStatus("Lỗi Client ID: " + err.message, 'status-error');
+        }
+    },
+
+    checkReady: function() {
+        if (this.gapiLoaded && this.gisLoaded) {
+            if (gapi.client.getToken()) {
+                document.getElementById('auth-btn').style.display = 'none';
+                document.getElementById('signout-btn').style.display = 'block';
+                this.setStatus("Đã kết nối Google. Sẵn sàng.", 'status-success');
+            } else {
+                this.setStatus("Vui lòng bấm Đăng nhập Google.", 'status-loading');
+            }
+        }
+    },
+
+    handleAuth: function() {
+        if (!this.gisLoaded) {
+            alert("Đang tải thư viện Google hoặc Cấu hình Client ID bị sai. Vui lòng đợi hoặc Reset cài đặt.");
+            return;
+        }
+        if (!this.tokenClient) {
+            alert("Lỗi cấu hình Client ID. Vui lòng kiểm tra lại.");
+            return;
+        }
+        this.tokenClient.requestAccessToken({prompt: 'consent'});
+    },
+
+    handleSignout: function() {
+        const token = gapi.client.getToken();
+        if (token) {
+            google.accounts.oauth2.revoke(token.access_token);
+            gapi.client.setToken('');
+            document.getElementById('auth-btn').style.display = 'block';
+            document.getElementById('signout-btn').style.display = 'none';
+            this.setStatus("Đã đăng xuất.", 'status-success');
+        }
+    },
+
+    sendEvent: async function(dateStr, eventText) {
+        if (!gapi.client.getToken()) {
+            alert("Bạn CHƯA đăng nhập Google. Hãy vào mục Cài đặt & AI để đăng nhập trước!");
+            return;
+        }
+        if(!this.CONFIG.sheetId) {
+            alert("Chưa có Spreadsheet ID. Hãy vào mục Cài đặt & AI để cấu hình!");
+            return;
+        }
+
+        try {
+            this.setStatus("Đang gửi sự kiện lên Sheet...", 'status-loading');
+            
+            // Convert YYYY-MM-DD to DD/MM/YYYY for sheet
+            const parts = dateStr.split('-');
+            const formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+
+            await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: this.CONFIG.sheetId,
+                range: 'Sheet1!A:B', // Assumes data is in columns A and B
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: [[formattedDate, eventText]] }
+            });
+            
+            this.setStatus(`Gửi sự kiện "${eventText}" thành công.`, 'status-success');
+            
+        } catch (err) {
+            console.error(err);
+            const errorMsg = "Lỗi gửi dữ liệu: " + (err.result?.error?.message || err);
+            this.setStatus(errorMsg, 'status-error');
+            alert(errorMsg);
+        }
+    }
+};
+
+
+// --- INIT ---
+window.onload = function() {
+    cal.init();
+    exp.init();
+    exp.checkLink();
+    app.switchTab('schedule'); // Ensure correct initial state
+    googleSheetSync.init(); // Initialize Google Sheet sync module
+};
+</script>
+
+</body>
+</html>
