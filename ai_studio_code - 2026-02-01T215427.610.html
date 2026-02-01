@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hệ thống Quản lý Dự án & Chi phí Hợp nhất (Pro Version)</title>
+<!-- Thư viện Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* =========================================
+   GLOBAL VARIABLES & RESET
+   ========================================= */
+:root {
+    --primary-color: #007bff; --primary-hover: #0056b3; --secondary-color: #6c757d;
+    --success-color: #28a745; --danger-color: #dc3545; --warning-bg: #fff3cd;
+    --warning-text: #856404; --info-bg: #d1ecf1; --info-text: #0c5460;
+    --light-bg: #f8f9fa; --border-color: #dee2e6; --highlight-red: #d63384;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --modal-bg: rgba(0, 0, 0, 0.55);
+}
+
+body {
+    font-family: var(--font-family); margin: 0; padding: 10px;
+    background-color: #f4f6f9; color: #333; font-size: 14px;
+}
+
+button { cursor: pointer; transition: all 0.2s; }
+input, select, button, textarea { font-family: inherit; font-size: inherit; }
+
+/* =========================================
+   LAYOUT: TABS & CONTAINER
+   ========================================= */
+.app-container {
+    max-width: 1800px; margin: 0 auto; background: white; border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08); overflow: hidden; min-height: 800px;
+    display: flex; flex-direction: column;
+}
+.tab-header { display: flex; background-color: #fff; border-bottom: 2px solid var(--border-color); padding: 0 20px; flex-wrap: wrap; }
+.tab-btn { padding: 15px 25px; background: none; border: none; font-size: 16px; font-weight: 600; color: var(--secondary-color); border-bottom: 4px solid transparent; margin-bottom: -2px; }
+.tab-btn:hover { color: var(--primary-color); background-color: #f8f9fa; }
+.tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+.tab-content-wrapper { padding: 20px; flex-grow: 1; background-color: #fff; position: relative; }
+.tab-pane { display: none; animation: fadeIn 0.3s ease-in-out; }
+.tab-pane.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* =========================================
+   SEARCH & UTILITY
+   ========================================= */
+.search-bar-container {
+    padding: 8px; background-color: #f8f9fa; border: 1px solid #dee2e6;
+    border-radius: 8px; margin-bottom: 15px; display: flex;
+}
+.search-input {
+    width: 100%; border: none; outline: none; background: transparent;
+    font-size: 16px; padding: 5px;
+}
+/* Floating Shortcut Button */
+.floating-shortcut-btn {
+    position: fixed; bottom: 20px; right: 20px; z-index: 1050;
+    background-color: var(--success-color); color: white; border: none;
+    width: 50px; height: 50px; border-radius: 50%; font-size: 24px;
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25); cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+.floating-shortcut-btn:hover { transform: scale(1.1); }
+
+/* =========================================
+   MODULE 1: LỊCH TRÌNH (CALENDAR)
+   ========================================= */
+.calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: var(--light-bg); padding: 10px; border-radius: 8px; flex-wrap: wrap; gap: 10px; }
+.calendar-controls h2 { margin: 0; color: var(--primary-color); font-size: 1.5rem; }
+.nav-group { display: flex; gap: 10px; align-items: center; }
+.btn-primary, .btn-secondary, .btn-info, .btn-success, .btn-danger {
+    color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 500;
+}
+.btn-primary { background: var(--primary-color); }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary { background: var(--secondary-color); }
+.btn-secondary:hover { background: #5a6268; }
+.btn-info { background: #17a2b8; }
+.btn-info:hover { background: #138496; }
+.btn-danger { background: var(--danger-color); }
+.btn-success { background: var(--success-color); }
+
+/* Grid Lịch */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); overflow-x: auto; }
+.cal-header { background-color: #e9ecef; text-align: center; padding: 10px; font-weight: bold; color: #495057; }
+.cal-day { background-color: white; min-height: 140px; padding: 5px; position: relative; display: flex; flex-direction: column; transition: background-color 0.2s; }
+.cal-day.filtered-out { opacity: 0.3; pointer-events: none; }
+.cal-day:hover { background-color: #fcfcfc; }
+.cal-day.today { background-color: #fff3cd; }
+.cal-day.other-month { background-color: #f4f4f4; color: #ccc; pointer-events: none; }
+.day-num { font-weight: bold; font-size: 1.1em; margin-bottom: 5px; display: flex; justify-content: space-between; }
+.holiday-text { font-size: 0.7em; color: var(--success-color); font-weight: bold; display: block; text-align: right; }
+
+/* Sự kiện trong lịch */
+.event-tag { background-color: #e7f5ff; border-left: 4px solid var(--primary-color); padding: 4px; margin-bottom: 4px; border-radius: 2px; font-size: 0.85em; cursor: pointer; transition: transform 0.1s; overflow: hidden; }
+.event-tag:hover { transform: scale(1.02); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.event-title { font-weight: bold; color: #004085; }
+.event-loc { font-style: italic; color: #555; font-size: 0.9em; }
+.todo-preview { font-size: 0.85em; color: #555; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* =========================================
+   SETTINGS & AI PANEL
+   ========================================= */
+.settings-panel { padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; margin-top: 15px; background: #fdfdff; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.settings-card { border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; background: #fff; }
+.settings-card h3 { margin-top: 0; color: var(--primary-color); }
+.color-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.color-swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+.color-swatch.selected { border-color: var(--primary-color); }
+.holiday-list-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+.rule-setting-item { display: flex; justify-content: space-between; align-items: center; padding: 4px; border-bottom: 1px solid #eee; font-size: 0.9em; flex-wrap: wrap; }
+.rule-setting-item > div { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+/* AI Assistant Styles */
+#ai-assistant-panel { margin-top: 20px; }
+.ai-chat-box { height: 250px; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; overflow-y: auto; margin-bottom: 10px; background-color: #f8f9fa; }
+.ai-message { background-color: #e9ecef; padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; max-width: 80%; position: relative; }
+.ai-message.user { background-color: #cfe2ff; margin-left: auto; text-align: right; }
+/* Nút copy/chọn prompt */
+.ai-message-copy-btn {
+    position: absolute; top: 2px; right: 5px; 
+    background: none; border: none; color: #555; 
+    font-size: 0.8em; cursor: pointer; opacity: 0.6;
+    padding: 2px; line-height: 1;
+}
+.ai-message.user .ai-message-copy-btn { left: 5px; right: auto; }
+.ai-message-copy-btn:hover { opacity: 1; color: var(--primary-color); }
+/* End Nút copy/chọn prompt */
+
+.ai-prompt-area { display: flex; gap: 10px; }
+.ai-prompt-area textarea { flex-grow: 1; resize: vertical; }
+.ai-response-status { font-style: italic; color: var(--secondary-color); min-height: 20px; }
+.prompt-template-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.prompt-template-btn { background-color: #f0f0f0; border: 1px solid #ddd; padding: 5px 10px; border-radius: 15px; font-size: 12px; cursor: pointer; }
+.prompt-template-btn:hover { background-color: #e0e0e0; }
+
+/* =========================================
+   WEATHER PANEL (NEW)
+   ========================================= */
+#weather-forecast-panel { margin-top: 25px; padding-top: 20px; border-top: 2px solid var(--border-color); }
+.weather-forecast-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+.weather-card { background: linear-gradient(135deg, #6dd5ed, #2193b0); color: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+.weather-card h3 { margin-top: 0; padding-bottom: 5px; font-size: 1.4em; }
+.weather-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.weather-item { background: rgba(255,255,255,0.2); padding: 8px; border-radius: 6px; text-align: center; font-size: 0.9em; }
+.weather-item strong { display: block; opacity: 0.9; margin-bottom: 3px; font-size: 0.8em; }
+.weather-item span { font-size: 1.1em; font-weight: bold; }
+.weather-today-desc { font-size: 1.1em; font-style: italic; margin: 5px 0 15px 0; }
+
+/* =========================================
+   MODULE 2: QUẢN LÝ CHI PHÍ (EXPENSES)
+   ========================================= */
+.expense-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; position: relative; }
+.expense-form-card { background: white; border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; transition: all 0.3s ease-in-out; }
+.expense-table-container { overflow-x: auto; background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9em; }
+.form-group .checkbox-label { display: flex; align-items: center; gap: 8px; font-weight: normal; }
+.input-control { width: 100%; padding: 8px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+.input-control:focus { border-color: var(--primary-color); outline: none; }
+.input-group { display: flex; gap: 5px; align-items: center; }
+.input-group .btn-secondary { padding: 8px 12px; }
+.btn-add { background: var(--success-color); color: white; border: none; padding: 10px 15px; border-radius: 4px; width: 100%; margin-top: 10px; font-weight: bold; }
+.btn-add:hover { background: #218838; }
+.history-buttons button { padding: 5px 10px; font-weight: bold; }
+.history-buttons button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Linking & Prefix Styles --- */
+.link-suggestion-container { display: flex; align-items: center; gap: 10px; background-color: #e7f5ff; padding: 4px 8px; border-radius: 4px; border-left: 3px solid var(--primary-color); margin: 4px 0; display: none; }
+.link-suggestion { font-size: 0.85em; color: var(--primary-color); font-weight: 600; flex-grow: 1; }
+.suggestion-container { margin-top: 8px; }
+.suggestion-container h4 { font-size: 0.9em; margin: 8px 0 4px 0; color: var(--secondary-color); }
+.suggestion-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.suggestion-btn { background-color: #e7f3ff; color: #1b74e4; border: 1px solid #cce0ff; border-radius: 12px; padding: 4px 10px; font-size: 0.85em; cursor: pointer; }
+.suggestion-btn.cost-btn { background-color: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+.suggestion-btn.combo-btn { background-color: #fff3e0; color: #ef6c00; border-color: #ffe0b2; font-weight: 500; }
+.suggestion-btn.advanced-combo-btn { background-color: #f3e5f5; color: #6a1b9a; border-color: #e1bee7; font-weight: bold; }
+
+/* Table Styles */
+.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.data-table th, .data-table td { border: 1px solid #dee2e6; padding: 8px; text-align: left; font-size: 0.95em; }
+.data-table th { background-color: #f8f9fa; font-weight: 600; }
+.data-table tr.filtered-out { display: none; }
+.data-table tr:hover { background-color: #f1f1f1; }
+.cost-col { text-align: right; font-family: monospace, sans-serif; font-size: 1.1em; }
+.desc-col { color: #333; }
+.auto-linked-text { color: var(--danger-color); font-weight: 500; }
+td[contenteditable="true"] { background-color: #fef9e7; cursor: cell; }
+td[contenteditable="true"]:focus { background-color: #eaf2f8; outline: 2px solid var(--primary-color); }
+.total-row td { font-weight: bold; background-color: #e7f3ff; }
+.table-actions-bar { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+
+/* --- Advanced Combo Column Toggle (NEW) --- */
+.data-table th:first-child, 
+.data-table td:first-child { 
+    display: none; /* Ẩn cột checkbox theo yêu cầu */
+}
+.data-table.advanced-combo-active th:first-child, 
+.data-table.advanced-combo-active td:first-child { 
+    display: table-cell; /* Hiện cột checkbox khi kích hoạt */
+}
+/* Total row needs an empty cell if the first column is hidden/shown */
+.total-row .combo-col-cell {
+    padding: 0; /* Ensures the total row does not shift content when the column is toggled */
+    display: none;
+}
+.data-table.advanced-combo-active .total-row .combo-col-cell {
+    display: table-cell;
+}
+/* --- End Advanced Combo Column Toggle --- */
+
+/* --- Floating Toggle Button for Expense Form --- */
+.floating-btn {
+    position: fixed; top: 75px; right: 15px; z-index: 1001;
+    background-color: var(--primary-color); color: white; border: none;
+    width: 45px; height: 45px; border-radius: 50%;
+    font-size: 24px; display: none; /* Hidden by default */
+    justify-content: center; align-items: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* =========================================
+   MODAL (Popup)
+   ========================================= */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-bg); z-index: 1000; justify-content: center; align-items: center; }
+.modal-box { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: fadeIn 0.3s; max-height: 90vh; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+.modal-body { overflow-y: auto; }
+.modal-footer { margin-top: 20px; text-align: right; }
+.close-modal { background: none; border: none; font-size: 24px; cursor: pointer; }
+.spinner { display: none; border: 2px solid #f3f3f3; border-top: 2px solid #555; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; margin-right: 8px; }
+button.loading .spinner { display: inline-block; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* =========================================
+   MOBILE RESPONSIVE STYLES
+   ========================================= */
+@media (max-width: 900px) {
+    .expense-layout { grid-template-columns: 1fr; }
+    .floating-btn { display: flex; }
+    .expense-form-card.collapsed { display: none; }
+}
+@media (max-width: 600px) {
+    body { padding: 5px; }
+    .tab-header { padding: 0 5px; }
+    .tab-btn { padding: 12px 10px; font-size: 14px; }
+    .tab-content-wrapper { padding: 10px; }
+    .calendar-controls { flex-direction: column; align-items: stretch; }
+    .nav-group { justify-content: space-between; }
+    .cal-day { min-height: 100px; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Header Tabs -->
+    <div class="tab-header">
+        <button class="tab-btn active" onclick="app.switchTab('schedule')">Lịch trình Tháng</button>
+        <button class="tab-btn" onclick="app.switchTab('expenses')">Quản lý Chi phí</button>
+    </div>
+
+    <!-- Floating Shortcut Button -->
+    <button class="floating-shortcut-btn" title="Áp dụng gõ tắt" onclick="app.executeShortcuts()">✏️</button>
+
+    <div class="tab-content-wrapper">
+        <!-- TAB 1: SCHEDULE -->
+        <div id="tab-schedule" class="tab-pane active">
+            <div class="calendar-controls">
+                <div class="nav-group">
+                    <button class="btn-secondary" onclick="cal.prevMonth()">&lt;</button>
+                    <h2 id="current-month-display">Tháng 1 năm 2026</h2>
+                    <button class="btn-secondary" onclick="cal.nextMonth()">&gt;</button>
+                </div>
+                <div class="nav-group">
+                    <button class="btn-primary" onclick="cal.openAddModal()">+ Thêm Sự Kiện</button>
+                    <button class="btn-secondary" onclick="cal.toggleSettings()">Cài đặt & AI</button>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-bar-container">
+                <input type="text" id="schedule-search" class="search-input" placeholder="🔍 Tìm kiếm sự kiện..." onkeyup="app.filterCalendar()">
+            </div>
+
+            <!-- Settings Panel -->
+            <div id="settings-panel" class="settings-panel" style="display: none;">
+                <div class="settings-grid">
+                    <div class="settings-card" id="google-sheet-settings-card"></div>
+                    <div class="settings-card">
+                        <h3>Cấu hình API</h3>
+                        <div class="form-group"><label>Weather API Key</label><input type="password" id="weather-api-key" class="input-control"></div>
+                        <hr>
+                        <h3>Cài đặt Gõ tắt (Shortcuts)</h3>
+                        <p style="font-size:12px; color:#666;">Bấm nút nổi ✏️ để áp dụng.</p>
+                        <div id="shortcuts-container"></div>
+                        <button onclick="cal.addShortcutInput()" class="btn-secondary" style="margin-top: 10px; font-size:12px; padding: 5px 10px;">Thêm</button>
+                    </div>
+                    <div class="settings-card">
+                        <h3>Quản lý Ngày lễ</h3>
+                        <div id="holidays-container" style="max-height: 150px; overflow-y: auto; margin-bottom: 10px;"></div>
+                        <button onclick="cal.openHolidayModal()" class="btn-secondary" style="font-size:12px; padding: 5px 10px;">Thêm Ngày lễ</button>
+                    </div>
+                </div>
+                 <!-- AI Assistant Panel -->
+                <div id="ai-assistant-panel" class="settings-card">
+                    <h3>Trợ lý AI Gemini</h3>
+                    <div class="form-group"><label>Gemini API Key</label><input type="password" id="gemini-api-key" class="input-control"></div>
+                    <div class="form-group"><label>Gemini Model</label><input type="text" id="gemini-model-name" class="input-control" placeholder="gemini-1.5-pro-latest"></div>
+                    
+                    <label>Chat Box: (Bấm ✔️ để chèn prompt vào ô dưới)</label>
+                    <div id="ai-chat-box" class="ai-chat-box"></div>
+                    <div id="ai-response-status" class="ai-response-status"></div>
+                    
+                    <div class="ai-prompt-area">
+                        <textarea id="ai-prompt-input" rows="3" class="input-control" placeholder="Hỏi AI điều gì đó về lịch trình hoặc chi phí..."></textarea>
+                        <button id="ai-send-btn" class="btn-primary" onclick="ai.sendMessage()">Gửi</button>
+                    </div>
+                    
+                    <div style="margin-top:15px;">
+                        <label>Prompt mẫu:</label>
+                        <div id="prompt-template-list" class="prompt-template-list"></div>
+                        <div class="input-group" style="margin-top:5px;">
+                            <input type="text" id="new-prompt-template-input" class="input-control" placeholder="Lưu prompt hiện tại làm mẫu...">
+                            <button class="btn-secondary" onclick="ai.savePromptTemplate()">Lưu Mẫu</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button onclick="cal.saveAllSettings()" class="btn-success">Lưu Tất Cả Cài Đặt</button>
+                </div>
+            </div>
+            
+            <div id="calendar-grid" class="calendar-grid"></div>
+
+            <!-- Weather Forecast Panel -->
+            <div id="weather-forecast-panel"></div>
+        </div>
+
+        <!-- TAB 2: EXPENSES -->
+        <div id="tab-expenses" class="tab-pane">
+             <!-- Search Bar -->
+             <div class="search-bar-container">
+                <input type="text" id="expenses-search" class="search-input" placeholder="🔍 Tìm kiếm chi phí..." onkeyup="app.filterExpenses()">
+            </div>
+            <button id="toggle-form-btn" class="floating-btn" onclick="exp.toggleForm()">☰</button>
+            <div class="expense-layout">
+                <!-- Left: Form -->
+                <div id="expense-form-card" class="expense-form-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin-top:0; color: var(--primary-color);">Nhập liệu</h3>
+                        <button class="btn-secondary" onclick="exp.openSettingsModal()" style="padding: 5px 10px;">Cài đặt</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Chọn hoặc Thêm Dự án:</label>
+                        <div class="input-group">
+                            <input type="text" id="project-name-input" class="input-control" placeholder="Nhập tên dự án mới...">
+                            <button class="btn-secondary" onclick="exp.handleProject()">Thêm</button>
+                        </div>
+                        <select id="exp-project-select" class="input-control" onchange="exp.switchProject(this.value)" style="margin-top: 5px;"></select>
+                    </div>
+
+                    <div class="form-group"><label>Ngày:</label><input type="date" id="exp-date" class="input-control" onchange="exp.checkLink()"></div>
+                    <div id="link-suggestion-container" class="link-suggestion-container">
+                        <div id="link-suggestion" class="link-suggestion"></div>
+                        <label class="checkbox-label" title="Không tự động thêm tên dự án vào mô tả"><input type="checkbox" id="skip-link-checkbox"> Bỏ qua</label>
+                    </div>
+                    
+                    <div class="form-group"><label>Chi phí (k VNĐ):</label>
+                        <div class="input-group"><input type="number" id="exp-amount" class="input-control" placeholder="VD: 50"><span>k</span></div>
+                    </div>
+
+                    <div class="form-group"><label>Ngày công:</label>
+                        <div class="input-group">
+                            <button type="button" class="btn-secondary" onclick="exp.setWorkday(0.5)">0.5</button>
+                            <button type="button" class="btn-secondary" onclick="exp.setWorkday(1)">1.0</button>
+                            <input type="number" id="exp-workday" class="input-control" placeholder="Số ngày" step="0.5">
+                        </div>
+                    </div>
+
+                    <div class="form-group"><label>Mô tả chi tiết:</label><input type="text" id="exp-desc" class="input-control" placeholder="Ăn uống, taxi..."></div>
+                    
+                    <div class="form-group">
+                        <label>Tiền ứng trước từ công ty (VNĐ):</label>
+                        <input type="number" id="exp-advance-payment-input" class="input-control" placeholder="VD: 500000" onchange="exp.saveAdvancePayment()">
+                    </div>
+
+                    <div id="suggestion-container" class="suggestion-container"></div>
+
+                    <div class="form-group input-group" style="margin-top: 15px;">
+                        <button type="button" id="micBtn" class="btn-secondary" title="Ghi âm giọng nói">🎤</button>
+                        <div class="history-buttons">
+                            <button id="undoBtn" onclick="exp.undo()" title="Ctrl+Z" class="btn-secondary" disabled>↶</button>
+                            <button id="redoBtn" onclick="exp.redo()" title="Ctrl+Y" class="btn-secondary" disabled>↷</button>
+                        </div>
+                    </div>
+
+                    <button class="btn-add" onclick="exp.addEntry()">THÊM MỤC</button>
+                    <hr>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                        <!-- NEW EXPORT OPTIONS -->
+                        <label class="checkbox-label" style="grid-column: 1 / -1; margin-bottom: 5px; font-weight: bold;">
+                            <input type="checkbox" id="export-translate-en"> Xuất bản dịch Tiếng Anh
+                        </label>
+                        <button class="btn-primary" onclick="exp.exportToExcelStyledWrapper()">Xuất Excel Pro</button>
+                        <button class="btn-primary" onclick="exp.openCustomExportModal()">Xuất Tùy chọn</button>
+                        <!-- END NEW EXPORT OPTIONS -->
+
+                        <button class="btn-info" onclick="document.getElementById('import-excel-file').click()">Import Excel</button>
+                        <input type="file" id="import-excel-file" accept=".xlsx, .xls" style="display: none;" onchange="exp.importFromExcel(event)">
+                        
+                        <button class="btn-info" id="translateBtn" onclick="exp.translateAllDescriptions()">Dịch Mô tả sang Anh</button>
+                        <button class="btn-danger" style="grid-column: 1 / -1;" onclick="exp.clearData()">Xóa Toàn Bộ Data</button>
+                    </div>
+                </div>
+
+                <!-- Right: Table -->
+                <div id="expense-table-container" class="expense-table-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- All Modals -->
+<div id="modal-event" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"> <h3 id="modal-title">Thêm Lịch Trình</h3> <button class="close-modal" onclick="app.closeModal('modal-event')">&times;</button> </div> <div class="modal-body"> <input type="hidden" id="event-id"><input type="hidden" id="event-date-hidden"> <div class="form-group"><label>Tên Dự Án / Sự Kiện:</label><input type="text" id="evt-title" class="input-control"></div> <div class="form-group"><label>Ngày:</label><input type="date" id="evt-date" class="input-control"></div> <div class="form-group"><label>Địa điểm:</label><input type="text" id="evt-loc" class="input-control" placeholder="VD: Hà Nội"></div> <div class="form-group"><label>Màu sắc:</label><div id="event-color-picker" class="color-picker"></div><input type="hidden" id="evt-color"></div> <div class="form-group"> <label>Ghi chú (To-do list):</label> <div id="todo-list-container"></div> <button type="button" onclick="cal.addTodoItem()" class="btn-secondary" style="margin-top: 10px; font-size:12px; padding: 5px 10px;">+ Thêm mục</button> </div> </div> <div class="modal-footer"> <button id="delete-event-btn" class="btn-danger" style="float: left;" onclick="cal.deleteEvent()">Xóa</button> <button class="btn-success" onclick="cal.saveEvent()">Lưu Sự Kiện</button> <button class="btn-primary" onclick="cal.saveAndSyncEvent()">Lưu vào Google Sheet</button> </div> </div> </div>
+<div id="holiday-modal" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"><h3>Thêm Ngày lễ</h3><button class="close-modal" onclick="app.closeModal('holiday-modal')">&times;</button></div> <div class="modal-body"> <div class="form-group"><label>Tên ngày lễ</label><input type="text" id="holiday-name" class="input-control" required></div> <div class="form-group input-group"><input type="number" id="holiday-day" placeholder="Ngày" class="input-control"><input type="number" id="holiday-month" placeholder="Tháng" class="input-control"></div> <div class="form-group"><label>Loại lịch</label><select id="holiday-type" class="input-control"><option value="gregorian">Dương lịch</option></select></div> </div> <div class="modal-footer"><button class="btn-success" onclick="cal.saveHoliday()">Lưu</button></div> </div> </div>
+<div id="expense-settings-modal" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"><h3>Cài đặt Chi phí</h3><button class="close-modal" onclick="app.closeModal('expense-settings-modal')">&times;</button></div> <div class="modal-body" id="expense-settings-body"></div> <div class="modal-footer"><button class="btn-success" onclick="exp.saveSettings()">Lưu Cài đặt</button></div> </div> </div>
+<div id="advanced-combo-modal" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"><h3>Lưu Combo Nâng cao</h3><button class="close-modal" onclick="app.closeModal('advanced-combo-modal')">&times;</button></div> <div class="modal-body"> <p>Bạn đã chọn <b id="advanced-combo-count">0</b> mục. Vui lòng đặt tên cho combo này.</p> <div class="form-group"><label>Tên Combo:</label><input type="text" id="advanced-combo-name" class="input-control" placeholder="VD: Combo đi tỉnh A"></div></div> <div class="modal-footer"><button class="btn-success" onclick="exp.saveAdvancedCombo()">Lưu Combo</button></div> </div> </div>
+<div id="custom-export-modal" class="modal-overlay"> <div class="modal-box"> <div class="modal-header"><h3>Xuất Excel Tùy chọn</h3><button class="close-modal" onclick="app.closeModal('custom-export-modal')">&times;</button></div> <div class="modal-body"> <p>Chọn tháng và ngày chốt lương để xuất báo cáo. Dữ liệu sẽ được lấy từ ngày (chốt+1) tháng trước đến ngày chốt của tháng đã chọn.</p> <div class="form-group"><label>Chọn Tháng & Năm:</label><input type="month" id="export-month-year" class="input-control"></div> <div class="form-group"><label>Ngày Chốt Lương Hàng Tháng:</label><input type="number" id="export-payday" class="input-control" value="10" min="1" max="28"></div> </div> <div class="modal-footer"><button class="btn-primary" onclick="exp.exportCustomMonth()">Tiến hành Xuất</button></div> </div> </div>
+
+<script>
+/**
+ * =============================================================================
+ * CORE APP LOGIC (Calendar + Expenses + Google Sync + AI)
+ * =============================================================================
+ */
+
+// --- UTILS ---
+const Utils = {
+    parseExcelDate: function(val) {
+        if (!val) return null;
+        if (val instanceof Date) {
+            const dt = new Date(val.getTime() - (val.getTimezoneOffset() * 60000));
+            return dt.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string') {
+            const parts = val.trim().split('/');
+            if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+            const isoParts = val.trim().split('-');
+            if (isoParts.length === 3) return val.trim();
+        }
+        return null;
+    }
+};
+
+// --- STORAGE ---
+const Store = {
+    get: (key, def) => JSON.parse(localStorage.getItem(key) || JSON.stringify(def)),
+    set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
+};
+
+// --- GOOGLE SYNC ---
+const googleSheetSync = {
+    SCRIPT_URL: Store.get('google_sheet_script_url', ''),
+    saveSettings: function() {
+        this.SCRIPT_URL = document.getElementById('gs-script-url').value.trim();
+        Store.set('google_sheet_script_url', this.SCRIPT_URL);
+    },
+    renderSettings: function(c) {
+         c.innerHTML = `<h3>Lưu vào Google Sheet</h3><p style="font-size:0.85em;color:#6c757d;">Lưu sự kiện không cần đăng nhập.</p><div class="form-group"><label>URL Web App:</label><input type="text" id="gs-script-url" class="input-control" value="${this.SCRIPT_URL}" placeholder="Dán URL Web App vào đây"></div>`;
+    },
+    sendEvent: function(date, event) {
+        if (!this.SCRIPT_URL) return alert("Vui lòng cấu hình URL Web App.");
+        const p = date.split('-'); const fDate = `${p[2]}/${p[1]}/${p[0]}`;
+        fetch(this.SCRIPT_URL, {
+            method: 'POST', mode: 'no-cors', cache: 'no-cache',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ date: fDate, event: event })
+        }).then(()=>alert('Đã gửi yêu cầu lưu vào Google Sheet thành công!')).catch(e=>alert('Lỗi gửi: ' + e));
+    }
+};
+
+// --- CALENDAR ---
+const cal = {
+    currentDate: new Date(),
+    events: Store.get('events_vFinal', {}),
+    settings: Store.get('calendarSettings_vFinal', { geminiApiKey: '', geminiModelName: 'gemini-1.5-flash', weatherApiKey: '', shortcuts: { 'hn': 'Hà Nội' }, holidays: {}, promptTemplates: [] }),
+    COLOR_PALETTE: ['#0d6efd', '#6f42c1', '#198754', '#dc3545', '#fd7e14', '#ffc107', '#0dcaf0', '#6c757d'],
+
+    init: function() { this.render(); /*Shortcut listener removed*/ },
+    prevMonth: function() { this.currentDate.setMonth(this.currentDate.getMonth() - 1); this.render(); },
+    nextMonth: function() { this.currentDate.setMonth(this.currentDate.getMonth() + 1); this.render(); },
+    render: function() {
+        const y = this.currentDate.getFullYear(), m = this.currentDate.getMonth();
+        document.getElementById('current-month-display').innerText = `Tháng ${m + 1} năm ${y}`;
+        const grid = document.getElementById('calendar-grid'); grid.innerHTML = ''; 
+        ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].forEach(d => grid.innerHTML += `<div class="cal-header">${d}</div>`);
+        const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m + 1, 0).getDate();
+        for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day other-month"></div>`;
+        for(let i=1; i<=daysInMonth; i++) {
+            const dStr = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+            const isToday = new Date().toDateString() === new Date(y, m, i).toDateString();
+            const hKey = `${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+            const hName = this.settings.holidays[hKey]?.name || '';
+            const div = document.createElement('div');
+            div.className = `cal-day ${isToday?'today':''}`;
+            div.dataset.date = dStr;
+            div.innerHTML = `<div class="day-num"><span>${i}</span></div>${hName?`<span class="holiday-text">${hName}</span>`:''}<div class="events-container" id="ev-cont-${dStr}"></div>`;
+            div.onclick = (e) => { if(!e.target.closest('.event-tag')) this.openAddModal(dStr); };
+            const evs = this.events[dStr]||[]; const txt = evs.map(e=>e.title+e.location).join(' ').toLowerCase();
+            const sty = exp.getColorStyles(txt); div.style.cssText = sty.bg+sty.text+sty.border;
+            grid.appendChild(div);
+            if(this.events[dStr]) this.events[dStr].forEach(e => this.renderEventTag(e, dStr));
+        }
+        this.renderWeatherPanel(); // New weather panel render call
+    },
+    renderEventTag: function(ev, dStr) {
+        const c = document.getElementById(`ev-cont-${dStr}`); if(!c) return;
+        const tag = document.createElement('div'); tag.className = 'event-tag'; tag.style.borderLeftColor = ev.color;
+        const sty = exp.getColorStyles((ev.title+ev.location).toLowerCase()); tag.style.cssText += sty.bg+sty.text+sty.border;
+        tag.innerHTML = `<div class="event-title">${ev.title}</div>${ev.location?`<div class="event-loc">${ev.location}</div>`:''}${ev.todos?.length?`<div class="todo-preview">📝 ${ev.todos.filter(t=>t).length} mục</div>`:''}`;
+        tag.onclick = () => this.openAddModal(dStr, ev.id); c.appendChild(tag);
+    },
+    openAddModal: function(dStr, id=null) {
+        app.closeAllModals(); const ev = id ? this.events[dStr].find(e=>e.id==id) : null;
+        document.getElementById('modal-title').innerText = id ? 'Sửa Lịch trình' : 'Thêm Lịch trình';
+        document.getElementById('evt-date').value = dStr || new Date().toISOString().split('T')[0];
+        document.getElementById('event-date-hidden').value = dStr; document.getElementById('event-id').value = id||'';
+        document.getElementById('evt-title').value = ev?.title||''; document.getElementById('evt-loc').value = ev?.location||'';
+        document.getElementById('delete-event-btn').style.display = id ? 'inline-block' : 'none';
+        const cp = document.getElementById('event-color-picker');
+        this.renderColorPicker(cp, this.COLOR_PALETTE, ev?.color||this.COLOR_PALETTE[0], c => document.getElementById('evt-color').value=c);
+        document.getElementById('evt-color').value = ev?.color||this.COLOR_PALETTE[0];
+        const tc = document.getElementById('todo-list-container'); tc.innerHTML=''; (ev?.todos||['']).forEach(this.addTodoItem.bind(this));
+        app.openModal('modal-event');
+    },
+    addTodoItem: function(txt='') {
+        const d = document.createElement('div'); d.className = 'input-group'; d.style.marginBottom='5px';
+        d.innerHTML = `<input type="text" value="${txt}" placeholder="Việc cần làm..." class="input-control todo-item-input"><button type="button" class="btn-danger" style="padding:5px 10px;" onclick="this.parentElement.remove()">X</button>`;
+        document.getElementById('todo-list-container').appendChild(d);
+    },
+    saveEvent: function(close=true) {
+        const d = document.getElementById('evt-date').value, od = document.getElementById('event-date-hidden').value, id = document.getElementById('event-id').value;
+        if(!d) return alert('Nhập ngày!') && false;
+        const todos = Array.from(document.querySelectorAll('.todo-item-input')).map(i=>i.value.trim()).filter(Boolean);
+        const nev = { id: id?Number(id):Date.now(), title: document.getElementById('evt-title').value.trim()||'(Chưa tên)', location: document.getElementById('evt-loc').value.trim(), color: document.getElementById('evt-color').value, todos };
+        if(id && d!==od && this.events[od]) { this.events[od] = this.events[od].filter(e=>e.id!=id); if(!this.events[od].length) delete this.events[od]; }
+        if(!this.events[d]) this.events[d]=[]; 
+        const idx = id ? this.events[d].findIndex(e=>e.id==id) : -1;
+        if(idx>-1) this.events[d][idx] = nev; else this.events[d].push(nev);
+        Store.set('events_vFinal', this.events); if(close) app.closeModal('modal-event');
+        this.render(); exp.checkLink(); return true;
+    },
+    saveAndSyncEvent: function() {
+        if(this.saveEvent(false)) {
+            const d = document.getElementById('evt-date').value, t = document.getElementById('evt-title').value, l = document.getElementById('evt-loc').value;
+            googleSheetSync.sendEvent(d, l ? `${t} (Tại: ${l})` : t); app.closeModal('modal-event');
+        }
+    },
+    deleteEvent: function() {
+        const d = document.getElementById('event-date-hidden').value, id = document.getElementById('event-id').value;
+        if(confirm('Xóa?')) { this.events[d] = this.events[d].filter(e=>e.id!=id); if(!this.events[d].length) delete this.events[d]; Store.set('events_vFinal', this.events); app.closeModal('modal-event'); this.render(); }
+    },
+    renderColorPicker: function(c,o,s,l) { c.innerHTML=''; o.forEach(x=>{const d=document.createElement('div'); d.className=`color-swatch ${x===s?'selected':''}`; d.style.backgroundColor=x; d.onclick=()=>{c.querySelector('.selected')?.classList.remove('selected');d.classList.add('selected');l(x)}; c.appendChild(d);}); },
+    toggleSettings: function() { const p = document.getElementById('settings-panel'); p.style.display = p.style.display==='none'?'block':'none'; if(p.style.display==='block') this.renderSettings(); },
+    renderSettings: function() {
+        document.getElementById('gemini-api-key').value=this.settings.geminiApiKey; 
+        document.getElementById('gemini-model-name').value=this.settings.geminiModelName;
+        document.getElementById('weather-api-key').value=this.settings.weatherApiKey;
+        ai.renderPromptTemplates();
+        const sc = document.getElementById('shortcuts-container'); sc.innerHTML=''; Object.entries(this.settings.shortcuts).forEach(([k,v])=>this.addShortcutInput(k,v));
+        this.renderHolidaysList(); googleSheetSync.renderSettings(document.getElementById('google-sheet-settings-card'));
+    },
+    addShortcutInput: function(k='',v='') {
+        const d = document.createElement('div'); d.className='input-group'; d.style.marginBottom='5px';
+        d.innerHTML=`<input class="shortcut-key input-control" value="${k}" placeholder="gõ tắt"><input class="shortcut-value input-control" value="${v}" placeholder="thay thế"><button class="btn-danger" style="padding:5px 10px;" onclick="this.parentElement.remove()">X</button>`;
+        document.getElementById('shortcuts-container').appendChild(d);
+    },
+    renderHolidaysList: function() {
+        const c = document.getElementById('holidays-container'); c.innerHTML='';
+        Object.entries(this.settings.holidays).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([k,h])=>{
+            c.innerHTML+=`<div class="holiday-list-item"><span><b>${h.name}</b> (${k.split('-')[1]}/${k.split('-')[0]})</span><button class="btn-danger" style="padding:2px 6px;" onclick="cal.deleteHoliday('${k}')">X</button></div>`;
+        });
+    },
+    deleteHoliday: function(k) { delete this.settings.holidays[k]; this.renderHolidaysList(); this.render(); },
+    openHolidayModal: function() { app.openModal('holiday-modal'); },
+    saveHoliday: function() {
+        const n=document.getElementById('holiday-name').value, d=String(document.getElementById('holiday-day').value).padStart(2,'0'), m=String(document.getElementById('holiday-month').value).padStart(2,'0');
+        if (n && d && m && m !== '00' && d !== '00') {
+            this.settings.holidays[`${m}-${d}`] = {name:n, type:'gregorian'}; this.renderHolidaysList(); this.render(); app.closeModal('holiday-modal');
+        } else { alert("Vui lòng nhập đầy đủ thông tin."); }
+    },
+    saveAllSettings: function() {
+        this.settings.geminiApiKey=document.getElementById('gemini-api-key').value.trim(); 
+        this.settings.geminiModelName=document.getElementById('gemini-model-name').value.trim();
+        this.settings.weatherApiKey=document.getElementById('weather-api-key').value.trim();
+        this.settings.shortcuts={}; document.querySelectorAll('#shortcuts-container .input-group').forEach(d=>{const k=d.querySelector('.shortcut-key').value.trim(),v=d.querySelector('.shortcut-value').value.trim(); if(k&&v) this.settings.shortcuts[k]=v;});
+        Store.set('calendarSettings_vFinal', this.settings); googleSheetSync.saveSettings(); alert('Lưu cài đặt thành công!'); this.render();
+    },
+    // --- NEW WEATHER PANEL LOGIC ---
+    renderWeatherPanel: async function() {
+        const panel = document.getElementById('weather-forecast-panel');
+        panel.innerHTML = `<h2>Dự báo Thời tiết Sắp tới</h2>`;
+        const apiKey = this.settings.weatherApiKey;
+        if (!apiKey) { panel.innerHTML += `<p style="color: #666;">Vui lòng nhập Weather API Key trong Cài đặt.</p>`; return; }
+
+        const today = new Date();
+        const datesToCheck = [];
+        for (let i = 0; i < 3; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+            datesToCheck.push(date.toISOString().split('T')[0]);
+        }
+        
+        const locations = new Set();
+        datesToCheck.forEach(dStr => {
+            if (this.events[dStr]) {
+                this.events[dStr].forEach(ev => {
+                    if (ev.location) locations.add(ev.location.trim());
+                });
+            }
+        });
+
+        if (locations.size === 0) {
+            panel.innerHTML += `<p style="color: #666;">Không có sự kiện nào có địa điểm trong 3 ngày tới.</p>`;
+            return;
+        }
+
+        panel.innerHTML += '<div id="weather-grid-container" class="weather-forecast-grid"></div>';
+        const gridContainer = document.getElementById('weather-grid-container');
+        gridContainer.innerHTML = `<p>⏳ Đang tải dữ liệu thời tiết cho ${locations.size} địa điểm...</p>`;
+
+        let weatherCardsHTML = '';
+        for (const loc of locations) {
+            // APPLY SHORTCUT HERE
+            const translatedLoc = app.applyShortcuts(loc);
+            try {
+                // Query for 3 days and in Vietnamese
+                const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${encodeURIComponent(translatedLoc)}&days=3&aqi=no&alerts=no&lang=vi`;
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                const current = data.current;
+                const locationName = data.location.name;
+                const dateDisplay = new Date(data.location.localtime).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                const timeDisplay = new Date(data.location.localtime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                const forecast = data.forecast.forecastday;
+
+                let forecastHTML = '<h4 style="margin: 15px 0 5px 0; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px;">Dự báo 3 ngày tới</h4>';
+                
+                forecast.slice(0, 3).forEach(day => {
+                    const d = new Date(day.date);
+                    const dayName = d.toLocaleDateString('vi-VN', { weekday: 'long' });
+                    const datePart = `${d.getDate()}/${d.getMonth() + 1}`;
+                    const condition = day.day.condition.text;
+                    const maxTemp = day.day.maxtemp_c;
+                    const minTemp = day.day.mintemp_c;
+                    const chanceOfRain = day.day.daily_chance_of_rain;
+
+                    forecastHTML += `
+                        <div style="margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">
+                            <strong>${dayName}, ${datePart}</strong>
+                            <p style="margin: 3px 0; font-size: 0.9em;">${condition}</p>
+                            <p style="margin: 0; font-size: 0.9em;">Max: ${maxTemp}°C | Min: ${minTemp}°C</p>
+                            <p style="margin: 0; font-size: 0.9em; font-weight: bold;">☔ Mưa: ${chanceOfRain}%</p>
+                        </div>
+                    `;
+                });
+
+
+                weatherCardsHTML += `
+                <div class="weather-card">
+                    <h3>${locationName}, Vietnam</h3>
+                    <p style="font-size: 0.9em; margin-top: -10px;">Cập nhật: ${dateDisplay} ${timeDisplay}</p>
+
+                    <p class="weather-today-desc">${current.condition.text}</p>
+                    
+                    <div class="weather-details-grid" style="border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 15px;">
+                        <div class="weather-item" style="background:none;"><strong>Nhiệt độ</strong><span>${current.temp_c}°C</span></div>
+                        <div class="weather-item" style="background:none;"><strong>Cảm giác như</strong><span>${current.feelslike_c}°C</span></div>
+                        <div class="weather-item" style="background:none;"><strong>Lượng mưa</strong><span>${current.precip_mm} mm</span></div>
+                        <div class="weather-item" style="background:none;"><strong>Độ ẩm</strong><span>${current.humidity}%</span></div>
+                        <div class="weather-item" style="background:none;"><strong>Chỉ số UV</strong><span>${current.uv}</span></div>
+                    </div>
+                    ${forecastHTML}
+                </div>`;
+            } catch (err) {
+                weatherCardsHTML += `<div class="weather-card" style="background:var(--danger-color);"><h3>Lỗi tại ${loc}</h3><p>${err.message}</p></div>`;
+            }
+        }
+        gridContainer.innerHTML = weatherCardsHTML;
+    },
+};
+
+// --- AI ASSISTANT ---
+const ai = {
+    sendMessage: async function() {
+        const apiKey = cal.settings.geminiApiKey;
+        const modelName = cal.settings.geminiModelName || 'gemini-1.5-flash';
+        const prompt = document.getElementById('ai-prompt-input').value.trim();
+        const chatBox = document.getElementById('ai-chat-box');
+        const statusEl = document.getElementById('ai-response-status');
+        const sendBtn = document.getElementById('ai-send-btn');
+
+        if (!apiKey) { statusEl.textContent = 'Lỗi: Vui lòng nhập Gemini API Key.'; return; }
+        if (!prompt) { statusEl.textContent = 'Lỗi: Vui lòng nhập câu hỏi.'; return; }
+
+        sendBtn.classList.add('loading'); sendBtn.disabled = true;
+        statusEl.textContent = 'AI đang suy nghĩ...';
+        
+        const addUserMessage = function(text) {
+            const d = document.createElement('div');
+            d.className = 'ai-message user';
+            d.innerHTML = `${text}<button class="ai-message-copy-btn" title="Sao chép" onclick="ai.copyToPrompt(this)">&#x2714;</button>`;
+            chatBox.appendChild(d);
+        };
+        
+        addUserMessage(prompt);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        const fullPrompt = `Dựa trên dữ liệu JSON sau đây về lịch trình và chi phí của tôi, hãy trả lời câu hỏi. Dữ liệu: ${JSON.stringify({calendar: cal.events, expenses: exp.data}, null, 2)}. Câu hỏi: "${prompt}"`;
+        
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] })
+            });
+            const data = await response.json();
+            const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || data.error?.message || 'Không nhận được phản hồi hợp lệ.';
+            
+            const addAiMessage = function(text) {
+                const d = document.createElement('div');
+                d.className = 'ai-message';
+                d.innerHTML = `${text.replace(/\n/g, '<br>')}<button class="ai-message-copy-btn" title="Sao chép" onclick="ai.copyToPrompt(this)">&#x2714;</button>`;
+                chatBox.appendChild(d);
+            };
+            
+            addAiMessage(aiText);
+            statusEl.textContent = 'Phân tích hoàn tất.';
+        } catch(error) {
+            statusEl.textContent = `Lỗi mạng: ${error.message}`;
+        } finally {
+            sendBtn.classList.remove('loading'); sendBtn.disabled = false;
+            document.getElementById('ai-prompt-input').value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    },
+    copyToPrompt: function(btnEl) {
+        // Lấy text content của message, loại bỏ text của nút copy
+        const messageText = btnEl.parentElement.textContent.replace('✔', '').trim();
+        document.getElementById('ai-prompt-input').value = messageText;
+        document.getElementById('ai-prompt-input').focus();
+    },
+    savePromptTemplate: function() {
+        const newPromptText = document.getElementById('new-prompt-template-input').value.trim();
+        const currentPrompt = document.getElementById('ai-prompt-input').value.trim();
+        
+        if (!newPromptText && !currentPrompt) { alert("Vui lòng nhập tên mẫu hoặc viết prompt để lưu."); return; }
+        
+        const name = newPromptText || currentPrompt.substring(0, 30) + '...';
+        const content = currentPrompt || newPromptText;
+
+        if (!cal.settings.promptTemplates) cal.settings.promptTemplates = [];
+        cal.settings.promptTemplates.push({ name, content });
+        Store.set('calendarSettings_vFinal', cal.settings);
+        this.renderPromptTemplates();
+        document.getElementById('new-prompt-template-input').value = '';
+    },
+    usePromptTemplate: function(index) {
+        const template = cal.settings.promptTemplates[index];
+        if (template) {
+            document.getElementById('ai-prompt-input').value = template.content;
+        }
+    },
+    renderPromptTemplates: function() {
+        const container = document.getElementById('prompt-template-list');
+        if (!cal.settings.promptTemplates) cal.settings.promptTemplates = [];
+        container.innerHTML = cal.settings.promptTemplates.map((p, i) => 
+            `<button class="prompt-template-btn" title="${p.content}" onclick="ai.usePromptTemplate(${i})">${p.name}</button>`
+        ).join('');
+    }
+};
+
+// --- EXPENSES ---
+const EXCEL_TRANS = {
+    'BÁO CÁO': 'REPORT',
+    'A. CHI PHÍ PHÁT SINH': 'A. EXPENSE INCURRENCE',
+    'Ngày': 'Date',
+    'Mô tả': 'Description',
+    'VNĐ': 'VND',
+    'RMB': 'RMB',
+    'Tổng chi phí': 'Total Expenses',
+    'B. BẢNG KÊ NGÀY CÔNG': 'B. WORKDAY STATEMENT',
+    'Ngày công': 'Workday',
+    'Tổng ngày công': 'Total Workdays',
+    'C. TỔNG KẾT': 'C. SUMMARY',
+    'Tổng chi phí (A)': 'Total Expenses (A)',
+    'Lương ngày công (B)': 'Workday Salary (B)',
+    'Tiền ứng trước': 'Advance Payment',
+    'TỔNG CỘNG (A+B-Ứng)': 'TOTAL (A+B-Advance)',
+    'BaoCao': 'Report'
+};
+
+const exp = {
+    data: Store.get('expenses_vFinal', {'Lê Quốc Huy': []}),
+    settings: Store.get('expenseSettings_vFinal', { prefixes: ['Đi lại', 'Ăn uống', 'Data 4G'], costs: [50000, 100000], combos: [], advancedCombos: [], colorRules: [{text:'Gấp', applyBg:true, bgColor:'#ffcdd2', applyText:true, textColor:'#b71c1c', applyBorder:true, borderColor:'#b71c1c'}], advancePayment: 0 }),
+    undoStack: [], redoStack: [], recognition: null,
+
+    init: function() { 
+        document.getElementById('exp-date').valueAsDate = new Date(); this.renderProjects(); 
+        this.switchProject(document.getElementById('exp-project-select').value); 
+        this.initSpeech(); this.renderSuggestions(); document.getElementById('exp-advance-payment-input').value = this.settings.advancePayment;
+        const today = new Date();
+        document.getElementById('export-month-year').value = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+    },
+    saveState: function() { this.redoStack=[]; this.undoStack.push(JSON.stringify(this.data)); if(this.undoStack.length>30) this.undoStack.shift(); this.updHist(); },
+    undo: function() { if(this.undoStack.length) { this.redoStack.push(JSON.stringify(this.data)); this.data=JSON.parse(this.undoStack.pop()); Store.set('expenses_vFinal', this.data); this.renderTable(); } this.updHist(); },
+    redo: function() { if(this.redoStack.length) { this.undoStack.push(JSON.stringify(this.data)); this.data=JSON.parse(this.redoStack.pop()); Store.set('expenses_vFinal', this.data); this.renderTable(); } this.updHist(); },
+    updHist: function() { document.getElementById('undoBtn').disabled=!this.undoStack.length; document.getElementById('redoBtn').disabled=!this.redoStack.length; },
+    
+    handleProject: function() {
+        const n = document.getElementById('project-name-input').value.trim(); if(!n) return alert('Nhập tên!');
+        this.saveState(); if(!this.data[n]) this.data[n]=[]; Store.set('expenses_vFinal', this.data);
+        this.renderProjects(n); this.switchProject(n); document.getElementById('project-name-input').value='';
+    },
+    switchProject: function(n) { this.renderTable(); },
+    renderProjects: function(sel) {
+        const s = document.getElementById('exp-project-select'), ps = Object.keys(this.data), cur = sel||s.value||ps[0];
+        s.innerHTML = ps.map(p=>`<option value="${p}" ${p===cur?'selected':''}>${p}</option>`).join('');
+    },
+    renderSuggestions: function() {
+        const c = document.getElementById('suggestion-container'); c.innerHTML='';
+        const add = (t, html) => { if(t) c.innerHTML+=html; };
+        add(this.settings.prefixes.length, `<h4>Gợi ý mô tả:</h4><div class="suggestion-list">${this.settings.prefixes.map(p=>`<button class="suggestion-btn" onclick="exp.insSug('${p}','desc')">${p}</button>`).join('')}</div>`);
+        add(this.settings.costs.length, `<h4>Gợi ý tiền:</h4><div class="suggestion-list">${this.settings.costs.map(v=>`<button class="suggestion-btn cost-btn" onclick="exp.insSug(${v},'cost')">${v/1000}k</button>`).join('')}</div>`);
+        add(this.settings.combos.length, `<h4>Combo:</h4><div class="suggestion-list">${this.settings.combos.map((x,i)=>`<button class="suggestion-btn combo-btn" onclick="exp.insCombo(${i})">${x.desc} (${x.amount/1000}k)</button>`).join('')}</div>`);
+        if (!this.settings.advancedCombos) this.settings.advancedCombos = [];
+        add(this.settings.advancedCombos.length, `<h4>Combo Nâng cao:</h4><div class="suggestion-list">${this.settings.advancedCombos.map((x,i)=>`<button class="suggestion-btn advanced-combo-btn" onclick="exp.insAdvancedCombo(${i})">${x.name}</button>`).join('')}</div>`);
+    },
+    insSug: function(v, t) { if(t==='desc') { const i=document.getElementById('exp-desc'); i.value+=(i.value?' ':'')+v; i.focus(); } else document.getElementById('exp-amount').value=v/1000; },
+    insCombo: function(i) { const c=this.settings.combos[i]; if(c) { document.getElementById('exp-desc').value=c.desc; document.getElementById('exp-amount').value=c.amount/1000; } },
+    insAdvancedCombo: function(index) {
+        const combo = this.settings.advancedCombos[index];
+        if (combo && confirm(`Thêm ${combo.items.length} mục từ combo "${combo.name}"?`)) {
+            this.saveState();
+            const pr = document.getElementById('exp-project-select').value;
+            const date = document.getElementById('exp-date').value;
+            if (!date) { alert("Vui lòng chọn ngày trước khi thêm combo nâng cao."); return; }
+            if (!this.data[pr]) this.data[pr] = [];
+
+            combo.items.forEach(item => {
+                this.data[pr].push({ ...item, date: date, id: Date.now() + Math.random() });
+            });
+            Store.set('expenses_vFinal', this.data);
+            this.renderTable();
+        }
+    },
+    checkLink: function() {
+        const d = document.getElementById('exp-date').value, b = document.getElementById('link-suggestion-container'), s = document.getElementById('link-suggestion'), ev = Store.get('events_vFinal',{})[d]?.[0];
+        document.getElementById('skip-link-checkbox').checked = false;
+        if(ev) { const t = ev.title+(ev.location?` - ${ev.location}`:''); b.style.display='flex'; s.innerHTML=`🔗 Liên kết: <b>${t}</b>`; s.dataset.link=t; } else b.style.display='none';
+    },
+    addEntry: function() {
+        this.saveState(); const pr = document.getElementById('exp-project-select').value, d = document.getElementById('exp-date').value, a = parseFloat(document.getElementById('exp-amount').value)||0, w = parseFloat(document.getElementById('exp-workday').value)||0;
+        let desc = document.getElementById('exp-desc').value; 
+        const lnkContainer = document.getElementById('link-suggestion-container');
+        const lnk = lnkContainer.style.display === 'flex' ? document.getElementById('link-suggestion').dataset.link : null;
+        const skipLink = document.getElementById('skip-link-checkbox').checked;
+
+        if(!d || (!a && !w)) return alert('Thiếu ngày hoặc giá trị!');
+        if(lnk && !skipLink && !desc.includes(lnk)) desc += ` - <span class="auto-linked-text">${lnk}</span>`;
+        if(!this.data[pr]) this.data[pr]=[]; this.data[pr].push({id:Date.now(), date:d, amount:a*1000, workday:w, desc});
+        Store.set('expenses_vFinal', this.data); this.renderTable();
+        ['exp-amount','exp-desc','exp-workday'].forEach(id=>document.getElementById(id).value='');
+    },
+    updateEntry: function(el) {
+        this.saveState(); const id=el.dataset.id, f=el.dataset.field, pr=document.getElementById('exp-project-select').value, item=this.data[pr].find(i=>i.id==id);
+        if(item) {
+            let val = f==='desc'?el.innerHTML:el.textContent.trim();
+            if(f==='amount') val = (parseFloat(val.replace(/,/g,''))||0)*1000;
+            else if(f==='workday') val = parseFloat(val)||0;
+            else if(f==='date') { const m = val.match(/^(\d{1,2})\/(\d{1,2})$/); if(m) val = `${new Date(item.date).getFullYear()}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; else val=item.date; }
+            item[f] = val; Store.set('expenses_vFinal', this.data);
+        } this.renderTable();
+    },
+    renderTable: function() {
+        const pr = document.getElementById('exp-project-select').value, list = (this.data[pr]||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+        const cs = list.filter(i=>i.amount>0), ws = list.filter(i=>i.workday>0);
+        
+        // Check current state to preserve checkbox column visibility
+        const currentTable = document.getElementById('cost-table');
+        const isActive = currentTable?.classList.contains('advanced-combo-active') || false;
+
+        let h1 = `<h3 style="margin-top:0;">Chi phí: ${pr}</h3>
+            <table class="data-table ${isActive ? 'advanced-combo-active' : ''}" id="cost-table">
+            <thead><tr><th><input type="checkbox" onchange="app.toggleAllCheckboxes(this, 'cost')"></th><th>Ngày</th><th>Mô tả</th><th>VNĐ</th><th>Act</th></tr></thead><tbody>`, sumC=0;
+        cs.forEach(i => { sumC+=i.amount; const d = new Date(i.date), ds = `${d.getUTCDate().toString().padStart(2,'0')}/${(d.getUTCMonth()+1).toString().padStart(2,'0')}`;
+            const st = this.getColorStyles(i.desc);
+            h1 += `<tr data-id="${i.id}" style="${st.bg}${st.text}${st.border}">
+            <td><input type="checkbox" class="expense-checkbox cost-checkbox" data-id="${i.id}"></td>
+            <td contenteditable="true" data-id="${i.id}" data-field="date" onblur="exp.updateEntry(this)">${ds}</td>
+            <td contenteditable="true" data-id="${i.id}" data-field="desc" onblur="exp.updateEntry(this)">${i.desc}</td><td class="cost-col" contenteditable="true" data-id="${i.id}" data-field="amount" onblur="exp.updateEntry(this)">${i.amount.toLocaleString()}</td>
+            <td style="text-align:center;white-space:nowrap"><button class="btn-success" style="padding:2px 6px;margin-right:3px" title="Lưu làm Combo đơn" onclick="event.stopPropagation();exp.addComboId(${i.id})">+</button><button class="btn-danger" style="padding:2px 6px" onclick="event.stopPropagation();exp.del(${i.id})">&times;</button></td></tr>`; });
+        h1 += `<tr class="total-row"><td class="combo-col-cell"></td><td colspan="2">TỔNG</td><td class="cost-col">${sumC.toLocaleString()}</td><td></td></tr></tbody></table>`;
+        
+        // RENDER NEW ACTION BAR
+        h1 += `<div class="table-actions-bar">
+            <button class="${isActive ? 'btn-secondary' : 'btn-info'}" id="adv-combo-toggle-btn" onclick="exp.toggleAdvancedComboSelection()">
+                ${isActive ? 'Hủy chọn Combo Nâng cao' : 'Kích hoạt Add Combo Nâng cao'}
+            </button>
+            <button class="btn-primary" id="adv-combo-save-btn" style="display:${isActive ? 'inline-block' : 'none'};" onclick="exp.openAdvancedComboModal()">Lưu mục đã chọn</button>
+        </div>`;
+        
+        let h2 = `<h3 style="margin-top:20px;">Ngày công</h3><table class="data-table" id="workday-table"><thead><tr><th>Ngày</th><th>Mô tả</th><th>Công</th><th>Act</th></tr></thead><tbody>`, sumW=0;
+        ws.forEach(i => { sumW+=(parseFloat(i.workday)||0); const d = new Date(i.date), ds = `${d.getUTCDate().toString().padStart(2,'0')}/${(d.getUTCMonth()+1).toString().padStart(2,'0')}`;
+            const st = this.getColorStyles(i.desc);
+            h2 += `<tr data-id="${i.id}" style="${st.bg}${st.text}${st.border}">
+            <td contenteditable="true" data-id="${i.id}" data-field="date" onblur="exp.updateEntry(this)">${ds}</td>
+            <td contenteditable="true" data-id="${i.id}" data-field="desc" onblur="exp.updateEntry(this)">${i.desc}</td><td class="cost-col" contenteditable="true" data-id="${i.id}" data-field="workday" onblur="exp.updateEntry(this)">${i.workday}</td>
+            <td style="text-align:center"><button class="btn-danger" style="padding:2px 6px" onclick="event.stopPropagation();exp.del(${i.id})">&times;</button></td></tr>`; });
+        h2 += `<tr class="total-row"><td colspan="2">TỔNG</td><td class="cost-col">${sumW.toFixed(1)}</td><td></td></tr></tbody></table>`;
+        document.getElementById('expense-table-container').innerHTML = h1 + h2;
+    },
+    getColorStyles: function(txt) {
+        let b='', t='', br=''; const lt = txt.toLowerCase().replace(/<[^>]*>?/gm, '');
+        this.settings.colorRules.forEach(r => { if(r.text && lt.includes(r.text.toLowerCase())) { if(r.applyBg) b=`background-color:${r.bgColor};`; if(r.applyText) t=`color:${r.textColor};`; if(r.applyBorder) br=`border:2px solid ${r.borderColor};`; } });
+        return {bg:b, text:t, border:br};
+    },
+    del: function(id) { if(confirm('Xóa?')) { this.saveState(); const p=document.getElementById('exp-project-select').value; this.data[p]=this.data[p].filter(i=>i.id!=id); Store.set('expenses_vFinal', this.data); this.renderTable(); } },
+    setWorkday: function(v) { document.getElementById('exp-workday').value=v; },
+    initSpeech: function() { const S=window.SpeechRecognition||window.webkitSpeechRecognition; if(!S) return; this.recognition=new S(); this.recognition.lang='vi-VN'; const b=document.getElementById('micBtn'); b.onclick=()=>{this.recognition.start();b.textContent='...'}; this.recognition.onresult=e=>{const i=document.getElementById('exp-desc');i.value+=(i.value?' ':'')+e.results[0][0].transcript}; this.recognition.onend=()=>{b.textContent='🎤'}; },
+    translateAllDescriptions: async function() {
+        if(!confirm('Dịch mô tả sang Anh?')) return; this.saveState(); const p=document.getElementById('exp-project-select').value, b=document.getElementById('translateBtn'); b.textContent='Đang dịch...'; b.disabled=true;
+        const tasks = (this.data[p]||[]).map(i=>{ const t=i.desc.replace(/<[^>]*>?/gm,''); return t ? fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(t)}&langpair=vi|en`).then(r=>r.json()).then(d=>{if(d.responseData?.translatedText) i.desc=d.responseData.translatedText}) : Promise.resolve(); });
+        await Promise.all(tasks); Store.set('expenses_vFinal', this.data); this.renderTable(); b.textContent='Dịch Mô tả sang Anh'; b.disabled=false; alert('Xong!');
+    },
+    exportToExcelStyledWrapper: function() {
+        const isTranslated = document.getElementById('export-translate-en').checked;
+        this.exportToExcelStyled(null, null, isTranslated);
+    },
+    exportToExcelStyled: function(customData = null, fileName = null, isTranslated = false) {
+        const p = document.getElementById('exp-project-select').value;
+        const list = customData || this.data[p] || [];
+        if(!list.length) return alert('Không có dữ liệu để xuất');
+        
+        const sal = parseFloat(prompt("Lương tháng (VNĐ):", "18000000")) || 0;
+        const stdDays = parseFloat(prompt("Ngày công chuẩn (vd 26):", "26")) || 26;
+        const mDays = parseFloat(prompt("Tổng ngày trong tháng (vd 31):", "31")) || 31;
+        const rate = parseFloat(prompt("Tỷ giá RMB (1 RMB = ? VNĐ, vd 3500):", "3500")) || 3500;
+        const curAdv = this.settings.advancePayment||0, adv = parseFloat(prompt(`Tiền ứng (VNĐ, hiện tại: ${curAdv}):`, curAdv))||0;
+
+        const T = (text) => isTranslated ? (EXCEL_TRANS[text] || text) : text;
+        const projectOrReport = isTranslated ? `REPORT: ${p}` : `BÁO CÁO: ${p}`;
+        const finalFileName = fileName ? (isTranslated ? fileName.replace('BaoCao', 'Report') : fileName) : (isTranslated ? `Report_${p}.xlsx` : `BaoCao_${p}.xlsx`);
+
+
+        const wb = XLSX.utils.book_new();
+        let data = [[`${projectOrReport}`], []];
+        data.push([T("A. CHI PHÍ PHÁT SINH")], [T("Ngày"), T("Mô tả"), T("VNĐ"), T("RMB")]);
+        const costs = list.filter(i=>i.amount>0).sort((a,b)=>new Date(a.date)-new Date(b.date));
+        costs.forEach(i => {
+            let desc = i.desc.replace(/<[^>]*>?/gm,'');
+            // If translated export is selected, and description translation is enabled, should apply.
+            // Since on-the-fly translation in export is too slow, we assume the description is either VI or EN.
+            data.push([i.date, desc, i.amount, {f:`ROUND(C${data.length+1}/${rate},1)`}]);
+        });
+        const cEnd = 5 + costs.length - 1;
+        data.push([T("Tổng chi phí"), "", {f:`SUM(C5:C${cEnd})`}, {f:`ROUND(SUM(D5:D${cEnd}),1)`}]); data.push([]);
+        const sRow = data.length+1;
+        data.push([T("B. BẢNG KÊ NGÀY CÔNG")], [T("Ngày"), T("Mô tả"), T("Ngày công")]);
+        const wds = list.filter(i=>i.workday>0).sort((a,b)=>new Date(a.date)-new Date(b.date));
+        wds.forEach(i => {
+            let desc = i.desc.replace(/<[^>]*>?/gm,'');
+            data.push([i.date, desc, i.workday]);
+        });
+        const wEnd = sRow + 2 + wds.length - 1;
+        data.push([T("Tổng ngày công"), "", {f:`SUM(C${sRow+2}:C${wEnd})`}]);
+        const sumRow = data.length + 2;
+        data.push([], [T("C. TỔNG KẾT"), "", T("VNĐ"), T("RMB (Quy đổi)")] );
+        data.push([T("Tổng chi phí (A)"), "", {f:`C${cEnd+1}`}, {f:`ROUND(C${sumRow+1}/${rate},1)`}]);
+        data.push([T("Lương ngày công (B)"), "", {f:`(${sal}/${stdDays}) * (C${wEnd+1} + (${mDays} - C${wEnd+1}) * 0.5)`}, {f:`ROUND(C${sumRow+2}/${rate},1)`}]);
+        data.push([T("Tiền ứng trước"), "", -adv, {f:`ROUND(C${sumRow+3}/${rate},1)`}]);
+        data.push([T("TỔNG CỘNG (A+B-Ứng)"), "", {f:`SUM(C${sumRow+1}:C${sumRow+3})`}, {f:`ROUND(C${sumRow+4}/${rate},1)`}]);
+        const ws = XLSX.utils.aoa_to_sheet(data, {cellDates:true});
+        ws['!cols'] = [{wch:12}, {wch:50}, {wch:15}, {wch:15}];
+        XLSX.utils.book_append_sheet(wb, ws, T("BaoCao"));
+        XLSX.writeFile(wb, finalFileName);
+    },
+    openCustomExportModal: function() { app.openModal('custom-export-modal'); },
+    exportCustomMonth: function() {
+        const monthYear = document.getElementById('export-month-year').value;
+        const payDay = parseInt(document.getElementById('export-payday').value);
+        const isTranslated = document.getElementById('export-translate-en').checked;
+
+        if (!monthYear || !payDay) { alert("Vui lòng chọn tháng và ngày chốt lương."); return; }
+
+        const [year, month] = monthYear.split('-').map(Number);
+        const endDate = new Date(Date.UTC(year, month - 1, payDay, 23, 59, 59));
+        const startDate = new Date(Date.UTC(year, month - 2, payDay + 1, 0, 0, 0));
+        
+        const startStr = startDate.toISOString().split('T')[0];
+        const endStr = endDate.toISOString().split('T')[0];
+        
+        let filteredData = [];
+        for (const project in this.data) {
+            this.data[project].forEach(item => {
+                if (item.date >= startStr && item.date <= endStr) {
+                    filteredData.push(item);
+                }
+            });
+        }
+        
+        if (filteredData.length === 0) {
+            alert(`Không tìm thấy dữ liệu từ ${startDate.toLocaleDateString('vi-VN')} đến ${endDate.toLocaleDateString('vi-VN')}.`);
+            return;
+        }
+        
+        const T = (text) => isTranslated ? (EXCEL_TRANS[text] || text) : text;
+        const fileNameBase = T("BaoCao");
+        const fileName = `${fileNameBase}_Thang_${month}-${year}_(ChotNgay_${payDay}).xlsx`;
+
+        app.closeModal('custom-export-modal');
+        this.exportToExcelStyled(filteredData, fileName, isTranslated);
+    },
+    toggleAdvancedComboSelection: function() {
+        const table = document.getElementById('cost-table');
+        const toggleBtn = document.getElementById('adv-combo-toggle-btn');
+        const saveBtn = document.getElementById('adv-combo-save-btn');
+        const isActive = table.classList.toggle('advanced-combo-active');
+        
+        if (isActive) {
+            toggleBtn.textContent = 'Hủy chọn Combo Nâng cao';
+            toggleBtn.classList.remove('btn-info');
+            toggleBtn.classList.add('btn-secondary');
+            saveBtn.style.display = 'inline-block';
+        } else {
+            toggleBtn.textContent = 'Kích hoạt Add Combo Nâng cao';
+            toggleBtn.classList.add('btn-info');
+            toggleBtn.classList.remove('btn-secondary');
+            saveBtn.style.display = 'none';
+            // Uncheck all boxes when toggling off
+            document.querySelectorAll('.expense-checkbox').forEach(cb => cb.checked = false);
+        }
+    },
+    toggleForm: function() { document.getElementById('expense-form-card').classList.toggle('collapsed'); },
+    openSettingsModal: function() { this.renderSetUI(); app.openModal('expense-settings-modal'); },
+    renderSetUI: function() {
+        const b = document.getElementById('expense-settings-body');
+        b.innerHTML = `
+        <div class="settings-card"><h3>Gợi ý</h3><div id="set-pre"></div><div class="input-group"><input id="n-pre" class="input-control"><button class="btn-secondary" onclick="exp.addSet('prefix')">Add</button></div></div>
+        <div class="settings-card" style="margin-top:10px"><h3>Tiền</h3><div id="set-cos"></div><div class="input-group"><input type="number" id="n-cos" class="input-control"><button class="btn-secondary" onclick="exp.addSet('cost')">Add</button></div></div>
+        <div class="settings-card" style="margin-top:10px"><h3>Combo</h3><div id="set-com"></div><div class="input-group"><input id="n-com-d" class="input-control" placeholder="Tên"><input type="number" id="n-com-a" class="input-control" placeholder="Tiền"><button class="btn-secondary" onclick="exp.addSet('combo')">Add</button></div></div>
+        <div class="settings-card" style="margin-top:10px"><h3>Màu</h3><div id="set-col"></div><div class="input-group"><input id="n-rul-t" class="input-control" placeholder="Từ khóa"> BG:<input type="color" id="n-rul-bg" value="#ffcdd2"> TX:<input type="color" id="n-rul-tx" value="#b71c1c"> BD:<input type="color" id="n-rul-bd" value="#b71c1c"><button class="btn-secondary" onclick="exp.addSet('colorRule')">Add</button></div></div>`;
+        this.renderSets('prefix'); this.renderSets('cost'); this.renderSets('combo'); this.renderSets('colorRule');
+    },
+    renderSets: function(t) {
+        let c, i, h=''; 
+        if(t==='prefix'){c=document.getElementById('set-pre');i=this.settings.prefixes;h=i.map((x,k)=>`<div>${x} <button onclick="exp.delSet('prefix',${k})">x</button></div>`).join('');}
+        if(t==='cost'){c=document.getElementById('set-cos');i=this.settings.costs;h=i.map((x,k)=>`<div>${x.toLocaleString()} <button onclick="exp.delSet('cost',${k})">x</button></div>`).join('');}
+        if(t==='combo'){c=document.getElementById('set-com');i=this.settings.combos;h=i.map((x,k)=>`<div>${x.desc}-${x.amount.toLocaleString()} <button onclick="exp.delSet('combo',${k})">x</button></div>`).join('');}
+        if(t==='colorRule'){c=document.getElementById('set-col');i=this.settings.colorRules;h=i.map((x,k)=>`<div>${x.text} <button onclick="exp.delSet('colorRule',${k})">x</button></div>`).join('');}
+        if(c)c.innerHTML=h;
+    },
+    addSet: function(t) {
+        if(t==='prefix'){const v=document.getElementById('n-pre').value;if(v)this.settings.prefixes.push(v);document.getElementById('n-pre').value='';}
+        if(t==='cost'){const v=Number(document.getElementById('n-cos').value);if(v)this.settings.costs.push(v);document.getElementById('n-cos').value='';}
+        if(t==='combo'){const d=document.getElementById('n-com-d').value,a=Number(document.getElementById('n-com-a').value);if(d&&a)this.settings.combos.push({desc:d,amount:a});document.getElementById('n-com-d').value='';document.getElementById('n-com-a').value='';}
+        if(t==='colorRule'){const x=document.getElementById('n-rul-t').value,b=document.getElementById('n-rul-bg').value,tx=document.getElementById('n-rul-tx').value,bd=document.getElementById('n-rul-bd').value;if(x)this.settings.colorRules.push({text:x,applyBg:true,bgColor:b,applyText:true,textColor:tx,applyBorder:true,borderColor:bd});document.getElementById('n-rul-t').value='';}
+        this.renderSets(t);
+    },
+    delSet: function(t,k) { if(t==='prefix')this.settings.prefixes.splice(k,1); if(t==='cost')this.settings.costs.splice(k,1); if(t==='combo')this.settings.combos.splice(k,1); if(t==='colorRule')this.settings.colorRules.splice(k,1); this.renderSets(t); },
+    saveSettings: function() { Store.set('expenseSettings_vFinal', this.settings); this.renderSuggestions(); this.renderTable(); cal.render(); document.getElementById('exp-advance-payment-input').value=this.settings.advancePayment; alert('Lưu!'); app.closeModal('expense-settings-modal'); },
+    saveAdvancePayment: function() { this.settings.advancePayment=parseFloat(document.getElementById('exp-advance-payment-input').value)||0; Store.set('expenseSettings_vFinal', this.settings); },
+    clearData: function() { if(confirm('XÓA HẾT?')) { this.saveState(); this.data={'Lê Quốc Huy':[]}; Store.set('expenses_vFinal', this.data); this.renderProjects(); this.renderTable(); } },
+    addComboId: function(id) { const p=document.getElementById('exp-project-select').value, i=this.data[p].find(x=>x.id==id); if(i&&confirm(`Thêm combo "${i.desc}"?`)) { this.settings.combos.push({desc:i.desc.replace(/<[^>]*>?/gm,''), amount:i.amount||0}); Store.set('expenseSettings_vFinal', this.settings); this.renderSuggestions(); } },
+    openAdvancedComboModal: function() {
+        const selected = document.querySelectorAll('.expense-checkbox:checked');
+        if (selected.length === 0) { alert("Vui lòng chọn ít nhất một mục chi phí."); return; }
+        document.getElementById('advanced-combo-count').textContent = selected.length;
+        const date = document.getElementById('exp-date').value;
+        const event = cal.events[date]?.[0];
+        const defaultName = event ? `${event.title} - ${event.location}` : `Combo ngày ${date}`;
+        document.getElementById('advanced-combo-name').value = defaultName;
+        app.openModal('advanced-combo-modal');
+    },
+    saveAdvancedCombo: function() {
+        const name = document.getElementById('advanced-combo-name').value.trim();
+        if (!name) { alert("Vui lòng nhập tên cho Combo."); return; }
+        const p = document.getElementById('exp-project-select').value;
+        const selectedIds = Array.from(document.querySelectorAll('.expense-checkbox:checked')).map(cb => cb.dataset.id);
+        const comboItems = selectedIds.map(id => {
+            const item = this.data[p].find(entry => entry.id == id);
+            if (!item) return null;
+            const { date, id: itemId, ...rest } = item; // Bỏ qua ngày và id
+            return rest;
+        }).filter(Boolean);
+
+        if (!this.settings.advancedCombos) this.settings.advancedCombos = [];
+        this.settings.advancedCombos.push({ name: name, items: comboItems });
+        Store.set('expenseSettings_vFinal', this.settings);
+        this.renderSuggestions();
+        app.closeModal('advanced-combo-modal');
+        document.querySelectorAll('.expense-checkbox:checked').forEach(cb => cb.checked = false);
+        this.toggleAdvancedComboSelection(); // Tắt chế độ chọn sau khi lưu
+    },
+    importFromExcel: function(event) {
+        const file = event.target.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                const sheet = workbook.Sheets["BaoCao"] || workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null });
+
+                let entries = [], strategyName = "";
+                entries = this.importStrategy_Strict(json); if (entries.length > 0) strategyName = "(Strict)";
+                if (entries.length === 0) { entries = this.importStrategy_SmartHeader(json); if (entries.length > 0) strategyName = "(Smart Header)"; }
+                if (entries.length === 0) { entries = this.importStrategy_PatternScan(json); if (entries.length > 0) strategyName = "(Pattern Scan)"; }
+
+                if (entries.length > 0) {
+                    this.saveState(); const p = document.getElementById('exp-project-select').value;
+                    if(!this.data[p]) this.data[p] = []; this.data[p] = this.data[p].concat(entries);
+                    Store.set('expenses_vFinal', this.data); this.renderTable();
+                    alert(`Import thành công ${entries.length} mục ${strategyName}!`);
+                } else { alert("Thất bại: Không tìm thấy dữ liệu hợp lệ."); }
+            } catch (err) { console.error(err); alert("Lỗi file: " + err.message); } 
+            finally { event.target.value = ''; }
+        };
+        reader.readAsArrayBuffer(file);
+    },
+    importStrategy_Strict: function(rows) { let res = [], mode = null; for (let row of rows) { if (!Array.isArray(row) || !row.length) continue; const r0 = String(row[0]||'').trim().toUpperCase(); if (r0.startsWith('A. CHI PHÍ') || r0.startsWith('A. EXPENSE')) { mode = 'COST'; continue; } if (r0.startsWith('B. BẢNG KÊ') || r0.startsWith('B. WORKDAY')) { mode = 'WORKDAY'; continue; } if (r0.startsWith('TỔNG') || r0.startsWith('TOTAL') || r0.startsWith('C.')) { mode = null; continue; } if (mode && row[0] && row[1]) { const date = Utils.parseExcelDate(row[0]); if (!date) continue; if (mode === 'COST') { const amt = parseFloat(String(row[2]).replace(/,/g,'')); if (amt > 0) res.push({ id: Math.random(), date, desc: String(row[1]), amount: amt, workday: 0 }); } else if (mode === 'WORKDAY') { const wd = parseFloat(String(row[2]).replace(/,/g,'')); if (wd > 0) res.push({ id: Math.random(), date, desc: String(row[1]), amount: 0, workday: wd }); } } } return res; },
+    importStrategy_SmartHeader: function(rows) { let res = [], colMap = null, mode = null; for (let row of rows) { const rStr = row.map(c=>String(c).toUpperCase()).join('|'); if (rStr.includes('CHI PHÍ') || rStr.includes('EXPENSE')) mode = 'COST'; else if (rStr.includes('NGÀY CÔNG') || rStr.includes('WORKDAY')) mode = 'WORKDAY'; else if (rStr.includes('TỔNG KẾT') || rStr.includes('SUMMARY')) { mode = null; colMap = null; } if ((row.includes('Ngày') || row.includes('Date')) && (row.includes('Mô tả') || row.includes('Description'))) { colMap = { d: row.indexOf('Ngày') || row.indexOf('Date'), desc: row.indexOf('Mô tả') || row.indexOf('Description'), val: -1 }; row.forEach((c,i) => { const txt = String(c).toUpperCase(); if (txt.includes('VNĐ') || txt.includes('CÔNG') || txt.includes('VND') || txt.includes('WORKDAY')) colMap.val = i; }); continue; } if (mode && colMap && colMap.val > -1 && row[colMap.d]) { const date = Utils.parseExcelDate(row[colMap.d]); if (!date) continue; const val = parseFloat(String(row[colMap.val]).replace(/,/g,'')); if (!val) continue; if (mode === 'COST') res.push({ id: Math.random(), date, desc: String(row[colMap.desc]), amount: val, workday: 0 }); else if (mode === 'WORKDAY') res.push({ id: Math.random(), date, desc: String(row[colMap.desc]), amount: 0, workday: val }); } } return res; },
+    importStrategy_PatternScan: function(rows) { let res = []; for (let row of rows) { if (!Array.isArray(row) || row.length < 3) continue; const date = Utils.parseExcelDate(row[0]); const val = parseFloat(String(row[2]).replace(/,/g,'')); const desc = String(row[1]); if (date && !isNaN(val) && val > 0 && desc.length > 2 && !String(row[0]).toUpperCase().includes('NGÀY') && !String(row[0]).toUpperCase().includes('DATE')) { if (val <= 31 && val % 0.5 === 0) res.push({ id: Math.random(), date, desc, amount: 0, workday: val }); else res.push({ id: Math.random(), date, desc, amount: val, workday: 0 }); } } return res; }
+};
+
+// --- APP CONTROLLER ---
+const app = {
+    switchTab: function(n) {
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+        document.querySelector(`.tab-btn[onclick="app.switchTab('${n}')"]`).classList.add('active');
+        document.getElementById(`tab-${n}`).classList.add('active');
+        document.getElementById('toggle-form-btn').style.display = (n==='expenses'&&window.innerWidth<=900)?'flex':'none';
+    },
+    openModal: id=>document.getElementById(id).style.display='flex',
+    closeModal: id=>document.getElementById(id).style.display='none',
+    closeAllModals: ()=>document.querySelectorAll('.modal-overlay').forEach(m=>m.style.display='none'),
+    
+    applyShortcuts: function(text) {
+        let newValue = text;
+        const shortcuts = cal.settings.shortcuts;
+        Object.entries(shortcuts).forEach(([key, value]) => {
+            // Use word boundary \b and case-insensitive 'gi' flags
+            const regex = new RegExp(`\\b${key}\\b`, 'gi'); 
+            newValue = newValue.replace(regex, value);
+        });
+        return newValue;
+    },
+    executeShortcuts: function() {
+        const inputs = document.querySelectorAll('input[type="text"], input[type="search"], textarea, [contenteditable="true"]');
+        let replacementsCount = 0;
+        inputs.forEach(el => {
+            let originalValue = el.isContentEditable ? el.textContent : el.value;
+            let newValue = app.applyShortcuts(originalValue); 
+            
+            if (originalValue !== newValue) {
+                if (el.isContentEditable) el.textContent = newValue; else el.value = newValue;
+                replacementsCount++;
+            }
+        });
+        if (replacementsCount > 0) {
+            alert(`Đã áp dụng ${replacementsCount} thay thế gõ tắt.`);
+            cal.renderWeatherPanel(); // Rerender weather after applying shortcuts to event location
+        } else {
+            alert('Không tìm thấy từ viết tắt nào để thay thế.');
+        }
+    },
+    filterCalendar: function() {
+        const query = document.getElementById('schedule-search').value.toLowerCase();
+        const days = document.querySelectorAll('.cal-day');
+        days.forEach(day => {
+            const date = day.dataset.date;
+            if (!date) return;
+            const eventsOnDay = cal.events[date] || [];
+            const dayText = eventsOnDay.map(ev => `${ev.title} ${ev.location}`).join(' ').toLowerCase();
+            if (dayText.includes(query)) {
+                day.classList.remove('filtered-out');
+            } else {
+                day.classList.add('filtered-out');
+            }
+        });
+    },
+    filterExpenses: function() {
+        const query = document.getElementById('expenses-search').value.toLowerCase();
+        const rows = document.querySelectorAll('#cost-table tbody tr, #workday-table tbody tr');
+        rows.forEach(row => {
+            if (row.classList.contains('total-row')) return;
+            const rowText = row.textContent.toLowerCase();
+            if (rowText.includes(query)) {
+                row.classList.remove('filtered-out');
+            } else {
+                row.classList.add('filtered-out');
+            }
+        });
+    },
+    toggleAllCheckboxes: function(masterCheckbox, type) {
+        const checkboxes = document.querySelectorAll(`.${type}-checkbox`);
+        checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+    },
+};
+
+// --- START ---
+window.onload = function() { cal.init(); exp.init(); exp.checkLink(); app.switchTab('schedule'); };
+</script>
+
+</body>
+</html>
