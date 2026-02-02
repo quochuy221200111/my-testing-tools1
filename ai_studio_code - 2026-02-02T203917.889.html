@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocal Studio Pro (Upgraded)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    :root {
+        --bg: #101010; --surface: #1e1e1e; --panel: #252525;
+        --primary: #00d2ff; --secondary: #7b42f6; --accent: #ff0055;
+        --text: #e0e0e0; --text-muted: #888;
+        --border-color: #333;
+        --warning: #ffc107; --error: #dc3545;
+    }
+    /* Yêu cầu 1: Sửa lỗi tràn viền trên di động bằng cách thêm box-sizing */
+    * { box-sizing: border-box; }
+
+    body {
+        font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text);
+        margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        padding: 10px; /* Thêm padding để nội dung không dính sát viền trên màn hình nhỏ */
+    }
+    /* Yêu cầu 5: Tối ưu không gian bằng cách bỏ H1 và giảm margin */
+    .main-container {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 15px;
+        width: 100%;
+        max-width: 1300px;
+        margin-top: 5px;
+    }
+    .panel { background: var(--panel); border-radius: 15px; padding: 20px; border: 1px solid var(--border-color); margin-bottom: 15px; }
+    .panel-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; }
+    /* Yêu cầu 3: Chỉ cho phép icon kích hoạt cuộn panel */
+    .panel-title .toggle-icon { cursor: pointer; padding: 5px; }
+    .panel-content { max-height: 1000px; overflow: hidden; transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out; }
+    .panel.collapsed .panel-content { max-height: 0; margin-top: -15px !important; }
+    .panel-title .toggle-icon { transition: transform 0.3s; }
+    .panel.collapsed .toggle-icon { transform: rotate(-90deg); }
+
+    .monitor-screen { background: #000; border-radius: 10px; height: 120px; position: relative; border: 1px solid #444; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    canvas#visualizer { width: 100%; height: 100%; display: block; position: absolute; top:0; left:0; z-index: 1; }
+    /* Yêu cầu 4: Canvas mới cho biểu đồ timeline */
+    #timelineVisualizer { width: 100%; height: 60px; background: #080808; border-radius: 8px; margin-top: 10px; border: 1px solid #333; }
+    .pitch-meter-container { position: absolute; left: 15px; top: 10px; bottom: 10px; width: 25px; border: 1px solid #444; border-radius: 10px; display: flex; flex-direction: column; justify-content: flex-end; background: #222; z-index: 10; }
+    .pitch-meter-bar { background: linear-gradient(to top, var(--primary), var(--secondary)); width: 100%; height: 0%; border-radius: 10px; transition: height 0.1s ease-out; }
+    .timer-overlay { position: absolute; bottom: 10px; right: 15px; font-family: monospace; color: var(--primary); font-size: 1.2rem; z-index: 10; }
+
+    /* Yêu cầu 3: Giao diện cho slider và ô nhập số */
+    .slider-group { margin-bottom: 15px; }
+    .slider-container { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .slider-label { width: 80px; font-size: 0.8rem; color: #aaa; flex-shrink: 0; }
+    input[type=range] { flex-grow: 1; accent-color: var(--primary); height: 4px; background: #444; border-radius: 2px; -webkit-appearance: none; min-width: 50px; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; background: white; border-radius: 50%; cursor: pointer; }
+    input[type=range]:disabled { accent-color: #555; }
+    input[type=range]:disabled::-webkit-slider-thumb { background: #888; cursor: not-allowed; }
+    input[type=number].slider-value-input { width: 60px; background: #333; border: 1px solid #555; color: var(--text); border-radius: 5px; padding: 4px 8px; text-align: center; }
+    input[type=number].slider-value-input:disabled { background: #222; color: #777; cursor: not-allowed; }
+
+    /* Yêu cầu 1: Giao diện cho các nút điều khiển chính */
+    .main-controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin: 20px 0; }
+    .btn-big { width: 70px; height: 70px; border-radius: 50%; border: none; font-size: 1.8rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+    #btnRecordControl { background: var(--primary); color: #000; }
+    #btnRecordControl.recording { background: var(--accent); color: white; animation: pulse 1.5s infinite; }
+    #btnPause { font-size: 1.5rem; width: 55px; height: 55px; background: #444; color: white; }
+    #btnPause.paused { background: var(--warning); color: #000; }
+
+    .fx-buttons { display: flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+    .fx-btn { flex-grow: 1; background: transparent; color: var(--text-muted); border: none; padding: 10px 5px; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; font-size: 0.8rem; }
+    .fx-btn:not(:last-child) { border-right: 1px solid var(--border-color); }
+    .fx-btn.active { background: var(--primary); color: #000; font-weight: 600; }
+
+    .lyrics-panel-header { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px; }
+    #lyrics-playlist { max-height: 150px; overflow-y: auto; margin-bottom: 15px; background: #1a1a1a; border-radius: 8px; padding: 5px; border: 1px solid var(--border-color); }
+    .lyric-item { padding: 10px; border-radius: 5px; cursor: pointer; margin-bottom: 5px; border: 1px solid transparent; transition: background-color 0.2s, border-color 0.2s; font-size: 0.9rem; }
+    .lyric-item:hover { background-color: #2a2a2a; }
+    .lyric-item.selected { background-color: #303f5a; border-color: var(--primary); font-weight: 600; }
+    .lyrics-container { position: relative; height: 300px; background: #151515; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); }
+    #lyricsInput { width: 100%; height: 100%; background: transparent; color: #ddd; border: none; padding: 20px; font-size: 1.1rem; line-height: 1.6; resize: none; outline: none; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    
+    /* Yêu cầu 2: Giao diện cho danh sách dự án và bản ghi */
+    .project-item { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--secondary); cursor: pointer; transition: background-color 0.2s; }
+    .project-item:hover { background-color: #333; }
+    .project-item.selected { background-color: #3c2e5a; border-left-color: var(--primary); }
+    .project-recordings { padding-left: 20px; max-height: 0; overflow: hidden; transition: max-height 0.5s ease; }
+    .project-item.selected .project-recordings { max-height: 500px; overflow-y: auto; margin-top: 10px;}
+    .record-item { background: #353535; padding: 10px; border-radius: 8px; margin-top: 8px; display: flex; align-items: center; gap: 10px; }
+    .record-item-info { flex-grow: 1; }
+    
+    /* Yêu cầu 7-17: Giao diện cho trạng thái bộ nhớ */
+    #storageStatus { font-size: 0.8rem; text-align: center; padding: 8px; margin-top: 15px; border-radius: 5px; background: #333; }
+    #storageStatus.warning { background: var(--warning); color: #000; font-weight: bold; }
+    #storageStatus.error { background: var(--error); color: #fff; font-weight: bold; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center; }
+    .modal-content { background: var(--surface); padding: 30px; border-radius: 15px; width: 90%; max-width: 800px; text-align: center; }
+    .trim-canvas-container { width: 100%; height: 150px; background: #000; position: relative; margin: 20px 0; border: 1px solid #444; }
+    #trimCanvas { position: absolute; top:0; left:0; width:100%; height:100%;}
+    .trim-controls { display:flex; flex-wrap: wrap; gap:20px; justify-content:center; }
+    .btn-save { background: var(--primary); color: #000; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { background: #444; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-right: 15px; }
+
+    /* Yêu cầu 6: Input trong modal */
+    .form-group { margin-bottom: 15px; text-align: left; }
+    .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: var(--text-muted); }
+    .form-group input, .form-group select { width: 100%; padding: 10px; background: #111; border: 1px solid #444; color: var(--text); border-radius: 5px; }
+
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(255, 0, 85, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0); } }
+    
+    @media (max-width: 900px) {
+        .main-container { grid-template-columns: 1fr; }
+        .trim-controls { flex-direction: column; align-items: center; }
+    }
+</style>
+</head>
+<body>
+
+<div class="main-container">
+    <!-- LEFT COLUMN: CONTROLS & VISUALS -->
+    <div>
+        <div class="panel">
+            <div class="monitor-screen">
+                <canvas id="visualizer"></canvas>
+                <div id="timer" class="timer-overlay">00:00</div>
+            </div>
+            <!-- Yêu cầu 4: Thêm canvas cho timeline -->
+            <canvas id="timelineVisualizer"></canvas>
+        </div>
+
+        <!-- Yêu cầu 1: Gộp các nút điều khiển -->
+        <div class="main-controls">
+            <button id="btnRecordControl" class="btn-big" title="Thu âm"><i class="fas fa-microphone"></i></button>
+            <button id="btnPause" class="btn-big" title="Tạm dừng" style="display: none;"><i class="fas fa-pause"></i></button>
+        </div>
+
+        <div class="panel fx-panel">
+            <div class="panel-title">
+                <span>Hiệu ứng & EQ</span>
+                <div>
+                    <!-- Yêu cầu 3: Nút Edit và Preset -->
+                    <select id="presetSelector" title="Chọn Preset" style="display:none; margin-right: 10px; background: #333; color: white; border: 1px solid #555; border-radius: 5px; padding: 3px;"></select>
+                    <button id="btnSavePreset" class="btn-small-icon" title="Lưu Preset" style="display: none;"><i class="fas fa-save"></i></button>
+                    <button id="btnEditFx" class="btn-small-icon" title="Sửa hiệu ứng"><i class="fas fa-lock"></i></button>
+                    <i class="fas fa-sliders-h toggle-icon"></i>
+                </div>
+            </div>
+            <div class="panel-content">
+                 <!-- Yêu cầu 3: Sửa đổi các thanh trượt -->
+                <div class="slider-group">
+                    <div class="slider-container"><span class="slider-label">Low</span><input type="range" class="fx-control eq-slider" data-fx="eq.low" min="-12" max="12" value="0" step="1" disabled><input type="number" class="slider-value-input fx-control" data-target-fx="eq.low" value="0" disabled></div>
+                    <div class="slider-container"><span class="slider-label">Low-Mid</span><input type="range" class="fx-control eq-slider" data-fx="eq.lowMid" min="-12" max="12" value="0" step="1" disabled><input type="number" class="slider-value-input fx-control" data-target-fx="eq.lowMid" value="0" disabled></div>
+                    <div class="slider-container"><span class="slider-label">Mid</span><input type="range" class="fx-control eq-slider" data-fx="eq.mid" min="-12" max="12" value="0" step="1" disabled><input type="number" class="slider-value-input fx-control" data-target-fx="eq.mid" value="0" disabled></div>
+                    <div class="slider-container"><span class="slider-label">Hi-Mid</span><input type="range" class="fx-control eq-slider" data-fx="eq.highMid" min="-12" max="12" value="0" step="1" disabled><input type="number" class="slider-value-input fx-control" data-target-fx="eq.highMid" value="0" disabled></div>
+                    <div class="slider-container"><span class="slider-label">High</span><input type="range" class="fx-control eq-slider" data-fx="eq.high" min="-12" max="12" value="0" step="1" disabled><input type="number" class="slider-value-input fx-control" data-target-fx="eq.high" value="0" disabled></div>
+                </div>
+                <div class="slider-group">
+                    <div class="fx-buttons">
+                        <button class="fx-btn reverb-btn active fx-control" data-fx="reverb.type" data-value="off" disabled>Tắt</button>
+                        <button class="fx-btn reverb-btn fx-control" data-fx="reverb.type" data-value="studio" disabled>Studio</button>
+                        <button class="fx-btn reverb-btn fx-control" data-fx="reverb.type" data-value="hall" disabled>Hội trường</button>
+                    </div>
+                    <div class="slider-container" style="margin-top:15px;">
+                        <span class="slider-label">Độ lớn</span>
+                        <input type="range" id="reverbMix" class="fx-control" data-fx="reverb.mix" min="0" max="1" step="0.05" value="0.3" disabled>
+                        <input type="number" class="slider-value-input fx-control" data-target-fx="reverb.mix" min="0" max="1" step="0.05" value="0.3" disabled>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN: LYRICS & PLAYLIST -->
+    <div>
+        <div class="panel lyrics-panel">
+            <div class="panel-title"><span>Lời bài hát</span>
+                <div>
+                    <button id="btnSaveLyrics" class="btn-small-icon" title="Lưu lời mới"><i class="fas fa-save"></i></button>
+                    <button id="btnDeleteLyrics" class="btn-small-icon" title="Xóa lời đang chọn"><i class="fas fa-trash-alt"></i></button>
+                    <i class="fas fa-music toggle-icon"></i>
+                </div>
+            </div>
+            <div class="panel-content">
+                <div id="lyrics-playlist"></div>
+                <div class="lyrics-container">
+                    <textarea id="lyricsInput" placeholder="Dán lời bài hát vào đây..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yêu cầu 2: Thư viện dự án -->
+        <div class="panel playlist-panel">
+            <div class="panel-title">
+                <span>Thư viện Dự án</span>
+                <i class="fas fa-list-ul toggle-icon"></i>
+            </div>
+            <div class="panel-content">
+                <div id="project-list"></div>
+                <!-- Yêu cầu 7-17: Hiển thị trạng thái bộ nhớ -->
+                <div id="storageStatus">Đang kiểm tra dung lượng...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Yêu cầu 2, 6: Modal Chỉnh sửa & Lưu Dự án -->
+<div id="trimModal" class="modal">
+    <div class="modal-content">
+        <h2 style="color:var(--text)">Chỉnh sửa & Lưu bản thu</h2>
+        <div class="trim-canvas-container">
+            <canvas id="trimCanvas"></canvas>
+        </div>
+        <div class="trim-controls control-group">
+            <div><span class="slider-label">Bắt đầu: </span><span id="startTimeDisplay">0.0s</span><input type="range" id="trimStart" value="0" step="0.01"></div>
+            <div><span class="slider-label">Kết thúc: </span><span id="endTimeDisplay">0.0s</span><input type="range" id="trimEnd" value="100" step="0.01"></div>
+        </div>
+        
+        <div class="form-group" style="margin-top: 20px;">
+            <label for="recordingNameInput">Tên bản thu (Tùy biến)</label>
+            <input type="text" id="recordingNameInput">
+        </div>
+        <div class="form-group">
+            <label for="projectSelector">Lưu vào Dự án</label>
+            <select id="projectSelector">
+                <option value="new">-- Tạo dự án mới --</option>
+            </select>
+        </div>
+         <div class="form-group" id="newProjectNameGroup" style="display: block;">
+            <label for="newProjectNameInput">Tên dự án mới</label>
+            <input type="text" id="newProjectNameInput" placeholder="Ví dụ: Cover bài hát X">
+        </div>
+        
+        <div style="margin-top:30px;">
+            <button id="btnCancelTrim" class="btn-cancel">Hủy bỏ</button>
+            <button id="btnSaveTrim" class="btn-save"><i class="fas fa-save"></i> Lưu</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- GLOBAL STATE & DOM ELEMENTS ---
+let db;
+let audioCtx, micStream, micSource, workletNode, analyser;
+let isRecording = false;
+let isPaused = false;
+let audioBuffer = [];
+let timelineAmplitudes = []; // Yêu cầu 4: Mảng lưu trữ biên độ cho timeline
+let fullAudioData;
+let sampleRate = 48000;
+let timerInterval, startTime, pausedTime = 0, totalPausedDuration = 0;
+let currentLyricsId = null;
+
+// Yêu cầu 3: Trạng thái hiệu ứng mặc định
+let fxState = {
+    reverb: { type: 'off', mix: 0.3 },
+    eq: { low: 0, lowMid: 0, mid: 0, highMid: 0, high: 0 }
+};
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    initDB();
+    setupEventListeners();
+    updateFxControlsFromState();
+});
+
+function initDB() {
+    // Tăng phiên bản DB để thêm object store mới
+    const req = indexedDB.open("VocalStudioDB_V3", 3);
+    req.onupgradeneeded = e => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains('recs')) {
+            const recStore = db.createObjectStore('recs', { keyPath: 'id', autoIncrement: true });
+            recStore.createIndex('projectId', 'projectId', { unique: false }); // Yêu cầu 2: Index cho dự án
+        }
+        if (!db.objectStoreNames.contains('lyrics')) {
+            db.createObjectStore('lyrics', { keyPath: 'id', autoIncrement: true });
+        }
+        // Yêu cầu 2 & 3: Thêm object stores mới
+        if (!db.objectStoreNames.contains('projects')) {
+            db.createObjectStore('projects', { keyPath: 'id', autoIncrement: true });
+        }
+        if (!db.objectStoreNames.contains('fx_presets')) {
+            db.createObjectStore('fx_presets', { keyPath: 'name' });
+        }
+    };
+    req.onsuccess = e => {
+        db = e.target.result;
+        loadProjects();
+        loadLyricsLibrary();
+        loadFxPresets();
+        requestPersistentStorage(); // Yêu cầu 7-11
+        checkStorageQuota(); // Yêu cầu 12-17
+    };
+    req.onerror = e => console.error("DB Error:", e.target.errorCode);
+}
+
+// Yêu cầu 7-11: Yêu cầu lưu trữ bền vững
+async function requestPersistentStorage() {
+    if (navigator.storage && navigator.storage.persist) {
+        if (await navigator.storage.persisted()) {
+            console.log("Lưu trữ bền vững đã được cấp.");
+            return;
+        }
+        const persisted = await navigator.storage.persist();
+        console.log(persisted ? "Đã cấp quyền lưu trữ bền vững." : "Không thể cấp quyền lưu trữ bền vững.");
+        if (!persisted) {
+            console.warn("Dữ liệu có thể bị xóa bởi trình duyệt khi dung lượng thấp.");
+        }
+    }
+}
+
+// Yêu cầu 12-17: Kiểm tra dung lượng
+async function checkStorageQuota() {
+    const statusEl = document.getElementById('storageStatus');
+    if (navigator.storage && navigator.storage.estimate) {
+        const { usage, quota } = await navigator.storage.estimate();
+        const usageMB = (usage / 1024 / 1024).toFixed(2);
+        const quotaMB = (quota / 1024 / 1024).toFixed(2);
+        const percentageUsed = quota > 0 ? (usage / quota) * 100 : 0;
+        
+        statusEl.textContent = `Đã sử dụng: ${usageMB} MB / ${quotaMB} MB (${percentageUsed.toFixed(1)}%)`;
+        statusEl.classList.remove('warning', 'error');
+
+        if (percentageUsed >= 80 && percentageUsed < 95) {
+            statusEl.classList.add('warning');
+            statusEl.textContent += " - Cảnh báo: Dung lượng gần đầy. Hãy tải về các bản ghi cũ.";
+        } else if (percentageUsed >= 95) {
+            statusEl.classList.add('error');
+            statusEl.textContent += " - Lỗi: Dung lượng đã đầy. Không thể lưu bản ghi mới.";
+        }
+        return percentageUsed;
+    } else {
+        statusEl.textContent = "Không thể kiểm tra dung lượng.";
+        return 0;
+    }
+}
+
+function setupEventListeners() {
+    // Yêu cầu 1: Event listener cho nút điều khiển chính
+    document.getElementById('btnRecordControl').onclick = handleRecordControl;
+    document.getElementById('btnPause').onclick = togglePause;
+
+    // Yêu cầu 3: Giới hạn vùng bấm
+    document.querySelectorAll('.toggle-icon').forEach(icon => {
+        icon.onclick = (e) => {
+            e.stopPropagation();
+            icon.closest('.panel').classList.toggle('collapsed');
+        };
+    });
+
+    // Yêu cầu 3: Nút Edit FX
+    document.getElementById('btnEditFx').onclick = toggleFxEditing;
+
+    // Yêu cầu 3: Đồng bộ thanh trượt và ô nhập số
+    document.querySelectorAll('.fx-control').forEach(el => {
+        if (el.type === 'range' || el.type === 'number') {
+            el.oninput = handleFxInputChange;
+        } else if (el.tagName === 'BUTTON') {
+            el.onclick = handleFxButtonChange;
+        }
+    });
+    
+    // Yêu cầu 3: Lưu và tải Preset
+    document.getElementById('btnSavePreset').onclick = saveFxPreset;
+    document.getElementById('presetSelector').onchange = loadSelectedFxPreset;
+
+    document.getElementById('btnSaveLyrics').onclick = saveLyrics;
+    document.getElementById('btnDeleteLyrics').onclick = deleteCurrentLyrics;
+    document.getElementById('lyrics-playlist').addEventListener('click', (e) => {
+        const item = e.target.closest('.lyric-item');
+        if (item) loadSelectedLyrics(parseInt(item.dataset.id));
+    });
+
+    document.getElementById('btnCancelTrim').onclick = discardRecording;
+    document.getElementById('btnSaveTrim').onclick = saveRecordingFlow;
+    document.getElementById('trimStart').oninput = drawTrimWaveform;
+    document.getElementById('trimEnd').oninput = drawTrimWaveform;
+    
+    document.getElementById('projectSelector').onchange = (e) => {
+        document.getElementById('newProjectNameGroup').style.display = e.target.value === 'new' ? 'block' : 'none';
+    };
+    
+    document.getElementById('project-list').addEventListener('click', (e) => {
+        const projectItem = e.target.closest('.project-item');
+        if (projectItem) {
+             toggleProjectSelection(parseInt(projectItem.dataset.id));
+        }
+    });
+}
+
+// --- AUDIO ENGINE ---
+async function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+    sampleRate = audioCtx.sampleRate;
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+    micSource = audioCtx.createMediaStreamSource(micStream);
+    buildFXChain(micSource);
+    const workletBlob = new Blob([`class RecorderProcessor extends AudioWorkletProcessor { process(inputs) { this.port.postMessage(inputs[0][0]); return true; } } registerProcessor('recorder-processor', RecorderProcessor);`], { type: 'application/javascript' });
+    const workletURL = URL.createObjectURL(workletBlob);
+    await audioCtx.audioWorklet.addModule(workletURL);
+    workletNode = new AudioWorkletNode(audioCtx, 'recorder-processor');
+    workletNode.port.onmessage = (event) => {
+        if (isRecording && !isPaused && event.data) {
+            audioBuffer.push(new Float32Array(event.data));
+            // Yêu cầu 4: Tính toán biên độ cho timeline
+            const rms = Math.sqrt(event.data.reduce((s, v) => s + v * v, 0) / event.data.length);
+            timelineAmplitudes.push(rms);
+        }
+    };
+    analyser.connect(workletNode);
+    workletNode.connect(audioCtx.destination);
+}
+
+
+// --- RECORDING CONTROLS (Yêu cầu 1) ---
+async function handleRecordControl() {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        await startRecording();
+    }
+}
+
+async function startRecording() {
+    await initAudio();
+    isRecording = true;
+    isPaused = false;
+    audioBuffer = [];
+    timelineAmplitudes = []; // Yêu cầu 4
+    totalPausedDuration = 0;
+    pausedTime = 0;
+
+    const btn = document.getElementById('btnRecordControl');
+    btn.classList.add('recording');
+    btn.innerHTML = '<i class="fas fa-stop"></i>';
+    btn.title = "Dừng";
+    document.getElementById('btnPause').style.display = 'flex';
+
+    startTime = Date.now();
+    timerInterval = setInterval(updateTimer, 250); // Update timer thường xuyên hơn
+    drawVisualizer();
+}
+
+function stopRecording() {
+    if (!isRecording) return;
+    isRecording = false;
+    isPaused = false;
+    clearInterval(timerInterval);
+    const btn = document.getElementById('btnRecordControl');
+    btn.classList.remove('recording');
+    btn.innerHTML = '<i class="fas fa-microphone"></i>';
+    btn.title = "Thu âm";
+    document.getElementById('btnPause').style.display = 'none';
+    document.getElementById('btnPause').classList.remove('paused');
+    
+    micStream?.getTracks().forEach(track => track.stop());
+    micStream = null;
+    audioCtx?.close().then(() => { audioCtx = null; });
+    
+    openTrimmer();
+}
+
+function togglePause() {
+    if (!isRecording) return;
+    isPaused = !isPaused;
+    const btn = document.getElementById('btnPause');
+    btn.classList.toggle('paused', isPaused);
+    btn.innerHTML = isPaused ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+    
+    if (isPaused) {
+        pausedTime = Date.now();
+        audioCtx.suspend();
+    } else {
+        totalPausedDuration += Date.now() - pausedTime;
+        audioCtx.resume();
+    }
+}
+
+function updateTimer() {
+    if (!isRecording || isPaused) return;
+    const elapsed = Date.now() - startTime - totalPausedDuration;
+    const diff = Math.floor(elapsed / 1000);
+    const m = Math.floor(diff / 60).toString().padStart(2, '0');
+    const s = (diff % 60).toString().padStart(2, '0');
+    document.getElementById('timer').innerText = `${m}:${s}`;
+}
+
+
+// --- VISUALIZATION (Yêu cầu 4: Tích hợp timeline) ---
+function drawVisualizer() {
+    if (!analyser) return;
+    const canvas = document.getElementById('visualizer');
+    const ctx = canvas.getContext('2d');
+    const timelineCanvas = document.getElementById('timelineVisualizer');
+    const timelineCtx = timelineCanvas.getContext('2d');
+
+    const bufferLength = analyser.fftSize;
+    const dataArray = new Float32Array(bufferLength);
+
+    const draw = () => {
+        if (!isRecording && !isPaused) {
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+            return;
+        }
+        requestAnimationFrame(draw);
+        
+        // Vẽ waveform tức thời
+        analyser.getFloatTimeDomainData(dataArray);
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'var(--primary)';
+        ctx.beginPath();
+        const sliceWidth = canvas.width / bufferLength;
+        for(let i = 0, x = 0; i < bufferLength; i++, x+=sliceWidth) {
+            const v = dataArray[i] * canvas.height/2 + canvas.height/2;
+            if(i === 0) ctx.moveTo(x, v); else ctx.lineTo(x, v);
+        }
+        ctx.stroke();
+
+        // Vẽ timeline tổng quan
+        drawTimeline(timelineCtx, timelineCanvas.width, timelineCanvas.height);
+    };
+    draw();
+}
+
+function drawTimeline(ctx, w, h) {
+    ctx.fillStyle = '#080808';
+    ctx.fillRect(0,0,w,h);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'var(--secondary)';
+    ctx.beginPath();
+    const amp = h / 2;
+    for(let i = 0; i < timelineAmplitudes.length; i++) {
+        const x = (i / timelineAmplitudes.length) * w;
+        const y = timelineAmplitudes[i] * amp * 5; // Khuếch đại để nhìn rõ hơn
+        ctx.moveTo(x, amp - y);
+        ctx.lineTo(x, amp + y);
+    }
+    ctx.stroke();
+}
+
+// --- LYRICS LIBRARY ---
+function saveLyrics() {
+    const content = document.getElementById('lyricsInput').value.trim();
+    if (!content) return alert("Nội dung lời không được để trống.");
+    const name = prompt("Đặt tên cho lời bài hát này:", `Lyrics ${new Date().toLocaleDateString()}`);
+    if (!name) return;
+
+    const tx = db.transaction(['lyrics'], 'readwrite');
+    tx.objectStore('lyrics').add({ name, content });
+    tx.oncomplete = () => {
+        alert('Đã lưu lời bài hát!');
+        loadLyricsLibrary();
+    };
+}
+
+function loadLyricsLibrary() {
+    if (!db) return;
+    const playlist = document.getElementById('lyrics-playlist');
+    playlist.innerHTML = '';
+    db.transaction('lyrics').objectStore('lyrics').openCursor(null, 'prev').onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+            const item = document.createElement('div');
+            item.className = 'lyric-item';
+            item.dataset.id = cursor.value.id;
+            item.textContent = cursor.value.name;
+            playlist.appendChild(item);
+            cursor.continue();
+        }
+    };
+}
+
+function loadSelectedLyrics(id) {
+    currentLyricsId = id;
+    document.querySelectorAll('#lyrics-playlist .lyric-item').forEach(item => {
+        item.classList.toggle('selected', parseInt(item.dataset.id) === id);
+    });
+    db.transaction('lyrics').objectStore('lyrics').get(id).onsuccess = e => {
+        if (e.target.result) {
+            document.getElementById('lyricsInput').value = e.target.result.content;
+        }
+    };
+}
+
+function deleteCurrentLyrics() {
+    const selectedItem = document.querySelector('#lyrics-playlist .lyric-item.selected');
+    if (!selectedItem) return alert("Vui lòng chọn một lời bài hát để xóa.");
+    const id = parseInt(selectedItem.dataset.id);
+    if (confirm(`Bạn có chắc muốn xóa lời bài hát "${selectedItem.textContent}"?`)) {
+        const tx = db.transaction(['lyrics'], 'readwrite');
+        tx.objectStore('lyrics').delete(id);
+        tx.oncomplete = () => {
+            document.getElementById('lyricsInput').value = '';
+            currentLyricsId = null;
+            loadLyricsLibrary();
+        };
+    }
+}
+
+// --- TRIMMER & EDITING ---
+function openTrimmer() {
+    if (audioBuffer.length === 0) return;
+    const modal = document.getElementById('trimModal');
+    modal.style.display = 'flex';
+    
+    // Yêu cầu 6: Định dạng ngày và focus
+    const now = new Date();
+    const dateString = now.getFullYear().toString().slice(-2) + 
+                       (now.getMonth() + 1).toString().padStart(2, '0') + 
+                       now.getDate().toString().padStart(2, '0');
+    document.getElementById('recordingNameInput').placeholder = `MySong-${dateString}`;
+    document.getElementById('recordingNameInput').focus();
+
+    const length = audioBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+    fullAudioData = new Float32Array(length);
+    let offset = 0;
+    audioBuffer.forEach(chunk => {
+        fullAudioData.set(chunk, offset);
+        offset += chunk.length;
+    });
+
+    const duration = length / sampleRate;
+    const sStart = document.getElementById('trimStart');
+    const sEnd = document.getElementById('trimEnd');
+    sStart.max = duration; sEnd.max = duration;
+    sStart.value = 0; sEnd.value = duration;
+
+    loadProjectsIntoSelector();
+    drawTrimWaveform();
+}
+
+function drawTrimWaveform() {
+    const sStart = document.getElementById('trimStart');
+    const sEnd = document.getElementById('trimEnd');
+    if (parseFloat(sStart.value) >= parseFloat(sEnd.value)) sStart.value = parseFloat(sEnd.value) - 0.01;
+    if (parseFloat(sEnd.value) <= parseFloat(sStart.value)) sEnd.value = parseFloat(sStart.value) + 0.01;
+
+    const cvs = document.getElementById('trimCanvas');
+    const ctx = cvs.getContext('2d');
+    const w = cvs.width = cvs.clientWidth;
+    const h = cvs.height = cvs.clientHeight;
+    ctx.clearRect(0,0,w,h);
+    
+    // Yêu cầu 4: Hiển thị biểu đồ âm lượng tổng (đã có)
+    const step = Math.ceil(fullAudioData.length / w);
+    const amp = h / 2;
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let i=0; i<w; i++){
+        let min = 1.0, max = -1.0;
+        for (let j=0; j<step; j++) {
+            const val = fullAudioData[(i * step) + j] || 0;
+            if (val < min) min = val; if (val > max) max = val;
+        }
+        ctx.moveTo(i, amp + min * amp); ctx.lineTo(i, amp + max * amp);
+    }
+    ctx.stroke();
+
+    const duration = fullAudioData.length / sampleRate;
+    const startT = parseFloat(sStart.value);
+    const endT = parseFloat(sEnd.value);
+    const x1 = (startT / duration) * w;
+    const x2 = (endT / duration) * w;
+
+    ctx.fillStyle = 'rgba(0, 210, 255, 0.3)';
+    ctx.fillRect(x1, 0, x2 - x1, h);
+
+    document.getElementById('startTimeDisplay').innerText = startT.toFixed(2)+'s';
+    document.getElementById('endTimeDisplay').innerText = endT.toFixed(2)+'s';
+}
+
+function discardRecording() {
+    if(confirm("Hủy bản thu này?")) {
+        document.getElementById('trimModal').style.display = 'none';
+        audioBuffer = []; fullAudioData = null;
+    }
+}
+
+function encodeWAV(samples, sampleRate) {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+    const write = (o,s) => { for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
+    write(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); write(8, 'WAVE');
+    write(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 4, true); view.setUint16(32, 4, true);
+    view.setUint16(34, 16, true); write(36, 'data'); view.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) {
+        view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 0x7FFF, true);
+    }
+    return new Blob([view], { type: 'audio/wav' });
+}
+
+
+// --- PROJECT & RECORDING SAVE FLOW (Yêu cầu 2 & 6) ---
+async function saveRecordingFlow() {
+    // Yêu cầu 12-17: Kiểm tra dung lượng trước khi lưu
+    const usage = await checkStorageQuota();
+    if (usage >= 95) {
+        alert("Lỗi: Dung lượng lưu trữ đã đầy. Không thể lưu. Vui lòng xóa bớt các bản ghi cũ.");
+        return;
+    }
+
+    const startT = parseFloat(document.getElementById('trimStart').value);
+    const endT = parseFloat(document.getElementById('trimEnd').value);
+    const slicedData = fullAudioData.slice(Math.floor(startT * sampleRate), Math.floor(endT * sampleRate));
+    const wavBlob = encodeWAV(slicedData, sampleRate);
+
+    const customName = document.getElementById('recordingNameInput').value.trim();
+    const now = new Date();
+    const dateString = now.getFullYear().toString().slice(-2) + 
+                       (now.getMonth() + 1).toString().padStart(2, '0') + 
+                       now.getDate().toString().padStart(2, '0');
+    const recordingName = `${customName || 'Recording'}-${dateString}`;
+    
+    const selectedProjectId = document.getElementById('projectSelector').value;
+
+    if (selectedProjectId === 'new') {
+        const newProjectName = document.getElementById('newProjectNameInput').value.trim();
+        if (!newProjectName) return alert("Vui lòng nhập tên cho dự án mới.");
+        
+        // 1. Lưu lời bài hát nếu có
+        const lyricsContent = document.getElementById('lyricsInput').value;
+        const lyricsName = `Lyrics for ${newProjectName}`;
+        let lyricsIdToSave = currentLyricsId;
+        if(lyricsContent && !currentLyricsId) { // Lưu lời mới nếu có nội dung mà chưa được lưu
+            lyricsIdToSave = await addLyricsToDB({name: lyricsName, content: lyricsContent});
+        }
+        
+        // 2. Tạo dự án mới
+        const newProjectId = await addProjectToDB({name: newProjectName, lyricsId: lyricsIdToSave});
+
+        // 3. Lưu bản ghi
+        saveRecordingToDB({ name: recordingName, blob: wavBlob, date: now, projectId: newProjectId });
+
+    } else {
+        const projectId = parseInt(selectedProjectId);
+        // Kiểm tra xem lời có thay đổi không
+        const project = await getProjectFromDB(projectId);
+        const projectLyrics = project.lyricsId ? await getLyricsFromDB(project.lyricsId) : null;
+        
+        if (projectLyrics && projectLyrics.content !== document.getElementById('lyricsInput').value) {
+            if (!confirm("Cảnh báo: Lời bài hát hiện tại khác với lời gốc của dự án. Bạn vẫn muốn lưu bản ghi này vào dự án?")) {
+                return;
+            }
+        }
+        saveRecordingToDB({ name: recordingName, blob: wavBlob, date: now, projectId: projectId });
+    }
+}
+
+function saveRecordingToDB(recordData) {
+    const tx = db.transaction(['recs'], 'readwrite');
+    tx.objectStore('recs').add(recordData);
+    tx.oncomplete = () => {
+        document.getElementById('trimModal').style.display = 'none';
+        loadProjects();
+        audioBuffer = []; fullAudioData = null;
+        checkStorageQuota(); // Cập nhật lại dung lượng sau khi lưu
+    };
+    tx.onerror = (e) => console.error("Save recording error", e);
+}
+
+// Helper functions for DB operations (Promise-based for async/await)
+function addLyricsToDB(lyricsData) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(['lyrics'], 'readwrite');
+        const req = tx.objectStore('lyrics').add(lyricsData);
+        req.onsuccess = () => resolve(req.result);
+        tx.onerror = () => reject(tx.error);
+    });
+}
+function addProjectToDB(projectData) {
+     return new Promise((resolve, reject) => {
+        const tx = db.transaction(['projects'], 'readwrite');
+        const req = tx.objectStore('projects').add(projectData);
+        req.onsuccess = () => resolve(req.result);
+        tx.onerror = () => reject(tx.error);
+    });
+}
+function getProjectFromDB(id) {
+    return new Promise((resolve, reject) => {
+        db.transaction('projects').objectStore('projects').get(id).onsuccess = e => resolve(e.target.result);
+    });
+}
+function getLyricsFromDB(id) {
+     return new Promise((resolve, reject) => {
+        db.transaction('lyrics').objectStore('lyrics').get(id).onsuccess = e => resolve(e.target.result);
+    });
+}
+
+// --- PROJECT LIBRARY (Yêu cầu 2) ---
+function loadProjects() {
+    if (!db) return;
+    const listEl = document.getElementById('project-list');
+    listEl.innerHTML = '';
+    const tx = db.transaction('projects').objectStore('projects');
+    tx.openCursor(null, 'prev').onsuccess = async e => {
+        const cursor = e.target.result;
+        if (cursor) {
+            const project = cursor.value;
+            const projectDiv = document.createElement('div');
+            projectDiv.className = 'project-item';
+            projectDiv.dataset.id = project.id;
+            projectDiv.innerHTML = `
+                <div style="font-weight:bold">${project.name}</div>
+                <div class="project-recordings" id="recordings-for-project-${project.id}"></div>
+            `;
+            listEl.appendChild(projectDiv);
+            cursor.continue();
+        }
+    };
+}
+
+function loadProjectsIntoSelector() {
+    const selector = document.getElementById('projectSelector');
+    // Clear old options except the first one
+    while (selector.options.length > 1) selector.remove(1);
+    
+    db.transaction('projects').objectStore('projects').openCursor(null, 'prev').onsuccess = e => {
+        const cursor = e.target.result;
+        if (cursor) {
+            selector.add(new Option(cursor.value.name, cursor.value.id));
+            cursor.continue();
+        }
+    };
+}
+
+async function toggleProjectSelection(projectId) {
+    const allItems = document.querySelectorAll('.project-item');
+    const selectedItem = document.querySelector(`.project-item[data-id="${projectId}"]`);
+    const wasSelected = selectedItem.classList.contains('selected');
+
+    allItems.forEach(item => item.classList.remove('selected'));
+    
+    if (!wasSelected) {
+        selectedItem.classList.add('selected');
+        // Load lyrics for this project
+        const project = await getProjectFromDB(projectId);
+        if (project.lyricsId) {
+            loadSelectedLyrics(project.lyricsId);
+        } else {
+            document.getElementById('lyricsInput').value = '';
+            currentLyricsId = null;
+            document.querySelectorAll('#lyrics-playlist .lyric-item').forEach(i => i.classList.remove('selected'));
+        }
+        // Load recordings
+        loadRecordingsForProject(projectId);
+    }
+}
+
+function loadRecordingsForProject(projectId) {
+    const container = document.getElementById(`recordings-for-project-${projectId}`);
+    container.innerHTML = 'Đang tải...';
+
+    const tx = db.transaction('recs');
+    const store = tx.objectStore('recs');
+    const index = store.index('projectId');
+    const recordings = [];
+    
+    index.openCursor(IDBKeyRange.only(projectId)).onsuccess = e => {
+        const cursor = e.target.result;
+        if(cursor) {
+            recordings.push(cursor.value);
+            cursor.continue();
+        }
+    };
+    
+    tx.oncomplete = () => {
+        container.innerHTML = '';
+        if (recordings.length === 0) {
+            container.innerHTML = '<div style="color: #888; font-style: italic; padding: 10px 0;">Chưa có bản ghi nào.</div>';
+            return;
+        }
+        recordings.reverse().forEach(rec => {
+            const url = URL.createObjectURL(rec.blob);
+            const div = document.createElement('div');
+            div.className = 'record-item';
+            div.innerHTML = `
+                <div class="record-item-info">
+                    <div>${rec.name}</div>
+                    <div style="font-size:0.8rem; color:#888">${rec.date.toLocaleString('vi-VN')}</div>
+                </div>
+                <audio controls src="${url}" style="height:30px;" preload="metadata"></audio>
+                <a href="${url}" download="${rec.name.replace(/[^a-z0-9]/gi, '_')}.wav" class="btn-small-icon"><i class="fas fa-download"></i></a>
+            `;
+            container.appendChild(div);
+        });
+    };
+}
+
+
+// --- FX & EQ LOGIC (Yêu cầu 3) ---
+let eqNodes = [], reverbNode, reverbGain;
+
+function buildFXChain(sourceNode) {
+    const freqs = [60, 250, 1000, 4000, 12000];
+    let prevNode = sourceNode;
+    eqNodes = freqs.map((f, i) => {
+        const eq = audioCtx.createBiquadFilter();
+        eq.frequency.value = f;
+        eq.type = i === 0 ? 'lowshelf' : (i === 4 ? 'highshelf' : 'peaking');
+        prevNode.connect(eq);
+        prevNode = eq;
+        return eq;
+    });
+
+    reverbGain = audioCtx.createGain();
+    reverbNode = audioCtx.createConvolver();
+    prevNode.connect(reverbNode);
+    reverbNode.connect(reverbGain);
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+
+    const mergePoint = audioCtx.createGain();
+    prevNode.connect(mergePoint); // Dry signal
+    reverbGain.connect(mergePoint); // Wet signal
+    mergePoint.connect(analyser);
+
+    applyFxState();
+}
+
+function toggleFxEditing(e) {
+    const btn = e.currentTarget;
+    const icon = btn.querySelector('i');
+    const isLocked = icon.classList.contains('fa-lock');
+    
+    document.querySelectorAll('.fx-control').forEach(el => el.disabled = !isLocked);
+    document.getElementById('btnSavePreset').style.display = isLocked ? 'inline-block' : 'none';
+    document.getElementById('presetSelector').style.display = isLocked ? 'inline-block' : 'none';
+    
+    icon.classList.toggle('fa-lock', !isLocked);
+    icon.classList.toggle('fa-unlock', isLocked);
+    btn.title = isLocked ? "Khóa hiệu ứng" : "Sửa hiệu ứng";
+}
+
+function handleFxInputChange(e) {
+    const fxPath = e.target.dataset.fx || e.target.dataset.targetFx;
+    const value = e.target.type === 'range' ? parseFloat(e.target.value) : e.target.value;
+    
+    // Set state
+    const keys = fxPath.split('.');
+    fxState[keys[0]][keys[1]] = value;
+
+    // Sync UI
+    if (e.target.type === 'range') {
+        document.querySelector(`.slider-value-input[data-target-fx="${fxPath}"]`).value = value;
+    } else {
+        document.querySelector(`input[type="range"][data-fx="${fxPath}"]`).value = value;
+    }
+    
+    applyFxState();
+}
+
+function handleFxButtonChange(e) {
+    const btn = e.currentTarget;
+    const fxPath = btn.dataset.fx;
+    const value = btn.dataset.value;
+    
+    const keys = fxPath.split('.');
+    fxState[keys[0]][keys[1]] = value;
+    
+    // Sync UI
+    document.querySelectorAll(`.fx-btn[data-fx="${fxPath}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    applyFxState();
+}
+
+function applyFxState() {
+    if (!audioCtx) return;
+    // EQ
+    eqNodes[0].gain.value = fxState.eq.low;
+    eqNodes[1].gain.value = fxState.eq.lowMid;
+    eqNodes[2].gain.value = fxState.eq.mid;
+    eqNodes[3].gain.value = fxState.eq.highMid;
+    eqNodes[4].gain.value = fxState.eq.high;
+    // Reverb
+    if (fxState.reverb.type === 'off') {
+        reverbGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+    } else {
+        setReverbImpulse(fxState.reverb.type);
+        reverbGain.gain.setTargetAtTime(parseFloat(fxState.reverb.mix), audioCtx.currentTime, 0.01);
+    }
+}
+
+function setReverbImpulse(type) {
+    if (!audioCtx || !reverbNode) return;
+    const duration = type === 'hall' ? 2.0 : (type === 'studio' ? 0.8 : 0.01);
+    const decay = type === 'hall' ? 2.5 : 4.0;
+    const impulse = audioCtx.createBuffer(2, sampleRate * duration, sampleRate);
+    for (let c = 0; c < 2; c++) {
+        const data = impulse.getChannelData(c);
+        for (let i = 0; i < data.length; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, decay);
+        }
+    }
+    reverbNode.buffer = impulse;
+}
+
+function updateFxControlsFromState() {
+    Object.keys(fxState.eq).forEach(key => {
+        const value = fxState.eq[key];
+        document.querySelector(`.eq-slider[data-fx="eq.${key}"]`).value = value;
+        document.querySelector(`.slider-value-input[data-target-fx="eq.${key}"]`).value = value;
+    });
+    
+    document.getElementById('reverbMix').value = fxState.reverb.mix;
+    document.querySelector(`.slider-value-input[data-target-fx="reverb.mix"]`).value = fxState.reverb.mix;
+
+    document.querySelectorAll('.reverb-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.reverb-btn[data-value="${fxState.reverb.type}"]`).classList.add('active');
+    
+    applyFxState();
+}
+
+function saveFxPreset() {
+    const name = prompt("Đặt tên cho Preset này:");
+    if (!name) return;
+    const tx = db.transaction(['fx_presets'], 'readwrite');
+    tx.objectStore('fx_presets').put({ name: name, settings: JSON.parse(JSON.stringify(fxState)) }); // Deep copy
+    tx.oncomplete = () => {
+        alert("Đã lưu Preset!");
+        loadFxPresets();
+    };
+}
+
+function loadFxPresets() {
+    const selector = document.getElementById('presetSelector');
+    selector.innerHTML = '<option value="">Chọn Preset</option>';
+    db.transaction('fx_presets').objectStore('fx_presets').openCursor().onsuccess = e => {
+        const cursor = e.target.result;
+        if(cursor) {
+            selector.add(new Option(cursor.value.name, cursor.value.name));
+            cursor.continue();
+        }
+    };
+}
+
+function loadSelectedFxPreset() {
+    const name = document.getElementById('presetSelector').value;
+    if (!name) return;
+    db.transaction('fx_presets').objectStore('fx_presets').get(name).onsuccess = e => {
+        const preset = e.target.result;
+        if(preset) {
+            fxState = preset.settings;
+            updateFxControlsFromState();
+        }
+    };
+}
+
+</script>
+</body>
+</html>
