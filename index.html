@@ -6,432 +6,580 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang tổng hợp công cụ kiểm định</title>
     <style>
-        /* CSS cơ bản - Không thay đổi */
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            overflow: hidden;
+        body { font-family: sans-serif; margin: 0; overflow: hidden; }
+        
+        /* Khu vực ẩn bên trái để kích hoạt thanh công cụ khi di chuột vào */
+        #sidebar-trigger {
+            position: fixed; top: 0; left: 0; width: 15px; height: 100vh;
+            z-index: 998; background: transparent;
         }
+
         #menu-toggle {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 1001;
-            background-color: #f1f1f1;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            cursor: pointer;
-            padding: 10px;
-            font-size: 20px;
+            position: fixed; top: 10px; left: 10px; z-index: 1001;
+            background-color: #f1f1f1; border: 1px solid #ccc;
+            border-radius: 5px; cursor: pointer; padding: 10px; font-size: 20px;
         }
         .tabs {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 250px;
-            height: 100vh;
-            background-color: #f1f1f1;
-            border-right: 1px solid #ccc;
-            padding-top: 60px;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease;
-            overflow-y: auto;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
+            position: fixed; top: 0; left: 0; width: 250px; height: 100vh;
+            background-color: #f1f1f1; border-right: 1px solid #ccc;
+            padding-top: 60px; transform: translateX(-100%);
+            transition: transform 0.3s ease; overflow-y: auto; z-index: 1000;
+            display: flex; flex-direction: column;
+            outline: none; /* Ẩn viền khi thanh công cụ được focus */
         }
-        .tabs.active {
-            transform: translateX(0);
-        }
+        .tabs.active { transform: translateX(0); }
         #main-container {
-            width: 100%;
-            height: 100vh;
-            padding-left: 0;
+            width: 100%; height: 100vh; padding-left: 0;
             transition: padding-left 0.3s ease;
         }
-        #main-container.active {
-            padding-left: 250px;
-        }
-        .tab-content {
-            display: none;
-            width: 100%;
-            height: 100vh;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        .tab-button.active {
-            background-color: #ccc;
-        }
-        
-        /* === CSS MỚI CHO TÍNH NĂNG CHỈNH SỬA === */
+        #main-container.active { padding-left: 250px; }
+        .tab-content { display: none; width: 100%; height: 100vh; }
+        .tab-content.active { display: block; }
+        iframe { width: 100%; height: 100%; border: none; }
+        .tab-button.active { background-color: #ccc; }
 
-        /* Nút quản lý chỉnh sửa */
         #edit-mode-toggle {
-            display: block;
-            width: calc(100% - 20px);
-            margin: 5px 10px;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            text-align: center;
+            display: block; width: calc(100% - 20px); margin: 5px 10px;
+            padding: 10px; background-color: #007bff; color: white;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; text-align: center;
         }
-        #edit-mode-toggle:hover {
-            background-color: #0056b3;
-        }
-        #edit-mode-toggle.editing {
-            background-color: #28a745; /* Màu xanh lá khi đang chỉnh sửa */
-        }
-        #edit-mode-toggle.editing:hover {
-            background-color: #218838;
-        }
+        #edit-mode-toggle:hover { background-color: #0056b3; }
+        #edit-mode-toggle.editing { background-color: #28a745; }
+        #edit-mode-toggle.editing:hover { background-color: #218838; }
 
-        /* Nút tab và các thành phần con */
+        #shortcut-btn {
+            display: block; width: calc(100% - 20px); margin: 5px 10px;
+            padding: 10px; background-color: #6f42c1; color: white;
+            border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; text-align: center;
+        }
+        #shortcut-btn:hover { background-color: #5a32a3; }
+
         .tab-button {
-            display: flex; /* Dùng flexbox để căn chỉnh các item */
-            align-items: center;
-            width: 100%;
-            background-color: inherit;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            padding: 12px 16px;
-            transition: 0.3s;
-            text-align: left;
-            box-sizing: border-box;
+            display: flex; align-items: center; width: 100%;
+            background-color: inherit; border: none; outline: none;
+            cursor: pointer; padding: 12px 16px; transition: 0.3s;
+            text-align: left; box-sizing: border-box;
         }
-        .tab-button:hover {
-            background-color: #ddd;
-        }
+        .tab-button:hover { background-color: #ddd; }
+        .tab-name { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rename-input { flex-grow: 1; border: 1px solid #007bff; padding: 4px; display: none; }
+        .edit-controls { display: none; margin-left: auto; padding-left: 10px; }
+        .tabs.edit-mode .edit-controls { display: flex; align-items: center; }
+        .tabs.edit-mode .tab-button { cursor: grab; }
+        .drag-handle, .rename-icon { cursor: pointer; padding: 5px; color: #555; }
+        .drag-handle:hover, .rename-icon:hover { color: #000; }
+        .drag-handle { font-size: 20px; }
+        .tab-button.dragging { opacity: 0.5; background: #cce5ff; }
 
-        /* Phần tên của tab */
-        .tab-name {
-            flex-grow: 1; /* Cho phép tên tab chiếm hết không gian còn lại */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        /* Modal phím tắt */
+        #shortcut-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 9999;
+            align-items: center; justify-content: center;
         }
-        
-        /* Ô nhập liệu để đổi tên */
-        .rename-input {
-            flex-grow: 1;
-            border: 1px solid #007bff;
-            padding: 4px;
-            display: none; /* Mặc định ẩn */
+        #shortcut-modal-overlay.open { display: flex; }
+        #shortcut-modal {
+            background: #fff; border-radius: 10px; padding: 24px;
+            width: 440px; max-width: 95vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18); font-family: sans-serif;
+            max-height: 90vh; overflow-y: auto;
         }
+        #shortcut-modal h2 { margin: 0 0 4px; font-size: 18px; color: #222; }
+        #shortcut-modal p.desc { margin: 0 0 16px; font-size: 13px; color: #666; }
+        .shortcut-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 0; border-bottom: 1px solid #eee;
+        }
+        .shortcut-row:last-of-type { border-bottom: none; }
+        .shortcut-label { font-size: 14px; color: #333; }
+        .shortcut-key-area { display: flex; align-items: center; gap: 8px; }
+        .shortcut-key-display {
+            background: #f1f1f1; border: 1px solid #ccc; border-radius: 6px;
+            padding: 5px 12px; font-size: 13px; font-family: monospace;
+            min-width: 100px; text-align: center; color: #333;
+            cursor: pointer; transition: background 0.2s, border-color 0.2s;
+            user-select: none;
+        }
+        .shortcut-key-display.recording {
+            background: #fff3cd; border-color: #ffc107; color: #856404;
+            animation: pulse-border 1s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: #ffc107; }
+            50% { border-color: #fd7e14; }
+        }
+        .shortcut-clear-btn {
+            background: none; border: 1px solid #dc3545; color: #dc3545;
+            border-radius: 5px; padding: 4px 8px; font-size: 12px; cursor: pointer;
+        }
+        .shortcut-clear-btn:hover { background: #dc3545; color: #fff; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .modal-footer button {
+            padding: 9px 20px; border-radius: 6px; border: none;
+            cursor: pointer; font-size: 14px; font-weight: bold;
+        }
+        #modal-close-btn { background: #6c757d; color: white; }
+        #modal-close-btn:hover { background: #5a6268; }
+        #modal-save-btn { background: #6f42c1; color: white; }
+        #modal-save-btn:hover { background: #5a32a3; }
 
-        /* Các biểu tượng chỉnh sửa */
-        .edit-controls {
-            display: none; /* Mặc định ẩn */
-            margin-left: auto; /* Đẩy các nút về bên phải */
-            padding-left: 10px;
+        #toast {
+            position: fixed; bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #333; color: #fff; padding: 10px 22px;
+            border-radius: 8px; font-size: 14px; z-index: 99999;
+            transition: transform 0.3s ease; pointer-events: none;
         }
-        
-        /* Hiển thị các nút khi ở chế độ chỉnh sửa */
-        .tabs.edit-mode .edit-controls {
-            display: flex;
-            align-items: center;
-        }
-        
-        .tabs.edit-mode .tab-button {
-            cursor: grab; /* Thay đổi con trỏ chuột khi có thể kéo */
-        }
-
-        .drag-handle, .rename-icon {
-            cursor: pointer;
-            padding: 5px;
-            color: #555;
-        }
-        .drag-handle:hover, .rename-icon:hover {
-            color: #000;
-        }
-        .drag-handle {
-            font-size: 20px;
-        }
-        
-        /* Style cho tab đang được kéo */
-        .tab-button.dragging {
-            opacity: 0.5;
-            background: #cce5ff;
-        }
-
+        #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
 
-    <button id="menu-toggle">☰</button>
+<!-- Thêm Trigger vô hình bên mép trái -->
+<div id="sidebar-trigger"></div>
 
-    <div class="tabs" id="tab-container">
-        <!-- Nút bật/tắt chế độ chỉnh sửa -->
-        <button id="edit-mode-toggle">Chỉnh sửa</button>
-        <div id="tab-buttons-list">
-            <!-- Các nút tab sẽ được chèn vào đây -->
+<button id="menu-toggle">☰</button>
+
+<div id="shortcut-modal-overlay">
+    <div id="shortcut-modal">
+        <h2>⌨️ Cài đặt phím tắt</h2>
+        <p class="desc">Nhấn vào ô hiển thị phím, rồi bấm tổ hợp phím muốn ghi. Phím tắt hoạt động kể cả khi đang xem tab phụ.</p>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Mở / đóng thanh bên</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-sidebar" data-action="sidebar"></span>
+                <button class="shortcut-clear-btn" data-action="sidebar">Xóa</button>
+            </div>
+        </div>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Tab kế tiếp</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-next" data-action="next"></span>
+                <button class="shortcut-clear-btn" data-action="next">Xóa</button>
+            </div>
+        </div>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Tab trước đó</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-prev" data-action="prev"></span>
+                <button class="shortcut-clear-btn" data-action="prev">Xóa</button>
+            </div>
+        </div>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Tab 1</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-tab1" data-action="tab1"></span>
+                <button class="shortcut-clear-btn" data-action="tab1">Xóa</button>
+            </div>
+        </div>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Tab 2</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-tab2" data-action="tab2"></span>
+                <button class="shortcut-clear-btn" data-action="tab2">Xóa</button>
+            </div>
+        </div>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Tab 3</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-tab3" data-action="tab3"></span>
+                <button class="shortcut-clear-btn" data-action="tab3">Xóa</button>
+            </div>
+        </div>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Tab 4</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-tab4" data-action="tab4"></span>
+                <button class="shortcut-clear-btn" data-action="tab4">Xóa</button>
+            </div>
+        </div>
+        <div class="shortcut-row">
+            <span class="shortcut-label">Tab 5</span>
+            <div class="shortcut-key-area">
+                <span class="shortcut-key-display" id="key-tab5" data-action="tab5"></span>
+                <button class="shortcut-clear-btn" data-action="tab5">Xóa</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="modal-close-btn">Đóng</button>
+            <button id="modal-save-btn">Lưu phím tắt</button>
         </div>
     </div>
+</div>
 
-    <div id="main-container">
-        <div id="content-container">
-            <!-- Các iframe sẽ được chèn vào đây -->
-        </div>
-    </div>
+<div id="toast"></div>
 
-    <script>
-        // --- THAY ĐỔI CÁC THÔNG SỐ NÀY ---
-        const GITHUB_USERNAME = "quochuy221200111"; // Thay bằng tên đăng nhập GitHub của bạn
-        const GITHUB_REPO = "my-testing-tools1"; // Thay bằng tên kho chứa của bạn
+<!-- Thêm tabindex="-1" để thẻ div này có thể nhận sự kiện Focus() -->
+<div class="tabs" id="tab-container" tabindex="-1">
+    <button id="edit-mode-toggle">Chỉnh sửa</button>
+    <button id="shortcut-btn">⌨️ Phím tắt</button>
+    <div id="tab-buttons-list"></div>
+</div>
 
-        // --- ĐOẠN MÃ XỬ LÝ CHÍNH ---
-        const tabContainer = document.getElementById('tab-container');
-        const tabButtonsList = document.getElementById('tab-buttons-list');
-        const contentContainer = document.getElementById('content-container');
-        const menuToggle = document.getElementById('menu-toggle');
-        const mainContainer = document.getElementById('main-container');
-        const editModeToggle = document.getElementById('edit-mode-toggle');
-        const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
+<div id="main-container">
+    <div id="content-container"></div>
+</div>
 
-        const TAB_ORDER_KEY = 'tabOrder';
-        const TAB_NAMES_KEY = 'tabNames';
+<script>
+    const GITHUB_USERNAME = "quochuy221200111";
+    const GITHUB_REPO     = "my-testing-tools1";
+    const apiUrl = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/`;
 
-        // Hàm helper để lấy dữ liệu từ localStorage
-        function loadData(key) {
-            try {
-                const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : null;
-            } catch (e) {
-                console.error(`Lỗi khi đọc dữ liệu từ localStorage với key "${key}":`, e);
-                return null;
-            }
-        }
+    const TAB_ORDER_KEY  = 'tabOrder';
+    const TAB_NAMES_KEY  = 'tabNames';
+    const SHORTCUTS_KEY  = 'customShortcuts';
 
-        // Hàm helper để lưu dữ liệu vào localStorage
-        function saveData(key, value) {
-            try {
-                localStorage.setItem(key, JSON.stringify(value));
-            } catch (e) {
-                console.error(`Lỗi khi lưu dữ liệu vào localStorage với key "${key}":`, e);
-            }
-        }
+    const tabContainer     = document.getElementById('tab-container');
+    const tabButtonsList   = document.getElementById('tab-buttons-list');
+    const contentContainer = document.getElementById('content-container');
+    const menuToggle       = document.getElementById('menu-toggle');
+    const mainContainer    = document.getElementById('main-container');
+    const editModeToggle   = document.getElementById('edit-mode-toggle');
+    const shortcutBtn      = document.getElementById('shortcut-btn');
+    const modalOverlay     = document.getElementById('shortcut-modal-overlay');
+    const sidebarTrigger   = document.getElementById('sidebar-trigger'); // Lấy trigger
 
-        // Sự kiện click cho nút toggle menu
-        menuToggle.addEventListener('click', () => {
+    /* ── helpers ── */
+    function loadData(key) {
+        try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; }
+        catch(e) { return null; }
+    }
+    function saveData(key, val) {
+        try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+    }
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        clearTimeout(t._t);
+        t._t = setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    /* ── phím tắt ── */
+    const defaultShortcuts = {
+        sidebar:'Alt+m', next:'Alt+]', prev:'Alt+[',
+        tab1:'Alt+1', tab2:'Alt+2', tab3:'Alt+3', tab4:'Alt+4', tab5:'Alt+5'
+    };
+    let currentShortcuts = Object.assign({}, defaultShortcuts, loadData(SHORTCUTS_KEY) || {});
+    let recordingAction  = null;
+
+    function buildCombo(e) {
+        const parts = [];
+        if (e.ctrlKey)  parts.push('Control');
+        if (e.altKey)   parts.push('Alt');
+        if (e.shiftKey) parts.push('Shift');
+        if (e.metaKey)  parts.push('Meta');
+        const k = e.key;
+        if (!['Control','Alt','Shift','Meta'].includes(k)) parts.push(k.toLowerCase());
+        return parts.join('+');
+    }
+    function fmtKey(combo) {
+        if (!combo) return '(trống)';
+        return combo.split('+').map(k => {
+            if (k === 'Control') return 'Ctrl';
+            if (k === 'ArrowLeft')  return '←'; if (k === 'ArrowRight') return '→';
+            if (k === 'ArrowUp')    return '↑'; if (k === 'ArrowDown')  return '↓';
+            return k.length === 1 ? k.toUpperCase() : k;
+        }).join(' + ');
+    }
+    function refreshModal() {
+        Object.keys(currentShortcuts).forEach(a => {
+            const el = document.getElementById('key-' + a);
+            if (el) el.textContent = fmtKey(currentShortcuts[a]);
+        });
+    }
+    function stopRecording() {
+        if (!recordingAction) return;
+        const el = document.getElementById('key-' + recordingAction);
+        if (el) { el.classList.remove('recording'); el.textContent = fmtKey(currentShortcuts[recordingAction]); }
+        recordingAction = null;
+    }
+
+    /* ── thực thi hành động ── */
+    function executeAction(action) {
+        if (action === 'sidebar') {
             tabContainer.classList.toggle('active');
             mainContainer.classList.toggle('active');
-        });
-
-        // Sự kiện click cho nút bật/tắt chế độ chỉnh sửa
-        editModeToggle.addEventListener('click', () => {
-            const isEditing = tabContainer.classList.toggle('edit-mode');
-            editModeToggle.textContent = isEditing ? 'Lưu & Thoát' : 'Chỉnh sửa';
-            editModeToggle.classList.toggle('editing', isEditing);
-
-            // Kích hoạt/Vô hiệu hóa tính năng kéo thả
-            const tabButtons = tabButtonsList.querySelectorAll('.tab-button');
-            tabButtons.forEach(button => {
-                button.draggable = isEditing;
-            });
-        });
-
-        // Lấy dữ liệu và dựng giao diện
-        fetch(apiUrl)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Lỗi mạng: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(files => {
-                let htmlFiles = files.filter(file => file.name.endsWith('.html') && file.name !== 'index.html');
-                
-                if (htmlFiles.length === 0) {
-                    console.warn("Không tìm thấy file HTML nào trong kho chứa.");
-                    return;
-                }
-
-                const savedOrder = loadData(TAB_ORDER_KEY) || [];
-                const savedNames = loadData(TAB_NAMES_KEY) || {};
-
-                // Sắp xếp các file theo thứ tự đã lưu
-                htmlFiles.sort((a, b) => {
-                    const indexA = savedOrder.indexOf(a.name);
-                    const indexB = savedOrder.indexOf(b.name);
-                    if (indexA === -1 && indexB === -1) return 0; // Cả hai đều là file mới
-                    if (indexA === -1) return 1; // a là file mới, đẩy xuống cuối
-                    if (indexB === -1) return -1; // b là file mới, đẩy xuống cuối
-                    return indexA - indexB; // Sắp xếp theo thứ tự đã lưu
-                });
-
-                // Tạo tab và nội dung tương ứng
-                htmlFiles.forEach((file, index) => {
-                    const fileName = file.name;
-                    const defaultName = fileName.replace('.html', '');
-                    const displayName = savedNames[fileName] || defaultName;
-
-                    // 1. Tạo nút Tab phức hợp
-                    const tabButton = document.createElement('button');
-                    tabButton.className = 'tab-button';
-                    tabButton.dataset.fileName = fileName; // Lưu trữ tên file gốc
-
-                    // Tên hiển thị
-                    const tabNameSpan = document.createElement('span');
-                    tabNameSpan.className = 'tab-name';
-                    tabNameSpan.textContent = displayName;
-
-                    // Ô nhập liệu để đổi tên (ẩn)
-                    const renameInput = document.createElement('input');
-                    renameInput.type = 'text';
-                    renameInput.className = 'rename-input';
-                    renameInput.value = displayName;
-
-                    // Các nút điều khiển (ẩn)
-                    const editControls = document.createElement('div');
-                    editControls.className = 'edit-controls';
-                    
-                    const renameIcon = document.createElement('span');
-                    renameIcon.className = 'rename-icon';
-                    renameIcon.innerHTML = '✏️';
-                    
-                    const dragHandle = document.createElement('span');
-                    dragHandle.className = 'drag-handle';
-                    dragHandle.innerHTML = '⠿';
-
-                    editControls.appendChild(renameIcon);
-                    editControls.appendChild(dragHandle);
-
-                    tabButton.appendChild(tabNameSpan);
-                    tabButton.appendChild(renameInput);
-                    tabButton.appendChild(editControls);
-                    tabButtonsList.appendChild(tabButton);
-
-                    // Gán sự kiện cho nút tab
-                    tabButton.addEventListener('click', (event) => {
-                        // Chỉ mở tab nếu không phải đang trong chế độ chỉnh sửa
-                        if (!tabContainer.classList.contains('edit-mode')) {
-                           openTab(fileName, event.currentTarget);
-                        }
-                    });
-
-                    // Sự kiện cho đổi tên
-                    renameIcon.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Ngăn sự kiện click của button cha
-                        tabNameSpan.style.display = 'none';
-                        renameInput.style.display = 'block';
-                        renameInput.focus();
-                        renameInput.select();
-                    });
-
-                    const saveNewName = () => {
-                        const newName = renameInput.value.trim();
-                        if (newName) {
-                            tabNameSpan.textContent = newName;
-                            // Cập nhật vào localStorage
-                            const currentNames = loadData(TAB_NAMES_KEY) || {};
-                            currentNames[fileName] = newName;
-                            saveData(TAB_NAMES_KEY, currentNames);
-                        }
-                        tabNameSpan.style.display = 'block';
-                        renameInput.style.display = 'none';
-                    };
-                    renameInput.addEventListener('blur', saveNewName);
-                    renameInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            saveNewName();
-                        }
-                    });
-
-                    // 2. Tạo nội dung Tab (iframe)
-                    const tabContent = document.createElement('div');
-                    tabContent.className = 'tab-content';
-                    tabContent.id = fileName;
-                    
-                    const iframe = document.createElement('iframe');
-                    iframe.src = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${fileName}`;
-                    tabContent.appendChild(iframe);
-                    contentContainer.appendChild(tabContent);
-
-                    // Mở tab đầu tiên làm mặc định
-                    if (index === 0) {
-                        tabButton.classList.add('active');
-                        tabContent.classList.add('active');
-                    }
-                });
-
-                // Cập nhật lại thứ tự trong localStorage nếu có file mới
-                const currentOrder = htmlFiles.map(f => f.name);
-                saveData(TAB_ORDER_KEY, currentOrder);
-
-                // Tự động mở thanh tab khi có file
-                tabContainer.classList.add('active');
-                mainContainer.classList.add('active');
-
-                // Logic kéo và thả
-                let draggedItem = null;
-                tabButtonsList.addEventListener('dragstart', (e) => {
-                    if(tabContainer.classList.contains('edit-mode')) {
-                        draggedItem = e.target.closest('.tab-button');
-                        setTimeout(() => {
-                            if (draggedItem) draggedItem.classList.add('dragging');
-                        }, 0);
-                    }
-                });
-                tabButtonsList.addEventListener('dragend', () => {
-                     if (draggedItem) {
-                        draggedItem.classList.remove('dragging');
-                        draggedItem = null;
-
-                        // Lưu lại thứ tự mới sau khi thả
-                        const newOrder = Array.from(tabButtonsList.querySelectorAll('.tab-button'))
-                                              .map(btn => btn.dataset.fileName);
-                        saveData(TAB_ORDER_KEY, newOrder);
-                    }
-                });
-                 tabButtonsList.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    if(tabContainer.classList.contains('edit-mode')) {
-                        const targetItem = e.target.closest('.tab-button');
-                        if (targetItem && targetItem !== draggedItem) {
-                            const rect = targetItem.getBoundingClientRect();
-                            const offset = e.clientY - rect.top - rect.height / 2;
-                            if (offset < 0) {
-                                tabButtonsList.insertBefore(draggedItem, targetItem);
-                            } else {
-                                tabButtonsList.insertBefore(draggedItem, targetItem.nextSibling);
-                            }
-                        }
-                    }
-                });
-
-            })
-            .catch(error => console.error('Lỗi khi lấy danh sách file từ GitHub:', error));
-
-        function openTab(fileName, targetButton) {
-            // Ẩn tất cả các tab content
-            const tabContents = document.getElementsByClassName('tab-content');
-            for (let i = 0; i < tabContents.length; i++) {
-                tabContents[i].classList.remove('active');
-            }
-
-            // Xóa trạng thái active của tất cả button
-            const tabButtons = document.getElementsByClassName('tab-button');
-            for (let i = 0; i < tabButtons.length; i++) {
-                tabButtons[i].classList.remove('active');
-            }
-
-            // Hiển thị tab content được chọn và đánh dấu button là active
-            document.getElementById(fileName).classList.add('active');
-            if (targetButton) {
-                targetButton.classList.add('active');
+            // Nếu mở thông qua phím tắt, cũng focus luôn
+            if (tabContainer.classList.contains('active')) tabContainer.focus();
+            return;
+        }
+        if (action === 'next') { navigateTab(1);  return; }
+        if (action === 'prev') { navigateTab(-1); return; }
+        if (action.startsWith('tab')) {
+            const idx = parseInt(action.replace('tab', '')) - 1;
+            const btns = Array.from(tabButtonsList.querySelectorAll('.tab-button'));
+            if (btns[idx]) {
+                openTab(btns[idx].dataset.fileName, btns[idx]);
+                showToast('Tab: ' + btns[idx].querySelector('.tab-name').textContent);
             }
         }
-    </script>
+    }
+    function navigateTab(dir) {
+        const btns = Array.from(tabButtonsList.querySelectorAll('.tab-button'));
+        if (!btns.length) return;
+        let idx = btns.findIndex(b => b.classList.contains('active'));
+        idx = ((idx + dir) + btns.length) % btns.length;
+        openTab(btns[idx].dataset.fileName, btns[idx]);
+        showToast('Tab: ' + btns[idx].querySelector('.tab-name').textContent);
+    }
 
+    /* ── kiểm tra và kích hoạt phím tắt ── */
+    function checkAndFire(e) {
+        if (modalOverlay.classList.contains('open')) return;
+        const pressed = buildCombo(e);
+        for (const [action, combo] of Object.entries(currentShortcuts)) {
+            if (combo && pressed === combo.toLowerCase()) {
+                e.preventDefault();
+                executeAction(action);
+                return;
+            }
+        }
+    }
+
+    /* ── listener trên document chính ── */
+    document.addEventListener('keydown', e => {
+        /* chế độ ghi phím */
+        if (recordingAction) {
+            e.preventDefault();
+            const combo = buildCombo(e);
+            if (combo) {
+                currentShortcuts[recordingAction] = combo;
+                const el = document.getElementById('key-' + recordingAction);
+                if (el) { el.classList.remove('recording'); el.textContent = fmtKey(combo); }
+                recordingAction = null;
+            }
+            return;
+        }
+        checkAndFire(e);
+    });
+
+    /* ── inject vào iframe (cùng origin GitHub Pages) ── */
+    function injectShortcutIntoIframe(iframe) {
+        try {
+            const iwin = iframe.contentWindow;
+            const idoc = iframe.contentDocument || iwin.document;
+            if (!idoc || idoc.__shortcutInjected) return;
+            idoc.__shortcutInjected = true;
+
+            idoc.addEventListener('keydown', e => {
+                /* gom phím, so sánh, rồi gọi executeAction ở scope cha */
+                if (modalOverlay.classList.contains('open')) return;
+                const parts = [];
+                if (e.ctrlKey)  parts.push('Control');
+                if (e.altKey)   parts.push('Alt');
+                if (e.shiftKey) parts.push('Shift');
+                if (e.metaKey)  parts.push('Meta');
+                const k = e.key;
+                if (!['Control','Alt','Shift','Meta'].includes(k)) parts.push(k.toLowerCase());
+                const pressed = parts.join('+');
+
+                for (const [action, combo] of Object.entries(currentShortcuts)) {
+                    if (combo && pressed === combo.toLowerCase()) {
+                        e.preventDefault();
+                        executeAction(action);
+                        return;
+                    }
+                }
+            });
+        } catch(err) {
+            /* cross-origin → bỏ qua */
+        }
+    }
+
+    /* ── TÍNH NĂNG MỚI: Hover để mở thanh công cụ và tự động Focus ── */
+    sidebarTrigger.addEventListener('mouseenter', () => {
+        tabContainer.classList.add('active');
+        mainContainer.classList.add('active');
+        // Ép focus vào thanh tab ngay khi nó xuất hiện để phím tắt hoạt động mượt mà
+        tabContainer.focus();
+    });
+
+    // Khi di chuột ra khỏi thanh công cụ, tự động thu gọn lại 
+    // (Bỏ qua thao tác này nếu đang bật Edit Mode để bạn kéo thả không bị vướng)
+    tabContainer.addEventListener('mouseleave', () => {
+        if (!tabContainer.classList.contains('edit-mode')) {
+            tabContainer.classList.remove('active');
+            mainContainer.classList.remove('active');
+            
+            // Xóa focus khỏi thanh tab khi thu gọn
+            tabContainer.blur();
+        }
+    });
+
+    /* ── menu toggle ── */
+    menuToggle.addEventListener('click', () => {
+        tabContainer.classList.toggle('active');
+        mainContainer.classList.toggle('active');
+        if (tabContainer.classList.contains('active')) tabContainer.focus();
+    });
+
+    /* ── edit mode ── */
+    editModeToggle.addEventListener('click', () => {
+        const editing = tabContainer.classList.toggle('edit-mode');
+        editModeToggle.textContent = editing ? 'Lưu & Thoát' : 'Chỉnh sửa';
+        editModeToggle.classList.toggle('editing', editing);
+        tabButtonsList.querySelectorAll('.tab-button').forEach(b => b.draggable = editing);
+    });
+
+    /* ── modal phím tắt ── */
+    shortcutBtn.addEventListener('click', () => { refreshModal(); modalOverlay.classList.add('open'); });
+    document.getElementById('modal-close-btn').addEventListener('click', () => {
+        stopRecording(); modalOverlay.classList.remove('open');
+    });
+    modalOverlay.addEventListener('click', e => {
+        if (e.target === modalOverlay) { stopRecording(); modalOverlay.classList.remove('open'); }
+    });
+    document.getElementById('modal-save-btn').addEventListener('click', () => {
+        stopRecording();
+        saveData(SHORTCUTS_KEY, currentShortcuts);
+        modalOverlay.classList.remove('open');
+        showToast('Đã lưu phím tắt!');
+    });
+    document.querySelectorAll('.shortcut-clear-btn').forEach(btn => {
+        btn.addEventListener('click', () => { currentShortcuts[btn.dataset.action] = ''; refreshModal(); });
+    });
+    document.querySelectorAll('.shortcut-key-display').forEach(el => {
+        el.addEventListener('click', () => {
+            if (recordingAction === el.dataset.action) { stopRecording(); return; }
+            stopRecording();
+            recordingAction = el.dataset.action;
+            el.classList.add('recording');
+            el.textContent = 'Đang ghi...';
+        });
+    });
+
+    /* ── fetch GitHub & dựng tabs ── */
+    fetch(apiUrl)
+        .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+        .then(files => {
+            let htmlFiles = files.filter(f => f.name.endsWith('.html') && f.name !== 'index.html');
+            if (!htmlFiles.length) return;
+
+            const savedOrder = loadData(TAB_ORDER_KEY) || [];
+            const savedNames = loadData(TAB_NAMES_KEY) || {};
+
+            htmlFiles.sort((a, b) => {
+                const ia = savedOrder.indexOf(a.name), ib = savedOrder.indexOf(b.name);
+                if (ia === -1 && ib === -1) return 0;
+                if (ia === -1) return 1; if (ib === -1) return -1;
+                return ia - ib;
+            });
+
+            htmlFiles.forEach((file, index) => {
+                const fileName    = file.name;
+                const displayName = savedNames[fileName] || fileName.replace('.html', '');
+
+                const tabButton = document.createElement('button');
+                tabButton.className = 'tab-button';
+                tabButton.dataset.fileName = fileName;
+
+                const tabNameSpan = document.createElement('span');
+                tabNameSpan.className = 'tab-name';
+                tabNameSpan.textContent = displayName;
+
+                const renameInput = document.createElement('input');
+                renameInput.type = 'text'; renameInput.className = 'rename-input'; renameInput.value = displayName;
+
+                const editControls = document.createElement('div');
+                editControls.className = 'edit-controls';
+                const renameIcon = document.createElement('span');
+                renameIcon.className = 'rename-icon'; renameIcon.innerHTML = '✏️';
+                const dragHandle = document.createElement('span');
+                dragHandle.className = 'drag-handle'; dragHandle.innerHTML = '⠿';
+                editControls.appendChild(renameIcon); editControls.appendChild(dragHandle);
+
+                tabButton.appendChild(tabNameSpan);
+                tabButton.appendChild(renameInput);
+                tabButton.appendChild(editControls);
+                tabButtonsList.appendChild(tabButton);
+
+                tabButton.addEventListener('click', e => {
+                    if (!tabContainer.classList.contains('edit-mode'))
+                        openTab(fileName, e.currentTarget);
+                });
+
+                renameIcon.addEventListener('click', e => {
+                    e.stopPropagation();
+                    tabNameSpan.style.display = 'none';
+                    renameInput.style.display = 'block';
+                    renameInput.focus(); renameInput.select();
+                });
+                const saveNewName = () => {
+                    const n = renameInput.value.trim();
+                    if (n) {
+                        tabNameSpan.textContent = n;
+                        const names = loadData(TAB_NAMES_KEY) || {};
+                        names[fileName] = n; saveData(TAB_NAMES_KEY, names);
+                    }
+                    tabNameSpan.style.display = 'block';
+                    renameInput.style.display = 'none';
+                };
+                renameInput.addEventListener('blur', saveNewName);
+                renameInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveNewName(); });
+
+                /* iframe + inject */
+                const tabContent = document.createElement('div');
+                tabContent.className = 'tab-content'; tabContent.id = fileName;
+
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/${fileName}`;
+
+                /* inject ngay sau khi iframe load — dùng cả load lẫn readystatechange để phủ mọi trường hợp */
+                iframe.addEventListener('load', () => {
+                    injectShortcutIntoIframe(iframe);
+                });
+
+                tabContent.appendChild(iframe);
+                contentContainer.appendChild(tabContent);
+
+                if (index === 0) {
+                    tabButton.classList.add('active');
+                    tabContent.classList.add('active');
+                }
+            });
+
+            saveData(TAB_ORDER_KEY, htmlFiles.map(f => f.name));
+            tabContainer.classList.add('active');
+            mainContainer.classList.add('active');
+
+            /* kéo thả */
+            let draggedItem = null;
+            tabButtonsList.addEventListener('dragstart', e => {
+                if (tabContainer.classList.contains('edit-mode')) {
+                    draggedItem = e.target.closest('.tab-button');
+                    setTimeout(() => { if (draggedItem) draggedItem.classList.add('dragging'); }, 0);
+                }
+            });
+            tabButtonsList.addEventListener('dragend', () => {
+                if (draggedItem) {
+                    draggedItem.classList.remove('dragging'); draggedItem = null;
+                    saveData(TAB_ORDER_KEY,
+                        Array.from(tabButtonsList.querySelectorAll('.tab-button')).map(b => b.dataset.fileName));
+                }
+            });
+            tabButtonsList.addEventListener('dragover', e => {
+                e.preventDefault();
+                if (tabContainer.classList.contains('edit-mode')) {
+                    const target = e.target.closest('.tab-button');
+                    if (target && target !== draggedItem) {
+                        const mid = target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+                        tabButtonsList.insertBefore(draggedItem, e.clientY < mid ? target : target.nextSibling);
+                    }
+                }
+            });
+        })
+        .catch(e => console.error('Lỗi fetch:', e));
+
+    /* ── mở tab ── */
+    function openTab(fileName, targetButton) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        const content = document.getElementById(fileName);
+        if (content) content.classList.add('active');
+        if (targetButton) targetButton.classList.add('active');
+    }
+</script>
 </body>
 </html>
