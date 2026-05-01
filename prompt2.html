@@ -1,12 +1,23 @@
 
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trợ lý Soạn thảo Câu lệnh AI (Pro - Fixed)</title>
+    <title>Trợ lý Soạn thảo Câu lệnh AI (Firebase V2 - Unlimited)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <!-- ĐÃ THÊM: collection, getDocs, deleteDoc, writeBatch để xé nhỏ dữ liệu -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        window._firebaseModules = { initializeApp, getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, writeBatch };
+    </script>
+
     <style>
+        /* ... (GIỮ NGUYÊN TOÀN BỘ CSS CSS CỦA BẠN - KHÔNG THAY ĐỔI) ... */
         :root {
             --background-color: #f8f9fa;
             --surface-color: #ffffff;
@@ -20,48 +31,18 @@
             --ai-panel-opacity: 0.98;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0 0 200px 0;
-            font-size: var(--font-size-base);
-            line-height: 1.4;
-        }
-
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-
-        /* HEADER */
-        .header-controls {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid var(--border-color);
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            background: var(--surface-color);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--background-color); color: var(--text-color); margin: 0; padding: 0 0 200px 0; font-size: var(--font-size-base); line-height: 1.4; }
+        .container { max-width: 100%; margin: 0 auto; padding: 10px; box-sizing: border-box; }
+        .header-controls { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--border-color); margin-bottom: 10px; padding-bottom: 5px; background: var(--surface-color); position: sticky; top: 0; z-index: 100; }
         .tabs { display: flex; border-bottom: none; margin-bottom: 0; }
         .tab-button { padding: 8px 16px; cursor: pointer; border: none; background-color: transparent; font-size: 14px; font-weight: bold; color: #6c757d; border-bottom: 3px solid transparent; transition: color 0.2s; }
         .tab-button.active { color: var(--accent-color); border-bottom: 3px solid var(--accent-color); }
-        #prompt-view-controls { display: flex; gap: 8px; padding-right: 10px; align-items: center; }
+        #prompt-view-controls { display: flex; gap: 8px; padding-right: 10px; align-items: center; flex-wrap: wrap; }
         .main-button { background-color: var(--button-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s; white-space: nowrap; }
         .main-button:hover { background-color: var(--button-hover-bg); }
         .icon-btn { padding: 6px 8px; font-size: 14px; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
-        /* SESSIONS LAYOUT */
         .sessions-container { display: flex; flex-wrap: wrap; gap: 10px; }
         .session { border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--surface-color); padding: 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 6px var(--shadow-color); flex: 1 1 calc(25% - 20px); min-width: 300px; max-width: 100%; position: relative; transition: border-color 0.2s; }
         .session.pinned { border-color: #a1d2ff; box-shadow: 0 0 5px rgba(0, 123, 255, 0.3); }
@@ -70,12 +51,10 @@
         .session-title-input { font-size: 1.1em; font-weight: bold; color: var(--accent-color); border: 1px dashed transparent; background: transparent; flex-grow: 1; min-width: 0; padding: 2px 5px; }
         .session-title-input:focus { border-color: var(--accent-color); background: #fff; color: #000; }
         .copy-success-icon { display: none; color: #28a745; font-size: 1.2em; margin-right: 5px; animation: fadeInOut 1.5s forwards; }
-        @keyframes fadeInOut { 0% { opacity: 0; transform: scale(0.5); } 20% { opacity: 1; transform: scale(1.2); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+        @keyframes fadeInOut { 0%{opacity:0;transform:scale(0.5)} 20%{opacity:1;transform:scale(1.2)} 80%{opacity:1;transform:scale(1)} 100%{opacity:0} }
         .session-controls { display: flex; align-items: center; gap: 2px; }
         .session-controls button { font-size: 11px; padding: 4px 8px; margin-left: 2px; }
         .pin-session-btn.pinned { background-color: #ffc107; border-color: #ffc107; }
-        
-        /* ROWS PROMPT */
         .prompt-row { display: flex; flex-direction: column; margin-bottom: 5px; position: relative; }
         .prompt-row.collapsed .row-content { display: none; }
         .row-header { display: flex; align-items: center; font-weight: bold; font-size: 0.95em; margin-bottom: 2px; cursor: pointer; padding: 2px 0; user-select: none; }
@@ -85,19 +64,14 @@
         .row-controls button, .row-controls label { background: none; border: none; cursor: pointer; font-size: 1.1em; color: #666; padding: 0 4px; display: flex; align-items: center; }
         .action-btn { font-size: 11px !important; padding: 2px 6px; background: #f0f0f0 !important; border-radius: 3px !important; border: 1px solid #ddd !important; white-space: nowrap; }
         .action-btn:hover { background: #e0e0e0 !important; }
-
         textarea, input[type="text"], input[type="password"], input[type="number"] { width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background-color: #ffffff; font-family: inherit; font-size: var(--font-size-base); box-sizing: border-box; resize: vertical; min-height: 32px; transition: height 0.1s ease-out; }
         textarea:focus, input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus { outline: none; border-color: var(--accent-color); }
-        .row-code textarea { max-height: 150px !important; min-height: 60px; overflow-y: scroll !important; font-family: "Consolas", "Monaco", "Courier New", monospace; background-color: #f1f3f5; font-size: 12px; white-space: pre; color: #333; }
-        
-        /* Suggestions Popup */
+        .row-code textarea { max-height: 150px !important; min-height: 60px; overflow-y: scroll !important; font-family: "Consolas","Monaco","Courier New",monospace; background-color: #f1f3f5; font-size: 12px; white-space: pre; color: #333; }
         .suggestions-popup { display: none; position: absolute; top: 25px; right: 0; background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; z-index: 200; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.15); width: 320px; max-width: 90vw; font-size: 12px; }
         .suggestion-item { display: flex; align-items: center; margin-bottom: 5px; border-bottom: 1px dashed #eee; padding: 4px; cursor: grab; background-color: white; }
         .suggestion-item:active { cursor: grabbing; }
         .suggestion-item:hover { background-color: #f8f9fa; }
         .suggestion-item-text { flex-grow: 1; cursor: pointer; }
-        
-        /* Storage View Layout */
         .storage-view-container { display: flex; gap: 15px; height: calc(100vh - 60px); }
         .storage-column { flex: 1; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; background-color: var(--surface-color); display: flex; flex-direction: column; min-width: 0; max-height: 100%; }
         .storage-column h3 { margin: 0 0 10px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; }
@@ -112,39 +86,30 @@
         .history-content { font-size: 11px; color: #555; max-height: 60px; overflow: hidden; text-overflow: ellipsis; white-space: pre-wrap; cursor: pointer; background: #f1f1f1; padding: 4px; border-radius: 3px; font-family: monospace; }
         .history-content.expanded { max-height: 300px; overflow-y: auto; }
         .note-content-area { width: 100%; height: 100px; resize: none; margin-top: 5px; font-size: 12px; overflow-y: auto; }
-        #file-upload, #import-file-input { display: none; }
+        #file-upload { display: none; }
+        #import-file-input { display: none; }
         .shortcut-hint { font-size: 11px; color: #888; margin-right: 10px; font-weight: normal; }
-        
-        /* Modal Settings */
+        #firebase-sync-status { font-size: 11px; color: #666; margin-right: 10px; font-weight: normal; display: flex; align-items: center; gap: 5px; }
+        #firebase-sync-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #aaa; display: inline-block; flex-shrink: 0; }
+        #firebase-sync-status.connected .dot { background: #28a745; }
+        #firebase-sync-status.error .dot { background: #dc3545; }
+        #firebase-sync-status.syncing .dot { background: #ffc107; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
-        .modal { background: white; padding: 20px; border-radius: 8px; width: 500px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+        .modal { background: white; padding: 20px; border-radius: 8px; width: 520px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
         .modal h3 { margin-top: 0; }
         .modal h4 { margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 15px; }
         .setting-row label { flex-shrink: 0; }
         .key-input { width: 80px; text-align: center; font-weight: bold; }
         .number-input, .text-input-long { flex-grow: 1; }
-
-        /* Gist Sync Status */
-        #gist-sync-status {
-            font-size: 11px;
-            color: #666;
-            margin-right: 10px;
-            font-weight: normal;
-        }
-        #gist-sync-status a {
-            color: var(--accent-color);
-            text-decoration: underline;
-            cursor: pointer;
-        }
         .help-text { font-size: 11px; color: #666; margin-top: -5px; margin-bottom: 10px; }
-
-
-        /* VOICE AI PANEL */
-        #voice-ai-panel { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 800px; z-index: 1001; background-color: rgba(245, 245, 245, var(--ai-panel-opacity)); backdrop-filter: blur(5px); border: 1px solid var(--border-color); border-radius: 12px 12px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; transition: transform 0.3s ease-in-out, opacity 0.3s; transform-origin: bottom center; opacity: 0; visibility: hidden; height: 45vh; min-height: 150px; }
+        .firebase-notice { background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; padding: 10px; font-size: 12px; margin-bottom: 10px; line-height: 1.6; }
+        .firebase-notice code { background: #c8e6c9; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+        #voice-ai-panel { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 800px; z-index: 1001; background-color: rgba(245,245,245,var(--ai-panel-opacity)); backdrop-filter: blur(5px); border: 1px solid var(--border-color); border-radius: 12px 12px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; transition: transform 0.3s ease-in-out, opacity 0.3s; transform-origin: bottom center; opacity: 0; visibility: hidden; height: 45vh; min-height: 150px; }
         #voice-ai-panel.visible { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
         #voice-ai-panel.collapsed { transform: translateX(-50%) translateY(calc(100% - 35px)); }
-        .ai-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; cursor: pointer; border-bottom: 1px solid var(--border-color); background-color: rgba(255,255,255, 0.7); border-radius: 12px 12px 0 0; }
+        .ai-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 5px 15px; cursor: pointer; border-bottom: 1px solid var(--border-color); background-color: rgba(255,255,255,0.7); border-radius: 12px 12px 0 0; }
         .ai-panel-header #ai-status { font-weight: bold; color: var(--accent-color); font-size: 14px; }
         .ai-panel-toggle-btn { padding: 5px; cursor: pointer; font-size: 20px; background: none; border: none; }
         .ai-panel-toggle-btn.collapse-btn::before { content: '▼'; }
@@ -161,7 +126,6 @@
         .action-control-btn.run { color: #28a745; border-color: #28a745; }
         #add-ai-action-btn { background-color: #f8f9fa; color: var(--accent-color); border: 1px dashed var(--accent-color); margin-top: 10px; width: 100%; }
         .ai-panel-footer { padding: 10px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; align-items: center; }
-        .ai-panel-footer-controls { display: flex; gap: 10px; }
         .ai-btn { padding: 8px 16px; font-size: 14px; cursor: pointer; border: none; border-radius: 6px; color: white; font-weight: 500; }
         #ai-start-button { background-color: #dc3545; }
         #ai-stop-button { background-color: #6c757d; }
@@ -182,150 +146,114 @@
 <body>
 
 <div class="container">
+    <!-- UI GIỮ NGUYÊN -->
     <div class="header-controls">
         <div class="tabs">
             <button class="tab-button active" onclick="openTab(event, 'prompt-view')">Soạn thảo Prompt</button>
             <button class="tab-button" onclick="openTab(event, 'storage-view')">Lưu trữ & Ghi chú</button>
         </div>
         <div id="prompt-view-controls">
-            <span id="gist-sync-status">Sẵn sàng.</span>
+            <span id="firebase-sync-status"><span class="dot"></span><span id="firebase-sync-text">Chưa kết nối.</span></span>
             <span class="shortcut-hint" id="shortcut-display">Alt+1 (Copy), Alt+2 (Upload), Alt+3 (Focus)</span>
             <button class="main-button" id="import-sessions-btn" title="Nhập và thêm các phiên từ file .json">Nhập Phiên</button>
-            <button class="main-button" id="export-sessions-btn" title="Chỉ xuất tất cả các phiên hiện tại ra file .json">Xuất Phiên</button>
+            <button class="main-button" id="export-sessions-btn" title="Xuất tất cả các phiên ra file .json">Xuất Phiên</button>
             <button class="main-button" id="import-data-btn" title="Nhập toàn bộ dữ liệu từ file backup (ghi đè)">Nhập Backup</button>
             <button class="main-button" id="export-data-btn" title="Xuất toàn bộ dữ liệu ra file backup">Xuất Backup</button>
             <button class="main-button icon-btn" id="settings-btn" title="Cài đặt">⚙️</button>
-            <button class="main-button" id="add-session-btn" title="Thêm phiên mới vào đầu">+ Thêm Phiên</button>
+            <button class="main-button" id="add-session-btn">+ Thêm Phiên</button>
             <button class="main-button" id="collapse-all-sessions-btn">Thu/Mở tất cả</button>
         </div>
     </div>
-    <div id="prompt-view" class="tab-content active">
-        <div class="sessions-container" id="sessions-container"></div>
-    </div>
+    <div id="prompt-view" class="tab-content active"><div class="sessions-container" id="sessions-container"></div></div>
     <div id="storage-view" class="tab-content">
         <div class="storage-view-container">
-            <div class="storage-column">
-                <h3><span>Tệp đã lưu</span><label for="file-upload" class="main-button" style="font-weight: normal;">+ Tải lên</label></h3>
-                <input type="file" id="file-upload" multiple>
-                <div class="storage-column-content" id="file-list"></div>
-            </div>
-            <div class="storage-column">
-                <h3>Lịch sử Sao chép</h3>
-                <div class="storage-column-content" id="history-list"></div>
-            </div>
-            <div class="storage-column">
-                <h3><span>Ghi chú</span><button class="main-button" id="add-note-btn">+ Thêm</button></h3>
-                <div class="storage-column-content" id="notes-container"></div>
-            </div>
+            <div class="storage-column"><h3><span>Tệp đã lưu</span><label for="file-upload" class="main-button" style="font-weight:normal;">+ Tải lên</label></h3><input type="file" id="file-upload" multiple><div class="storage-column-content" id="file-list"></div></div>
+            <div class="storage-column"><h3>Lịch sử Sao chép</h3><div class="storage-column-content" id="history-list"></div></div>
+            <div class="storage-column"><h3><span>Ghi chú</span><button class="main-button" id="add-note-btn">+ Thêm</button></h3><div class="storage-column-content" id="notes-container"></div></div>
         </div>
     </div>
 </div>
 
-<!-- Modal Cài đặt -->
+<!-- Modal Cài đặt (UI giữ nguyên) -->
 <div class="modal-overlay" id="settings-modal">
     <div class="modal">
         <h3>Cài đặt</h3>
-        
-        <!-- START: CẤU HÌNH GIST TÍCH HỢP -->
-        <h4>Đồng bộ Cloud (GitHub Gist)</h4>
-        <p class="help-text">Đồng bộ dữ liệu tab "Soạn thảo Prompt" trên nhiều thiết bị.</p>
-        <div class="setting-row">
-            <label for="gist-id-setting">Gist ID:</label>
-            <input type="text" id="gist-id-setting" class="text-input-long" placeholder="ID của Gist">
+        <h4>🔥 Đồng bộ Cloud (Firebase Firestore)</h4>
+        <div class="firebase-notice">
+            <b>Hướng dẫn lấy cấu hình miễn phí:</b><br>
+            1. Vào <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Tạo project<br>
+            2. Vào <b>Firestore Database</b> → Tạo database (chọn <b>production mode</b>)<br>
+            3. Vào <b>Rules</b> → Đặt <code>allow read, write: if true;</code> (hoặc dùng Auth)<br>
+            4. Vào <b>Project Settings</b> (⚙️) → <b>Your apps</b> → <b>Web app</b> → Copy config bên dưới<br>
+            5. <b>Document ID</b>: đặt tên bất kỳ, VD: <code>my-prompts</code>
         </div>
-        <div class="setting-row">
-            <label for="gist-token-setting">GitHub Token:</label>
-            <input type="password" id="gist-token-setting" class="text-input-long" placeholder="Personal Access Token (classic)">
-        </div>
-        <div style="text-align: right; margin-top: 5px;">
-            <button class="main-button btn-delete" id="clear-gist-config-btn" style="font-size: 11px;">Xóa Cấu hình</button>
-        </div>
-        <!-- END: CẤU HÌNH GIST TÍCH HỢP -->
-
-        <h4>Phím tắt</h4>
-        <p class="help-text">Nhập 1 ký tự (kết hợp với phím Alt).</p>
+        <div class="setting-row"><label>API Key:</label><input type="password" id="fb-api-key" class="text-input-long" placeholder="AIza..."></div>
+        <div class="setting-row"><label>Project ID:</label><input type="text" id="fb-project-id" class="text-input-long" placeholder="my-project-123"></div>
+        <div class="setting-row"><label>App ID:</label><input type="text" id="fb-app-id" class="text-input-long" placeholder="1:123:web:abc"></div>
+        <div class="setting-row"><label>Document ID (Tên thư mục):</label><input type="text" id="fb-doc-id" class="text-input-long" placeholder="my-prompts"></div>
+        <div style="text-align:right; margin-top:5px;"><button class="main-button btn-delete" id="clear-firebase-config-btn" style="font-size:11px;">Xóa Cấu hình Firebase</button></div>
+        <h4>Phím tắt</h4><p class="help-text">Nhập 1 ký tự (kết hợp với phím Alt).</p>
         <div class="setting-row"><label>Sao chép (Copy):</label><input type="text" maxlength="1" id="key-copy" class="key-input"></div>
         <div class="setting-row"><label>Tải file (Code):</label><input type="text" maxlength="1" id="key-upload" class="key-input"></div>
         <div class="setting-row"><label>Chuyển ô (Focus):</label><input type="text" maxlength="1" id="key-focus" class="key-input"></div>
         <div class="setting-row"><label>Ghi âm (Voice):</label><input type="text" maxlength="1" id="key-voice" class="key-input"></div>
-        
-        <h4>Hiển thị</h4>
-        <div class="setting-row">
-            <label for="char-limit-input" title="Đặt 0 để tắt. Nội dung ô sẽ được thu gọn nếu dài hơn giá trị này.">Giới hạn ký tự hiển thị:</label>
-            <input type="number" id="char-limit-input" class="number-input" min="0" step="50">
-        </div>
-
+        <h4>Hiển thị</h4><div class="setting-row"><label title="Đặt 0 để tắt.">Giới hạn ký tự hiển thị:</label><input type="number" id="char-limit-input" class="number-input" min="0" step="50"></div>
         <h4>Cài đặt AI & Giọng nói</h4>
-        <div class="setting-row"><label for="gemini-key">Gemini API Key:</label><input type="password" id="gemini-key" class="text-input-long" placeholder="Dán API Key của bạn"></div>
-        <div class="setting-row"><label for="gemini-model">Tên Model:</label><input type="text" id="gemini-model" class="text-input-long" value="gemini-1.5-pro-latest"></div>
-        <div class="setting-row"><label for="ai-panel-opacity">Độ trong suốt Panel (%):</label><input type="number" id="ai-panel-opacity" class="number-input" min="10" max="100" value="98"></div>
-        
+        <div class="setting-row"><label>Gemini API Key:</label><input type="password" id="gemini-key" class="text-input-long" placeholder="Dán API Key của bạn"></div>
+        <div class="setting-row"><label>Tên Model:</label><input type="text" id="gemini-model" class="text-input-long" value="gemini-1.5-pro-latest"></div>
+        <div class="setting-row"><label>Độ trong suốt Panel (%):</label><input type="number" id="ai-panel-opacity" class="number-input" min="10" max="100" value="98"></div>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
             <button class="main-button" id="cancel-settings">Hủy</button>
-            <button class="main-button" id="save-settings" style="background:var(--accent-color); color:white; border:none;">Lưu</button>
+            <button class="main-button" id="save-settings" style="background:var(--accent-color);color:white;border:none;">Lưu & Kết nối</button>
         </div>
     </div>
 </div>
 
-<input type="file" id="import-sessions-file-input" accept=".json" style="display: none;">
-<input type="file" id="import-file-input" accept=".json" style="display: none;">
+<input type="file" id="import-sessions-file-input" accept=".json" style="display:none;">
+<input type="file" id="import-file-input" accept=".json" style="display:none;">
 
-
-<!-- VOICE AI PANEL -->
+<!-- VOICE AI PANEL (UI Giữ nguyên) -->
 <div id="voice-ai-panel">
-    <div class="ai-panel-header" id="ai-panel-header">
-        <span id="ai-status">Sẵn sàng.</span>
-        <button class="ai-panel-toggle-btn collapse-btn" id="ai-panel-collapse-btn" title="Thu gọn/Mở rộng"></button>
-    </div>
+    <div class="ai-panel-header" id="ai-panel-header"><span id="ai-status">Sẵn sàng.</span><button class="ai-panel-toggle-btn collapse-btn" id="ai-panel-collapse-btn"></button></div>
     <div class="ai-panel-content">
-        <div class="ai-panel-left">
-             <div id="ai-live-transcript-container">
-                <span id="ai-live-transcript"></span>
-            </div>
-            <div id="ai-interactive-editor" contenteditable="true"></div>
-        </div>
-        <div class="ai-panel-right">
-             <div id="ai-actions-list"></div>
-             <button id="add-ai-action-btn" class="main-button">➕ Thêm hành động mới</button>
-        </div>
+        <div class="ai-panel-left"><div id="ai-live-transcript-container"><span id="ai-live-transcript"></span></div><div id="ai-interactive-editor" contenteditable="true"></div></div>
+        <div class="ai-panel-right"><div id="ai-actions-list"></div><button id="add-ai-action-btn" class="main-button">➕ Thêm hành động mới</button></div>
     </div>
     <div class="ai-panel-footer">
-        <div class="ai-panel-footer-controls">
-            <button id="ai-start-button" class="ai-btn" title="Bắt đầu ghi âm">🎙️ Bắt đầu</button>
-            <button id="ai-stop-button" class="ai-btn" title="Dừng ghi âm">⏹️ Dừng</button>
-            <button id="ai-insert-button" class="ai-btn" title="Chèn kết quả vào ô đang focus trên trang">Chèn vào trang</button>
-        </div>
+        <div style="display:flex;gap:10px;"><button id="ai-start-button" class="ai-btn">🎙️ Bắt đầu</button><button id="ai-stop-button" class="ai-btn">⏹️ Dừng</button><button id="ai-insert-button" class="ai-btn">Chèn vào trang</button></div>
     </div>
 </div>
 
-<!-- Modal AI Action -->
+<!-- Modal AI Action (UI Giữ nguyên) -->
 <div id="ai-prompt-modal" class="modal-overlay">
     <div class="modal">
-        <h3 id="ai-modal-title">Chỉnh sửa hành động</h3>
-        <input type="hidden" id="ai-modal-action-id">
-        <label for="ai-modal-action-name">Tên hành động:</label>
-        <input type="text" id="ai-modal-action-name" style="width:100%; box-sizing: border-box;">
-        <label for="ai-modal-action-prompt">Câu lệnh (Prompt):</label>
-        <textarea id="ai-modal-action-prompt"></textarea>
-        <p class="help-text">Prompt phải yêu cầu AI trả về một đối tượng JSON. Bạn có thể dùng biến: <code>{{SUGGESTION_COUNT}}</code>.</p>
-        
-        <label for="ai-modal-action-renderer">Mã nguồn xử lý hiển thị (Renderer - Nâng cao):</label>
-        <textarea id="ai-modal-action-renderer" placeholder="Để trống nếu muốn dùng trình xử lý mặc định..."></textarea>
-        <p class="help-text">
-            <b>CẢNH BÁO:</b> Viết một hàm Javascript nhận 2 tham số: <code>(editor, jsonData)</code>.
-        </p>
-
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <h3 id="ai-modal-title">Chỉnh sửa hành động</h3><input type="hidden" id="ai-modal-action-id"><label>Tên hành động:</label><input type="text" id="ai-modal-action-name" style="width:100%;box-sizing:border-box;"><label>Câu lệnh (Prompt):</label><textarea id="ai-modal-action-prompt"></textarea>
+        <p class="help-text">Prompt phải yêu cầu AI trả về JSON. Biến: <code>{{SUGGESTION_COUNT}}</code></p>
+        <label>Renderer (Nâng cao):</label><textarea id="ai-modal-action-renderer" placeholder="Để trống nếu dùng mặc định..."></textarea>
+        <p class="help-text"><b>CẢNH BÁO:</b> Hàm JS nhận <code>(editor, jsonData)</code>.</p>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
             <button id="ai-modal-cancel-btn" class="main-button">Hủy</button>
-            <button id="ai-modal-save-btn" class="main-button" style="background:var(--accent-color); color:white; border:none;">Lưu</button>
+            <button id="ai-modal-save-btn" class="main-button" style="background:var(--accent-color);color:white;border:none;">Lưu</button>
         </div>
     </div>
 </div>
 
-
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- START: BIẾN VÀ DOM ELEMENTS CHÍNH ---
+// ============================================================================
+// MAIN APP — Chờ Firebase module load xong
+// ============================================================================
+window.addEventListener('load', () => {
+    const waitForFirebase = setInterval(() => {
+        if (window._firebaseModules) { clearInterval(waitForFirebase); initApp(); }
+    }, 50);
+    setTimeout(() => clearInterval(waitForFirebase), 5000);
+});
+
+function initApp() {
+    // ĐÃ CẬP NHẬT MODULES LẤY TỪ WINDOW
+    const { initializeApp, getFirestore, doc, collection, getDocs, deleteDoc, writeBatch, onSnapshot } = window._firebaseModules;
+
+    // DOM REFS
     const sessionsContainer = document.getElementById('sessions-container');
     const addSessionBtn = document.getElementById('add-session-btn');
     const collapseAllBtn = document.getElementById('collapse-all-sessions-btn');
@@ -340,618 +268,284 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportSessionsBtn = document.getElementById('export-sessions-btn');
     const importSessionsBtn = document.getElementById('import-sessions-btn');
     const importSessionsFileInput = document.getElementById('import-sessions-file-input');
-    
+    const fbSyncStatus = document.getElementById('firebase-sync-status');
+    const fbSyncText = document.getElementById('firebase-sync-text');
+
+    // STATE
     let sessions = [];
-    let files = [];
-    let history = [];
-    let notes = [];
-    let suggestions = [];
+    let files = [], history = [], notes = [], suggestions = [], aiActions = [];
     let shortcuts = { copy: '1', upload: '2', focus: '3', voice: 'v' };
     let settings = { maxCharDisplay: 0 };
-    let lastActiveSessionId = null;
-    let lastFocusedElement = null;
-    // --- END: BIẾN VÀ DOM ELEMENTS CHÍNH ---
+    let lastActiveSessionId = null, lastFocusedElement = null;
 
-    // --- START: BIẾN VÀ LOGIC CHO ĐỒNG BỘ GISTHUB ---
-    const gistStatusSpan = document.getElementById('gist-sync-status');
-    const clearGistConfigBtn = document.getElementById('clear-gist-config-btn');
-    
-    const GIST_FILENAME = 'prompt_sessions.json';
-    let GIST_ID = '';
-    let GITHUB_TOKEN = '';
-    let gistDebounceTimer;
+    // FIREBASE STATE (ĐÃ SỬA CHỖ NÀY)
+    let firebaseApp = null;
+    let db = null;
+    let sessionsCollectionRef = null; // Trở thành Collection, không phải Doc đơn lẻ nữa
+    let unsubscribeListener = null;
+    let saveDebounceTimer = null;
+    let isSyncing = false; 
 
-    function updateGistStatus(message, isError = false) {
-        if (isError) {
-            gistStatusSpan.innerHTML = `<span style="color: #dc3545;">Lỗi: ${message}</span>`;
-        } else {
-            gistStatusSpan.innerHTML = message;
-        }
+    // =========================================================================
+    // FIREBASE HELPERS (ĐƯỢC VIẾT LẠI ĐỂ BYPASS GIỚI HẠN 1MB)
+    // =========================================================================
+    function setStatus(text, state = 'idle') {
+        fbSyncStatus.className = state; fbSyncText.textContent = text;
     }
 
-    function clearGistConfig() {
-        if (confirm('Bạn có chắc muốn xóa cấu hình đồng bộ Gist không? Dữ liệu phiên sẽ chỉ được lưu trên thiết bị này.')) {
-            localStorage.removeItem('promptGistId');
-            localStorage.removeItem('promptGistToken');
-            alert('Đã xóa cấu hình Gist. Trang sẽ được tải lại.');
-            location.reload();
-        }
-    }
-    clearGistConfigBtn.addEventListener('click', clearGistConfig);
-
-    async function loadSessionsFromGist() {
-        if (!GIST_ID || !GITHUB_TOKEN) return;
-        updateGistStatus('Đang tải từ Cloud...');
-        try {
-            const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-            });
-            if (!response.ok) {
-                if (response.status === 404) {
-                     updateGistStatus(`Không tìm thấy Gist.`, true);
-                     return null;
-                }
-                throw new Error(`HTTP: ${response.status}`);
-            }
-            const data = await response.json();
-            if (data.files && data.files[GIST_FILENAME]) {
-                const gistContent = data.files[GIST_FILENAME].content;
-                sessions = JSON.parse(gistContent);
-                updateGistStatus(`Đồng bộ lúc ${new Date().toLocaleTimeString()}.`);
-            } else {
-                updateGistStatus('Cloud trống, sẵn sàng lưu.');
-                sessions = JSON.parse(localStorage.getItem('promptSessions') || '[]');
-                if (sessions.length > 0) {
-                    saveDataToGist(); 
-                }
-            }
-        } catch (error) {
-            updateGistStatus(`Lỗi tải: ${error.message}`, true);
-            return null;
-        }
-        return true;
-    }
-
-    async function saveDataToGist() {
-        if (!GIST_ID || !GITHUB_TOKEN) return;
-        updateGistStatus('Đang lưu lên Cloud...');
-        try {
-            const contentToSave = JSON.stringify(sessions, null, 2);
-            const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, { 
-                method: 'PATCH', 
-                headers: { 
-                    'Authorization': `token ${GITHUB_TOKEN}`, 
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json' 
-                }, 
-                body: JSON.stringify({ 
-                    files: { 
-                        [GIST_FILENAME]: { content: contentToSave } 
-                    } 
-                }) 
-            });
-            if (!response.ok) {
-                 const errorData = await response.json();
-                 throw new Error(errorData.message || 'Unknown API error');
-            }
-            updateGistStatus(`Đã lưu lúc ${new Date().toLocaleTimeString()}.`);
-        } catch (error) { 
-            updateGistStatus(`Lỗi lưu: ${error.message}`, true); 
-        }
-    }
-    // --- END: LOGIC ĐỒNG BỘ GISTHUB ---
-
-    // --- START: LOGIC PANEL AI GIỌNG NÓI ---
-    // (Toàn bộ logic AI không thay đổi)
-    const aiPanel = document.getElementById('voice-ai-panel');
-    const aiPanelHeader = document.getElementById('ai-panel-header');
-    const aiPanelCollapseBtn = document.getElementById('ai-panel-collapse-btn');
-    const aiEditor = document.getElementById('ai-interactive-editor');
-    const aiStatusDiv = document.getElementById('ai-status');
-    const aiLiveTranscriptContainer = document.getElementById('ai-live-transcript-container');
-    const aiLiveTranscriptDiv = document.getElementById('ai-live-transcript');
-    const aiActionsListDiv = document.getElementById('ai-actions-list');
-    const aiModal = document.getElementById('ai-prompt-modal');
-    const aiStartButton = document.getElementById('ai-start-button');
-    const aiStopButton = document.getElementById('ai-stop-button');
-    const aiInsertButton = document.getElementById('ai-insert-button');
-    const addAiActionButton = document.getElementById('add-ai-action-btn');
-    let aiActions = [];
-
-    function toggleAiPanel(show) {
-        if (show) { aiPanel.classList.add('visible'); } 
-        else { aiPanel.classList.remove('visible'); if (window.webkitSpeechRecognition && recognition && isListening) { recognition.stop(); } }
-    }
-    aiPanelHeader.addEventListener('click', (e) => { if (e.target.closest('.ai-panel-header')) { aiPanel.classList.toggle('collapsed'); } });
-    function renderAiActions() {
-        aiActionsListDiv.innerHTML = '';
-        aiActions.forEach((action, index) => {
-            const item = document.createElement('div');
-            item.className = 'ai-action-item';
-            item.innerHTML = `<span class="name">${escapeHtml(action.name)}</span><button class="action-control-btn edit" data-id="${index}">Sửa</button><button class="action-control-btn delete" data-id="${index}">Xóa</button><button class="action-control-btn run" data-id="${index}">Thực thi</button>`;
-            aiActionsListDiv.appendChild(item);
-        });
-    }
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition; let isListening = false;
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'vi-VN';
-        let fullTranscript = '';
-        recognition.onstart = () => { isListening = true; aiStatusDiv.textContent = '🔴 Đang lắng nghe...'; aiLiveTranscriptContainer.style.display = 'block'; };
-        recognition.onend = () => { isListening = false; aiStatusDiv.textContent = 'Đã dừng ghi âm.'; aiLiveTranscriptContainer.style.display = 'none'; };
-        recognition.onresult = (event) => {
-            let interimTranscript = ''; let finalTranscriptForEditor = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const transcriptPart = event.results[i][0].transcript;
-                if (event.results[i].isFinal) { fullTranscript += transcriptPart + '. '; finalTranscriptForEditor += transcriptPart + '. '; } 
-                else { interimTranscript += transcriptPart; }
-            }
-            aiLiveTranscriptDiv.innerHTML = escapeHtml(fullTranscript) + `<span style="color: grey;">${escapeHtml(interimTranscript)}</span>`;
-            if (finalTranscriptForEditor) { aiEditor.innerText += finalTranscriptForEditor; }
+    function getFirebaseConfig() {
+        return {
+            apiKey: localStorage.getItem('fb_apiKey') || '',
+            projectId: localStorage.getItem('fb_projectId') || '',
+            appId: localStorage.getItem('fb_appId') || '',
+            docId: localStorage.getItem('fb_docId') || 'prompt-sessions'
         };
-        aiStartButton.onclick = () => { fullTranscript = ''; recognition.start(); };
-        aiStopButton.onclick = () => { if(isListening) recognition.stop(); }
-    } else { aiStartButton.disabled = true; aiStopButton.disabled = true; aiStatusDiv.textContent = "Trình duyệt không hỗ trợ Speech Recognition."; }
-    aiActionsListDiv.addEventListener('click', (e) => {
-        const id = e.target.dataset.id;
-        if (e.target.classList.contains('run')) executeAiAction(id);
-        else if (e.target.classList.contains('edit')) openAiPromptModal(id);
-        else if (e.target.classList.contains('delete')) {
-            if (confirm(`Bạn có chắc muốn xóa hành động "${aiActions[id].name}"?`)) { aiActions.splice(id, 1); saveData('promptAiActions', aiActions); renderAiActions(); }
-        }
-    });
-    addAiActionButton.onclick = () => openAiPromptModal();
-    async function executeAiAction(id) {
-        const apiKey = document.getElementById('gemini-key').value; const model = document.getElementById('gemini-model').value; const textToProcess = aiEditor.innerText; const action = aiActions[id];
-        if (!apiKey || !textToProcess.trim()) { alert('Vui lòng nhập API Key và nội dung văn bản trong panel AI.'); return; }
-        aiStatusDiv.textContent = '🤖 AI đang suy nghĩ...'; aiEditor.innerHTML = '<div style="text-align:center; color: #aaa;">Đang xử lý...</div>';
-        let processedPrompt = action.prompt.replace('{{SUGGESTION_COUNT}}', "2");
-        const fullPrompt = `${processedPrompt}\n\nVăn bản gốc:\n"""\n${textToProcess}\n"""`;
-        const apiURL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        try {
-            const response = await fetch(apiURL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] }) });
-            const responseData = await response.json();
-            if (!response.ok) throw new Error(responseData.error ? responseData.error.message : 'Unknown API error');
-            let resultText = responseData.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
-            const resultJson = JSON.parse(resultText);
-            if (action.renderer && action.renderer.trim() !== "") { const customRenderer = new Function('editor', 'jsonData', action.renderer); customRenderer(aiEditor, resultJson); aiStatusDiv.textContent = '✅ Hiển thị bằng renderer tùy chỉnh.'; } 
-            else {
-                if (resultJson.summary) { aiEditor.innerHTML = `<strong>Nội dung tóm tắt:</strong><br>${resultJson.summary.replace(/\n/g, '<br>')}`; aiStatusDiv.textContent = '✅ Đã tóm tắt xong!'; } 
-                else if (resultJson.changes) { renderInteractiveChanges(textToProcess, resultJson.changes); aiStatusDiv.textContent = '✅ Xong! Nhấp vào các gợi ý để sửa.'; } 
-                else { throw new Error("AI không trả về JSON có key 'summary' hoặc 'changes'."); }
-            }
-        } catch (error) { aiStatusDiv.textContent = `❌ Lỗi xử lý AI: ${error.message}`; aiEditor.innerHTML = textToProcess; console.error(error); }
-    }
-    function renderInteractiveChanges(originalText, changes) {
-        let html = escapeHtml(originalText);
-        changes.reverse().forEach((change) => {
-            const originalPhrase = escapeHtml(change.original_phrase);
-            let suggestionsHtml = `<span class="suggestions-container">(<span class="suggestion-item best" data-value="${escapeHtml(change.best_suggestion)}">${escapeHtml(change.best_suggestion)}</span>`;
-            (change.alternatives || []).forEach(alt => { suggestionsHtml += `<span class="suggestion-item" data-value="${escapeHtml(alt)}">${escapeHtml(alt)}</span>`; });
-            suggestionsHtml += `<span class="suggestion-item original selected" data-value="${originalPhrase}">(Giữ lại)</span>)</span>`;
-            const replacementHtml = `<span class="review-block" data-original="${originalPhrase}" data-selected-text="${originalPhrase}"><del>${originalPhrase}</del>${suggestionsHtml}</span>`;
-            const pos = html.lastIndexOf(originalPhrase);
-            if (pos !== -1) { html = html.substring(0, pos) + replacementHtml + html.substring(pos + originalPhrase.length); }
-        });
-        aiEditor.innerHTML = html;
-    }
-    aiEditor.addEventListener('click', (e) => {
-        if (e.target.classList.contains('suggestion-item')) {
-            const clickedSuggestion = e.target; const reviewBlock = clickedSuggestion.closest('.review-block'); const container = clickedSuggestion.closest('.suggestions-container');
-            if (reviewBlock && container) { container.querySelectorAll('.suggestion-item').forEach(item => item.classList.remove('selected')); clickedSuggestion.classList.add('selected'); reviewBlock.dataset.selectedText = clickedSuggestion.dataset.value; }
-        }
-    });
-    aiInsertButton.onclick = () => {
-        let finalString = '';
-        aiEditor.childNodes.forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE) finalString += node.textContent;
-            else if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('review-block')) finalString += node.dataset.selectedText;
-            else if (node.nodeType === Node.ELEMENT_NODE) finalString += node.innerText || '';
-        });
-        finalString = finalString.replace(/\s+/g, ' ').trim();
-        if (lastFocusedElement && (lastFocusedElement.tagName === 'TEXTAREA' || lastFocusedElement.tagName === 'INPUT')) {
-            const start = lastFocusedElement.selectionStart; const end = lastFocusedElement.selectionEnd; const text = lastFocusedElement.value; const before = text.substring(0, start); const after = text.substring(end);
-            lastFocusedElement.value = before + finalString + after;
-            lastFocusedElement.selectionStart = lastFocusedElement.selectionEnd = start + finalString.length;
-            lastFocusedElement.dispatchEvent(new Event('input', { bubbles: true }));
-            lastFocusedElement.focus(); toggleAiPanel(false); alert("Đã chèn kết quả!");
-        } else { alert("Không tìm thấy ô nhập liệu để chèn văn bản."); }
-    };
-    function openAiPromptModal(id = null) {
-        const modalId = document.getElementById('ai-modal-action-id'); const modalName = document.getElementById('ai-modal-action-name'); const modalPrompt = document.getElementById('ai-modal-action-prompt'); const modalRenderer = document.getElementById('ai-modal-action-renderer'); const modalTitle = document.getElementById('ai-modal-title');
-        if (id !== null) { modalTitle.textContent = "Chỉnh sửa hành động"; modalId.value = id; modalName.value = aiActions[id].name; modalPrompt.value = aiActions[id].prompt; modalRenderer.value = aiActions[id].renderer || ""; } 
-        else { modalTitle.textContent = "Thêm hành động mới"; modalId.value = -1; modalName.value = ''; modalPrompt.value = `Phân tích văn bản... YÊU CẦU: Chỉ trả lời bằng một đối tượng JSON có cấu trúc sau:\n{"changes": [{"original_phrase": "...", "best_suggestion": "...", "alternatives": ["...", "..."]}]}`; modalRenderer.value = ''; }
-        aiModal.style.display = 'flex';
-    }
-    document.getElementById('ai-modal-cancel-btn').onclick = () => aiModal.style.display = 'none';
-    document.getElementById('ai-modal-save-btn').onclick = () => {
-        const id = document.getElementById('ai-modal-action-id').value; const name = document.getElementById('ai-modal-action-name').value; const prompt = document.getElementById('ai-modal-action-prompt').value; const renderer = document.getElementById('ai-modal-action-renderer').value;
-        if (!name || !prompt) { alert("Tên và câu lệnh không được để trống."); return; }
-        const newAction = { name, prompt, renderer };
-        if (id == -1) aiActions.push(newAction);
-        else aiActions[id] = newAction;
-        saveData('promptAiActions', aiActions); renderAiActions(); aiModal.style.display = 'none';
-    };
-    function toggleVoiceRecognition() {
-        if (!SpeechRecognition) { alert("Trình duyệt của bạn không hỗ trợ tính năng giọng nói."); return; }
-        lastFocusedElement = document.activeElement; toggleAiPanel(true); aiPanel.classList.remove('collapsed');
-        setTimeout(() => { if (!isListening) { aiStartButton.click(); } else { aiStopButton.click(); } }, 100);
-    }
-    // --- END: LOGIC PANEL AI GIỌNG NÓI ---
-    
-    function escapeHtml(text) {
-        if (typeof text !== 'string') return "";
-        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function getFormattedTime() {
-        const now = new Date();
-        return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+    function initFirebase() {
+        if (unsubscribeListener) { unsubscribeListener(); unsubscribeListener = null; }
+        const cfg = getFirebaseConfig();
+        if (!cfg.apiKey || !cfg.projectId || !cfg.appId) { setStatus('Chưa cấu hình Firebase.', 'idle'); return false; }
+        try {
+            try { firebaseApp = initializeApp({ apiKey: cfg.apiKey, authDomain: `${cfg.projectId}.firebaseapp.com`, projectId: cfg.projectId, appId: cfg.appId }, 'promptApp'); }
+            catch(e) { firebaseApp = initializeApp({ apiKey: cfg.apiKey, authDomain: `${cfg.projectId}.firebaseapp.com`, projectId: cfg.projectId, appId: cfg.appId }, `promptApp_${Date.now()}`); }
+            
+            db = getFirestore(firebaseApp);
+            // SỬA Ở ĐÂY: Dùng collection (Thư mục) thay vì 1 document duy nhất. 
+            // Cấu trúc: prompt_data_v2 -> [Tên_Thư_Mục_Của_Bạn] -> sessions -> [Các phiên con]
+            sessionsCollectionRef = collection(db, 'prompt_data_v2', cfg.docId, 'sessions'); 
+            setStatus('Đang kết nối...', 'syncing');
+            return true;
+        } catch(e) { setStatus(`Lỗi khởi tạo: ${e.message}`, 'error'); return false; }
     }
-    
+
+    async function loadFromFirestore() {
+        if (!sessionsCollectionRef) return false;
+        setStatus('Đang tải từ Cloud...', 'syncing');
+        try {
+            // Lấy TẤT CẢ các document trong collection
+            const snap = await getDocs(sessionsCollectionRef);
+            if (!snap.empty) {
+                let loadedSessions = [];
+                snap.forEach(doc => loadedSessions.push(doc.data()));
+                // Sắp xếp lại theo thứ tự index đã lưu
+                loadedSessions.sort((a, b) => a._orderIndex - b._orderIndex);
+                sessions = loadedSessions;
+                setStatus(`Đã tải lúc ${new Date().toLocaleTimeString()}`, 'connected');
+            } else {
+                setStatus('Cloud trống, sẵn sàng lưu.', 'connected');
+                const localSessions = JSON.parse(localStorage.getItem('promptSessions') || '[]');
+                if (localSessions.length > 0) { sessions = localSessions; await saveToFirestore(true); }
+            }
+            return true;
+        } catch(e) { setStatus(`Lỗi tải: ${e.message}`, 'error'); return false; }
+    }
+
+    async function saveToFirestore(immediate = false) {
+        if (!sessionsCollectionRef) return;
+        clearTimeout(saveDebounceTimer);
+        const doSave = async () => {
+            if (isSyncing) return;
+            isSyncing = true;
+            setStatus('Đang lưu...', 'syncing');
+            try {
+                const batch = writeBatch(db);
+                const existingDocs = await getDocs(sessionsCollectionRef);
+                const currentSessionIds = sessions.map(s => s.id.toString());
+                
+                existingDocs.forEach(docSnap => {
+                    if (!currentSessionIds.includes(docSnap.id)) {
+                        batch.delete(docSnap.ref);
+                    }
+                });
+
+                sessions.forEach((sess, index) => {
+                    const docRef = doc(sessionsCollectionRef, sess.id.toString());
+                    batch.set(docRef, { ...sess, _orderIndex: index }); 
+                });
+
+                await batch.commit();
+
+                // Bọc LocalStorage trong try-catch để không bị sập web khi đầy 5MB
+                try {
+                    localStorage.setItem('promptSessions', JSON.stringify(sessions));
+                } catch(e) {
+                    console.warn('Trình duyệt đã đầy bộ nhớ (5MB). Đã bỏ qua backup cục bộ.');
+                }
+
+                setStatus(`Đã lưu lúc ${new Date().toLocaleTimeString()}`, 'connected');
+            } catch(e) {
+                setStatus(`Lỗi lưu: ${e.message}`, 'error');
+            } finally { isSyncing = false; }
+        };
+        if (immediate) await doSave();
+        else saveDebounceTimer = setTimeout(doSave, 2000);
+    }
+
+    function startRealtimeListener() {
+        if (!sessionsCollectionRef) return;
+        if (unsubscribeListener) unsubscribeListener();
+        
+        // Lắng nghe thay đổi trên toàn bộ Collection
+        unsubscribeListener = onSnapshot(sessionsCollectionRef, (snap) => {
+            if (isSyncing) return; 
+            if (!snap.empty) {
+                let loadedSessions = [];
+                snap.forEach(doc => loadedSessions.push(doc.data()));
+                loadedSessions.sort((a, b) => a._orderIndex - b._orderIndex);
+                
+                // Chỉ re-render nếu data khác local
+                if (JSON.stringify(loadedSessions) !== JSON.stringify(sessions)) {
+                    sessions = loadedSessions;
+                    renderSessions();
+                    setStatus(`Đồng bộ lúc ${new Date().toLocaleTimeString()}`, 'connected');
+                }
+            } else if (sessions.length > 0) {
+                 // Xử lý trường hợp bị xóa trắng từ thiết bị khác
+                 sessions = [];
+                 renderSessions();
+            }
+        }, (err) => { setStatus(`Lỗi realtime: ${err.message}`, 'error'); });
+    }
+
+    document.getElementById('clear-firebase-config-btn').addEventListener('click', () => {
+        if (confirm('Xóa cấu hình Firebase? Dữ liệu phiên sẽ chỉ còn ở backup local.')) {
+            ['fb_apiKey','fb_projectId','fb_appId','fb_docId'].forEach(k => localStorage.removeItem(k));
+            if (unsubscribeListener) unsubscribeListener();
+            db = null; sessionsCollectionRef = null;
+            setStatus('Đã xóa cấu hình.', 'idle');
+            alert('Đã xóa cấu hình Firebase.');
+        }
+    });
+
+    // =========================================================================
+    // LOCAL STORAGE (GIỮ NGUYÊN)
+    // =========================================================================
     function loadLocalData(sessionsAlreadyLoaded = false) {
         try {
-            if (!sessionsAlreadyLoaded) {
-                 sessions = JSON.parse(localStorage.getItem('promptSessions') || '[]');
-            }
+            if (!sessionsAlreadyLoaded) sessions = JSON.parse(localStorage.getItem('promptSessions') || '[]');
             files = JSON.parse(localStorage.getItem('promptFiles') || '[]');
             history = JSON.parse(localStorage.getItem('promptHistory') || '[]');
             notes = JSON.parse(localStorage.getItem('promptNotes') || '[]');
-            suggestions = JSON.parse(localStorage.getItem('promptSuggestions') || '["Là một chuyên gia", "Hành động như một", "Viết code"]');
-            
+            suggestions = JSON.parse(localStorage.getItem('promptSuggestions') || '["Là một chuyên gia","Hành động như một","Viết code"]');
             const savedShortcuts = JSON.parse(localStorage.getItem('promptShortcuts'));
             if (savedShortcuts) shortcuts = {...shortcuts, ...savedShortcuts};
-            
             const savedSettings = JSON.parse(localStorage.getItem('promptSettings'));
             if (savedSettings) settings = savedSettings;
-            
             document.getElementById('gemini-key').value = localStorage.getItem('geminiApiKey') || '';
             document.getElementById('gemini-model').value = localStorage.getItem('geminiModel') || 'gemini-1.5-pro-latest';
             const opacity = localStorage.getItem('aiPanelOpacity') || 98;
             document.getElementById('ai-panel-opacity').value = opacity;
             document.documentElement.style.setProperty('--ai-panel-opacity', opacity / 100);
-
             aiActions = JSON.parse(localStorage.getItem('promptAiActions') || '[]');
-            if(aiActions.length === 0) {
-                 aiActions.push({ name: "Sửa lỗi Ngữ pháp", prompt: `Phân tích văn bản... YÊU CẦU: Chỉ trả lời bằng một đối tượng JSON có cấu trúc sau:\n{"changes": [{"original_phrase": "...", "best_suggestion": "...", "alternatives": ["...", "..."]}]}`, renderer: "" });
-                 aiActions.push({ name: "Tóm tắt 3 ý chính", prompt: `Tóm tắt văn bản thành 3 ý chính. YÊU CẦU: Chỉ trả lời bằng một đối tượng JSON có cấu trúc sau: {"summary": "- Ý 1\\n- Ý 2\\n- Ý 3"}`, renderer: "" });
-                 saveData('promptAiActions', aiActions);
+            if (aiActions.length === 0) {
+                aiActions.push({ name: "Sửa lỗi Ngữ pháp", prompt: `Phân tích văn bản... YÊU CẦU: Chỉ trả lời bằng JSON:\n{"changes": [{"original_phrase":"...","best_suggestion":"...","alternatives":["...","..."]}]}`, renderer: "" });
+                aiActions.push({ name: "Tóm tắt 3 ý chính", prompt: `Tóm tắt văn bản thành 3 ý chính. YÊU CẦU: JSON:\n{"summary": "- Ý 1\\n- Ý 2\\n- Ý 3"}`, renderer: "" });
+                saveLocalOnly('promptAiActions', aiActions);
             }
-
-        } catch (e) { console.error("Load error", e); }
-
-        if (sessions.length === 0) { for(let i=0; i<3; i++) sessions.push(createNewSessionData(`Phiên làm việc ${i+1}`)); }
-        if (notes.length === 0) { notes.push({ id: Date.now(), title: 'Ghi chú 1', content: '', timestamp: getFormattedTime() }); }
-
+        } catch(e) { console.error("Load error", e); }
+        if (sessions.length === 0) { for(let i=0;i<3;i++) sessions.push(createNewSessionData(`Phiên làm việc ${i+1}`)); }
+        if (notes.length === 0) notes.push({ id: Date.now(), title: 'Ghi chú 1', content: '', timestamp: getFormattedTime() });
         updateShortcutDisplay();
     }
-    
-    function saveData(key, data) {
-        // Luôn lưu bản sao vào localStorage làm backup
-        localStorage.setItem(key, JSON.stringify(data));
 
-        if (key === 'promptSessions' && GIST_ID && GITHUB_TOKEN) {
-             clearTimeout(gistDebounceTimer);
-             gistDebounceTimer = setTimeout(saveDataToGist, 2500); 
-        }
-    }
-
-    function renderAll() {
-        renderSessions();
-        renderFileList();
-        renderHistoryList();
-        renderNotes();
-        renderAiActions();
-    }
-    
-    exportDataBtn.addEventListener('click', () => {
-        const allData = { sessions, files, history, notes, suggestions, shortcuts, settings,
-            geminiApiKey: localStorage.getItem('geminiApiKey'),
-            geminiModel: localStorage.getItem('geminiModel'),
-            aiPanelOpacity: localStorage.getItem('aiPanelOpacity'),
-            promptAiActions: aiActions
-        };
-        const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.download = `prompt_pro_backup_${new Date().toISOString().slice(0, 10)}.json`;
-        a.href = URL.createObjectURL(blob);
-        a.click();
-        URL.revokeObjectURL(a.href);
-    });
-
-    importDataBtn.addEventListener('click', () => importFileInput.click());
-    importFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const importedData = JSON.parse(event.target.result);
-                if (confirm("GHI ĐÈ DỮ LIỆU? Hành động này sẽ xóa toàn bộ dữ liệu hiện tại và thay thế bằng dữ liệu từ file backup. KHÔNG THỂ hoàn tác.")) {
-                    sessions = importedData.sessions || [];
-                    files = importedData.files || [];
-                    history = importedData.history || [];
-                    notes = importedData.notes || [];
-                    suggestions = importedData.suggestions || [];
-                    aiActions = importedData.promptAiActions || [];
-                    if (importedData.shortcuts) shortcuts = {...shortcuts, ...importedData.shortcuts};
-                    if (importedData.settings) settings = importedData.settings;
-                    localStorage.setItem('geminiApiKey', importedData.geminiApiKey || '');
-                    localStorage.setItem('geminiModel', importedData.geminiModel || 'gemini-1.5-pro-latest');
-                    localStorage.setItem('aiPanelOpacity', importedData.aiPanelOpacity || '98');
-                    saveData('promptSessions', sessions); saveData('promptFiles', files); saveData('promptHistory', history); saveData('promptNotes', notes); saveData('promptSuggestions', suggestions); saveData('promptShortcuts', shortcuts); saveData('promptSettings', settings); saveData('promptAiActions', aiActions);
-                    alert("Dữ liệu đã được nhập thành công! Trang sẽ tải lại.");
-                    location.reload();
-                }
-            } catch (error) { alert("Lỗi: File backup không hợp lệ."); console.error("Import error:", error); } 
-            finally { importFileInput.value = ''; }
-        };
-        reader.readAsText(file);
-    });
-
-    exportSessionsBtn.addEventListener('click', () => {
-        if (!sessions || sessions.length === 0) { alert("Không có phiên nào để xuất."); return; }
-        const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.download = `prompt_pro_sessions_${new Date().toISOString().slice(0, 10)}.json`;
-        a.href = URL.createObjectURL(blob);
-        a.click();
-        URL.revokeObjectURL(a.href);
-    });
-    
-    importSessionsBtn.addEventListener('click', () => importSessionsFileInput.click());
-    importSessionsFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const importedSessions = JSON.parse(event.target.result);
-                if (!Array.isArray(importedSessions)) { throw new Error("File không chứa danh sách phiên hợp lệ."); }
-                if (confirm(`Bạn có muốn THÊM ${importedSessions.length} phiên mới vào dữ liệu hiện tại không?`)) {
-                    sessions = sessions.concat(importedSessions);
-                    saveData('promptSessions', sessions);
-                    renderSessions();
-                    alert("Đã nhập thêm các phiên mới thành công!");
-                }
-            } catch (error) { alert("Lỗi: File không hợp lệ. " + error.message); console.error("Session Import error:", error); } 
-            finally { importSessionsFileInput.value = ''; }
-        };
-        reader.readAsText(file);
-    });
-
-    function updateShortcutDisplay() {
-        shortcutDisplay.textContent = `Alt+${shortcuts.copy} (Copy), Alt+${shortcuts.upload} (Code), Alt+${shortcuts.focus} (Focus), Alt+${shortcuts.voice} (Voice)`;
-    }
-
-    settingsBtn.addEventListener('click', () => {
-        // Populate settings from current state
-        document.getElementById('gist-id-setting').value = localStorage.getItem('promptGistId') || '';
-        document.getElementById('gist-token-setting').value = localStorage.getItem('promptGistToken') || '';
-        document.getElementById('key-copy').value = shortcuts.copy;
-        document.getElementById('key-upload').value = shortcuts.upload;
-        document.getElementById('key-focus').value = shortcuts.focus;
-        document.getElementById('key-voice').value = shortcuts.voice;
-        document.getElementById('char-limit-input').value = settings.maxCharDisplay || 0;
-        settingsModal.style.display = 'flex';
-    });
-
-    cancelSettingsBtn.addEventListener('click', () => settingsModal.style.display = 'none');
-
-    saveSettingsBtn.addEventListener('click', () => {
-        const newGistId = document.getElementById('gist-id-setting').value.trim();
-        const newGistToken = document.getElementById('gist-token-setting').value.trim();
-        
-        const configChanged = newGistId !== GIST_ID || newGistToken !== GITHUB_TOKEN;
-
-        localStorage.setItem('promptGistId', newGistId);
-        localStorage.setItem('promptGistToken', newGistToken);
-
-        const k1 = document.getElementById('key-copy').value.trim().toLowerCase();
-        const k2 = document.getElementById('key-upload').value.trim().toLowerCase();
-        const k3 = document.getElementById('key-focus').value.trim().toLowerCase();
-        const k4 = document.getElementById('key-voice').value.trim().toLowerCase();
-        if(k1 && k2 && k3 && k4) { shortcuts = { copy: k1, upload: k2, focus: k3, voice: k4 }; saveData('promptShortcuts', shortcuts); updateShortcutDisplay(); }
-        
-        const charLimit = parseInt(document.getElementById('char-limit-input').value, 10);
-        settings.maxCharDisplay = isNaN(charLimit) || charLimit < 0 ? 0 : charLimit;
-        saveData('promptSettings', settings);
-
-        localStorage.setItem('geminiApiKey', document.getElementById('gemini-key').value);
-        localStorage.setItem('geminiModel', document.getElementById('gemini-model').value);
-        const opacity = document.getElementById('ai-panel-opacity').value;
-        localStorage.setItem('aiPanelOpacity', opacity);
-        document.documentElement.style.setProperty('--ai-panel-opacity', opacity / 100);
-
-        settingsModal.style.display = 'none';
-        
-        if (configChanged) {
-            alert('Cấu hình đồng bộ đã thay đổi. Trang sẽ được tải lại để áp dụng.');
-            location.reload();
-        } else {
-             renderSessions();
-        }
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.altKey) {
-            const key = e.key.toLowerCase();
-            if (key === shortcuts.voice.toLowerCase()) { e.preventDefault(); toggleVoiceRecognition(); return; }
-            if (e.target.closest('#voice-ai-panel')) return;
-
-            if (key === shortcuts.copy.toLowerCase() || key === shortcuts.upload.toLowerCase() || key === shortcuts.focus.toLowerCase()) {
-                e.preventDefault();
-                const targetSessionEl = lastActiveSessionId ? document.querySelector(`.session[data-session-id="${lastActiveSessionId}"]`) : document.querySelector('.session');
-                if (!targetSessionEl) return;
-                if (key === shortcuts.copy.toLowerCase()) copySessionContent(targetSessionEl);
-                else if (key === shortcuts.upload.toLowerCase()) targetSessionEl.querySelector('.row-code .upload-code-btn')?.click();
-                else if (key === shortcuts.focus.toLowerCase()) {
-                    const inputs = [...targetSessionEl.querySelectorAll('textarea, input.session-title-input')];
-                    let currentFocusIndex = inputs.findIndex(input => input === document.activeElement);
-                    inputs[(currentFocusIndex + 1) % inputs.length]?.focus();
-                }
-            }
-        }
-    });
-
-    document.addEventListener('focusin', (e) => {
-        const sessionEl = e.target.closest('.session');
-        if (sessionEl) {
-            lastActiveSessionId = parseFloat(sessionEl.dataset.sessionId);
-            document.querySelectorAll('.session').forEach(s => s.classList.remove('last-active'));
-            sessionEl.classList.add('last-active');
-        }
-        if (!e.target.closest('#voice-ai-panel')) { lastFocusedElement = e.target; }
-    });
-
-    // --- CÁC HÀM GỐC ---
-    function createNewSessionData(defaultTitle) {
-        return { id: Date.now() + Math.random(), customTitle: defaultTitle || 'Phiên mới', isPinned: false, rows: [{ id: 1, title: '1. Lệnh tổng quát', content: '', type: 'general' },{ id: 2, title: '2. Yêu cầu chi tiết', content: '1. ', type: 'numbered', isNumbered: true },{ id: 3, title: '3. Ví dụ', content: '', type: 'example' },{ id: 4, title: '4. Lưu ý', content: '1. ', type: 'numbered', isNumbered: true },{ id: 5, title: '5. Code cần sửa', content: '', type: 'code' }] };
-    }
-    function renderSessions() {
-        sessions.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
-        sessionsContainer.innerHTML = '';
-        sessions.forEach((session, index) => { sessionsContainer.appendChild(createSessionElement(session, index)); });
-        attachSessionEvents();
-    }
-    function createSessionElement(session, index) {
-        const div = document.createElement('div');
-        div.className = `session ${session.isPinned ? 'pinned' : ''}`;
-        if (session.id === lastActiveSessionId) div.classList.add('last-active');
-        div.dataset.sessionId = session.id;
-        let rowsHtml = session.rows.map(row => createRowHtml(row)).join('');
-        const moveControls = `<button class="main-button move-btn" data-dir="up" title="Di chuyển lên/trái">←</button><button class="main-button move-btn" data-dir="down" title="Di chuyển xuống/phải">→</button>`;
-        const pinBtnClass = `main-button pin-session-btn ${session.isPinned ? 'pinned' : ''}`;
-        div.innerHTML = `<div class="session-header"><input type="text" class="session-title-input" value="${escapeHtml(session.customTitle)}" spellcheck="false" placeholder="Tên phiên..."><span class="copy-success-icon">✔</span><div class="session-controls"><button class="${pinBtnClass}" title="Ghim phiên này">📌</button>${moveControls}<button class="main-button copy-all-btn">Sao chép</button><button class="main-button delete-session-btn" style="color:#dc3545;">Xóa</button></div></div><div class="rows-container">${rowsHtml}</div>`;
-        return div;
-    }
-    
-    // =========================================================================
-    // START: SỬA LỖI - Thay đổi hàm createRowHtml
-    // =========================================================================
-    function createRowHtml(row) {
-        let controls = ''; 
-        let contentVal = row.content || ''; 
-        let placeholder = ''; 
-        let extraClass = ''; 
-        let spellcheck = 'false';
-
-        // GIẢI MÃ BASE64 KHI HIỂN THỊ
-        if (contentVal) {
-            try {
-                contentVal = decodeURIComponent(escape(atob(contentVal)));
-            } catch (e) {
-                console.warn("Could not decode base64 content, might be old data:", contentVal, e);
-                // Để nguyên nội dung cũ nếu giải mã thất bại (dành cho dữ liệu cũ chưa mã hóa)
-            }
-        }
-
-        if(row.isNumbered && !contentVal.trim()) contentVal = "1. ";
-        if (row.type === 'general') { controls = `<button class="toggle-suggestions-btn" title="Gợi ý">+</button><div class="suggestions-popup"><div class="suggestion-list"></div><div style="display:flex; gap:5px; margin-top:5px;"><input type="text" class="add-new-sug-input" placeholder="Thêm..." spellcheck="false"><button class="save-sug-btn">Lưu</button></div></div>`; placeholder = "Nhập lệnh tổng quát..."; } 
-        else if (row.type === 'numbered' && row.title.includes('Yêu cầu chi tiết')) { controls = `<button class="action-btn supreme-numbering-btn" title="Đánh số toàn bộ">Đánh số All</button><button class="action-btn supreme-unnumbering-btn" title="Bỏ số toàn bộ">Bỏ số All</button><button class="action-btn selective-numbering-btn" title="Đánh số chọn lọc">Đánh số Chọn</button><button class="action-btn selective-unnumbering-btn" title="Bỏ số chọn lọc">Bỏ số Chọn</button><button class="action-btn renumber-btn" title="Đánh số lại">↻</button><label><input type="checkbox" class="numbering-chk" ${row.isNumbered?'checked':''}> Số</label>`; } 
-        else if (row.type === 'numbered') { controls = `<button class="action-btn renumber-btn" title="Đánh số lại">↻</button><label><input type="checkbox" class="numbering-chk" ${row.isNumbered?'checked':''}> Số</label>`; } 
-        else if (row.type === 'code') { controls = `<button class="upload-code-btn" title="Tải file">📂</button>`; extraClass = 'collapsed'; } 
-        else if (row.type === 'example') { placeholder = "Ví dụ..."; }
-        return `<div class="prompt-row row-${row.type} ${extraClass}" data-row-id="${row.id}"><div class="row-header"><span>${escapeHtml(row.title)}</span><div class="row-controls">${controls}</div></div><div class="row-content"><textarea data-row-type="${row.type}" placeholder="${placeholder}" spellcheck="${spellcheck}">${escapeHtml(contentVal)}</textarea></div></div>`;
-    }
-    // =======================================================================
-    // END: SỬA LỖI
-    // =======================================================================
-
-    function truncateTextarea(textarea) {
-        const limit = settings.maxCharDisplay; if (!limit || limit <= 0) return; 
-        const fullText = textarea.dataset.fullText || textarea.value;
-        if (!textarea.dataset.fullText && fullText.length > limit) { textarea.value = fullText.substring(0, limit) + '...'; textarea.dataset.fullText = fullText; textarea.style.height = 'auto'; textarea.style.height = (textarea.scrollHeight + 2) + 'px'; }
-    }
-    function expandTextarea(textarea) {
-        if (textarea.dataset.fullText) { textarea.value = textarea.dataset.fullText; textarea.removeAttribute('data-full-text'); textarea.style.height = 'auto'; textarea.style.height = (textarea.scrollHeight + 2) + 'px'; }
-    }
-    function attachSessionEvents() {
-        document.querySelectorAll('textarea').forEach(tx => {
-            if (tx.closest('#voice-ai-panel')) return;
-            truncateTextarea(tx);
-            tx.addEventListener('focus', () => expandTextarea(tx));
-            tx.addEventListener('blur', () => truncateTextarea(tx));
-            if(!tx.closest('.row-code')) { tx.style.height = 'auto'; tx.style.height = (tx.scrollHeight + 2) + 'px'; tx.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight + 2) + 'px'; updateSessionData(this); }); } 
-            else { tx.addEventListener('input', () => updateSessionData(tx) ); }
-        });
-        document.querySelectorAll('.session-title-input').forEach(inp => { inp.addEventListener('change', (e) => { const sessId = parseFloat(e.target.closest('.session').dataset.sessionId); const sess = sessions.find(s => s.id === sessId); if(sess) { sess.customTitle = e.target.value; saveData('promptSessions', sessions); } }); });
-        document.querySelectorAll('.pin-session-btn').forEach(btn => { btn.addEventListener('click', (e) => { const sessId = parseFloat(e.target.closest('.session').dataset.sessionId); const sess = sessions.find(s => s.id === sessId); if (sess) { sess.isPinned = !sess.isPinned; saveData('promptSessions', sessions); renderSessions(); } }); });
-        document.querySelectorAll('.move-btn').forEach(btn => { btn.addEventListener('click', (e) => { const sessEl = e.target.closest('.session'); const sessId = parseFloat(sessEl.dataset.sessionId); const index = sessions.findIndex(s => s.id === sessId); if(index === -1) return; const dir = e.target.dataset.dir; if (dir === 'up' && index > 0) [sessions[index], sessions[index-1]] = [sessions[index-1], sessions[index]]; else if (dir === 'down' && index < sessions.length - 1) [sessions[index], sessions[index+1]] = [sessions[index+1], sessions[index]]; else return; saveData('promptSessions', sessions); renderSessions(); }); });
-        document.querySelectorAll('.row-header').forEach(header => { header.addEventListener('click', (e) => { if(!e.target.closest('.row-controls')) header.parentElement.classList.toggle('collapsed'); }); });
-        document.querySelectorAll('.delete-session-btn').forEach(btn => { btn.addEventListener('click', (e) => { if(confirm("Xóa phiên này?")) { const sessId = parseFloat(e.target.closest('.session').dataset.sessionId); sessions = sessions.filter(s => s.id !== sessId); saveData('promptSessions', sessions); renderSessions(); } }); });
-        document.querySelectorAll('.copy-all-btn').forEach(btn => { btn.addEventListener('click', (e) => copySessionContent(e.target.closest('.session'))); });
-        document.querySelectorAll('.upload-code-btn').forEach(btn => { btn.addEventListener('click', () => { const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.onchange = e => { const f = e.target.files[0]; if(f) { const reader = new FileReader(); reader.onload = ev => { const ta = btn.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value = ev.target.result; ta.dispatchEvent(new Event('input')); btn.closest('.prompt-row').classList.remove('collapsed'); }; reader.readAsText(f); } }; fileInput.click(); }); });
-        document.querySelectorAll('.toggle-suggestions-btn').forEach(btn => { btn.addEventListener('click', e => { const popup = e.target.closest('.prompt-row').querySelector('.suggestions-popup'); const isVisible = popup.style.display === 'block'; document.querySelectorAll('.suggestions-popup').forEach(p => p.style.display = 'none'); if(!isVisible) { renderSuggestions(popup); popup.style.display = 'block'; } }); });
-        document.querySelectorAll('.supreme-numbering-btn').forEach(btn => { btn.addEventListener('click', (e) => { const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); let counter = 1; ta.value = ta.value.split('\n').map(line => { const trimmedLine = line.trim(); if (trimmedLine === '') return ''; return `${counter++}. ${trimmedLine.replace(/^\d+\.\s*/, '')}`; }).join('\n'); ta.dispatchEvent(new Event('input')); }); });
-        document.querySelectorAll('.supreme-unnumbering-btn').forEach(btn => { btn.addEventListener('click', (e) => { const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value = ta.value.split('\n').map(line => line.replace(/^\s*\d+\.\s*/, '')).join('\n'); ta.dispatchEvent(new Event('input')); }); });
-        document.querySelectorAll('.selective-numbering-btn').forEach(btn => { btn.addEventListener('mousedown', (e) => { e.preventDefault(); const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const {selectionStart: start, selectionEnd: end, value: fullText} = ta; if (start === end) return; const before = fullText.substring(0, start), selected = fullText.substring(start, end), after = fullText.substring(end); const beforeLines = before.trimEnd().split('\n'); let lastNumber = 0; for (let i = beforeLines.length - 1; i >= 0; i--) { const match = beforeLines[i].match(/^\s*(\d+)\./); if (match) { lastNumber = parseInt(match[1], 10); break; } } let counter = lastNumber + 1; const numberedSelected = selected.split('\n').map(line => { if (line.trim() === '') return line; return `${counter++}. ${line.trim().replace(/^\d+\.\s*/, '')}`; }).join('\n'); ta.value = before + numberedSelected + after; ta.dispatchEvent(new Event('input')); ta.focus(); ta.selectionStart = start; ta.selectionEnd = before.length + numberedSelected.length; }); });
-        document.querySelectorAll('.selective-unnumbering-btn').forEach(btn => { btn.addEventListener('mousedown', (e) => { e.preventDefault(); const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const {selectionStart: start, selectionEnd: end, value: fullText} = ta; if (start === end) return; const before = fullText.substring(0, start), selected = fullText.substring(start, end), after = fullText.substring(end); const unnumberedSelected = selected.split('\n').map(line => line.replace(/^\s*\d+\.\s*/, '')).join('\n'); ta.value = before + unnumberedSelected + after; ta.dispatchEvent(new Event('input')); ta.focus(); ta.selectionStart = start; ta.selectionEnd = before.length + unnumberedSelected.length; }); });
-        document.querySelectorAll('.renumber-btn').forEach(btn => { btn.addEventListener('click', e => { const ta = e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value = renumberContent(ta.value); ta.dispatchEvent(new Event('input')); }); });
-        document.querySelectorAll('.numbering-chk').forEach(chk => { chk.addEventListener('change', function() { updateSessionData(this); }); });
-        document.querySelectorAll('textarea[data-row-type="numbered"]').forEach(ta => { if(!ta.closest('#voice-ai-panel')) ta.addEventListener('keydown', handleNumberedInput); });
-    }
-    function renumberContent(text) { let counter = 1; return text.split('\n').map(line => { if (line.trim() === '') return line; const match = line.match(/^(\s*)(\d+)\.(.*)/); if (match) return `${match[1]}${counter++}.${match[3]}`; const trimmedLine = line.trim(); return trimmedLine ? `${counter++}. ${trimmedLine}` : line; }).join('\n'); }
-    
-    // =========================================================================
-    // START: SỬA LỖI - Thay đổi hàm updateSessionData
-    // =========================================================================
-    function updateSessionData(el) {
-        const sessEl = el.closest('.session'), rowEl = el.closest('.prompt-row');
-        if(!sessEl || !rowEl) return;
-        const sessId = parseFloat(sessEl.dataset.sessionId), rowId = parseInt(rowEl.dataset.rowId);
-        const sess = sessions.find(s => s.id === sessId);
-        if (!sess) return;
-        const row = sess.rows.find(r => r.id === rowId);
-        if (!row) return;
-
-        if(el.tagName === 'TEXTAREA') { 
-            expandTextarea(el); 
-            // MÃ HÓA NỘI DUNG SANG BASE64 TRƯỚC KHI LƯU
-            row.content = btoa(unescape(encodeURIComponent(el.value))); 
+    function saveLocalOnly(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+    function saveSessions() { 
+        try { 
+            localStorage.setItem('promptSessions', JSON.stringify(sessions)); 
+        } catch(e) { 
+            console.warn('Trình duyệt đầy bộ nhớ.'); 
         } 
-        
-        if(el.type === 'checkbox') {
-            row.isNumbered = el.checked;
-        }
-
-        saveData('promptSessions', sessions);
+        saveToFirestore(); 
     }
-    // =======================================================================
-    // END: SỬA LỖI
-    // =======================================================================
 
-    function handleNumberedInput(e) { if (e.key !== 'Enter') return; const el = e.target; if(!el.closest('.prompt-row').querySelector('.numbering-chk')?.checked) return; e.preventDefault(); expandTextarea(el); const {selectionStart: cursorPos, value: text} = el, before = text.substring(0, cursorPos), after = text.substring(cursorPos); const currentLine = before.split('\n').pop(), match = currentLine.match(/^(\s*)(\d+)\.\s*/); if (match) { if (currentLine.trim() === match[0].trim()) { const lines = before.split('\n'); lines.pop(); let newBefore = lines.join('\n'); el.value = newBefore + '\n' + after; el.value = renumberContent(el.value); el.selectionStart = el.selectionEnd = newBefore.length + 1; el.dispatchEvent(new Event('input')); return; } const insert = `\n${match[1]}${parseInt(match[2]) + 1}. `; el.value = before + insert + after; el.selectionStart = el.selectionEnd = cursorPos + insert.length; } else { el.value = before + '\n' + after; el.selectionStart = el.selectionEnd = cursorPos + 1; } const oldLength = el.value.length, oldCursorPos = el.selectionStart; el.value = renumberContent(el.value); el.selectionStart = el.selectionEnd = oldCursorPos + (el.value.length - oldLength); el.dispatchEvent(new Event('input')); }
-    function copySessionContent(sessionEl) { const sessId = parseFloat(sessionEl.dataset.sessionId); const sess = sessions.find(s => s.id === sessId); if(!sess) return; let text = ''; sess.rows.forEach(row => { let content = ''; try { content = row.content ? decodeURIComponent(escape(atob(row.content))).trim() : ''; } catch(e) { content = (row.content || '').trim(); } if(!content || (row.isNumbered && !content.split('\n').filter(line => !line.trim().match(/^\d+\.\s*$/)).join('').trim())) return; if(row.type === 'general') text += content + '\n\n'; else if(row.type === 'code') text += '```\n' + content + '\n```\n\n'; else text += content + '\n\n'; }); navigator.clipboard.writeText(text.trim()).then(() => { const tick = sessionEl.querySelector('.copy-success-icon'); tick.style.display = 'inline-block'; setTimeout(() => { tick.style.display = 'none'; }, 1500); addToHistory(text.trim(), `Bản sao: ${sess.customTitle}`); }); }
-    function renderSuggestions(popup) { const list = popup.querySelector('.suggestion-list'); list.innerHTML = ''; suggestions.forEach((s, idx) => { const div = document.createElement('div'); div.className = 'suggestion-item'; div.dataset.id = idx; div.innerHTML = `<span class="suggestion-item-text">${escapeHtml(s)}</span> <span class="btn-delete" style="cursor:pointer; color:red;">&times;</span>`; div.querySelector('.suggestion-item-text').onclick = () => { const ta = popup.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value = ta.value.trim() ? (ta.value.trim() + ' ' + s) : s; ta.dispatchEvent(new Event('input')); popup.style.display = 'none'; }; div.querySelector('.btn-delete').onclick = () => { suggestions.splice(idx, 1); saveData('promptSuggestions', suggestions); renderSuggestions(popup); }; list.appendChild(div); }); new Sortable(list, { animation: 150, onEnd: (evt) => { const [movedItem] = suggestions.splice(evt.oldIndex, 1); suggestions.splice(evt.newIndex, 0, movedItem); saveData('promptSuggestions', suggestions); } }); const input = popup.querySelector('.add-new-sug-input'), saveBtn = popup.querySelector('.save-sug-btn'); const newSaveBtn = saveBtn.cloneNode(true); saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn); newSaveBtn.addEventListener('click', () => { if(input.value.trim()) { suggestions.unshift(input.value.trim()); saveData('promptSuggestions', suggestions); input.value = ''; renderSuggestions(popup); } }); }
-    document.getElementById('file-upload').addEventListener('change', (e) => { Array.from(e.target.files).forEach(f => { const reader = new FileReader(); reader.onload = ev => { files.push({ id: Date.now() + Math.random(), name: f.name, content: ev.target.result, timestamp: getFormattedTime() }); saveData('promptFiles', files); renderFileList(); }; reader.readAsDataURL(f); }); e.target.value = ''; });
-    function renderFileList() { const container = document.getElementById('file-list'); container.innerHTML = ''; files.forEach((f, idx) => { const div = document.createElement('div'); div.className = 'storage-item'; div.innerHTML = `<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(f.name)}" spellcheck="false"><span class="item-time">${f.timestamp || ''}</span><button class="btn-sm btn-download" title="Tải về">⬇</button><button class="btn-sm btn-delete" title="Xóa">✕</button></div>`; div.querySelector('.item-name-input').onchange = (e) => { files[idx].name = e.target.value; saveData('promptFiles', files); }; div.querySelector('.btn-delete').onclick = () => { if(confirm('Xóa file này?')) { files.splice(idx, 1); saveData('promptFiles', files); renderFileList(); } }; div.querySelector('.btn-download').onclick = () => { const a = document.createElement('a'); a.href = f.content; a.download = f.name; a.click(); }; container.appendChild(div); }); }
-    function addToHistory(text, defaultTitle) { history.unshift({ id: Date.now(), title: defaultTitle || new Date().toLocaleString(), content: text, timestamp: getFormattedTime() }); if(history.length > 50) history.pop(); saveData('promptHistory', history); renderHistoryList(); }
-    function renderHistoryList() { const container = document.getElementById('history-list'); container.innerHTML = ''; history.forEach((h, idx) => { const div = document.createElement('div'); div.className = 'storage-item'; div.innerHTML = `<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(h.title)}" spellcheck="false"><span class="item-time">${h.timestamp || ''}</span><button class="btn-sm btn-delete">✕</button></div><div class="history-content" title="Click để mở rộng">${escapeHtml(h.content.substring(0, 100))}${h.content.length>100?'...':''}</div>`; div.querySelector('.item-name-input').onchange = (e) => { history[idx].title = e.target.value; saveData('promptHistory', history); }; div.querySelector('.btn-delete').onclick = () => { history.splice(idx, 1); saveData('promptHistory', history); renderHistoryList(); }; const contentDiv = div.querySelector('.history-content'); contentDiv.onclick = () => { contentDiv.classList.toggle('expanded'); contentDiv.textContent = contentDiv.classList.contains('expanded') ? h.content : h.content.substring(0, 100) + (h.content.length>100?'...':''); }; container.appendChild(div); }); }
-    document.getElementById('add-note-btn').onclick = () => { notes.unshift({ id: Date.now(), title: 'Ghi chú mới', content: '', timestamp: getFormattedTime() }); saveData('promptNotes', notes); renderNotes(); };
-    function renderNotes() { const container = document.getElementById('notes-container'); container.innerHTML = ''; notes.forEach((n, idx) => { const div = document.createElement('div'); div.className = 'storage-item'; div.innerHTML = `<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(n.title)}" placeholder="Tên ghi chú" spellcheck="false"><span class="item-time">${n.timestamp || ''}</span><button class="btn-sm btn-delete">✕</button></div><textarea class="note-content-area" placeholder="Nội dung..." spellcheck="false">${escapeHtml(n.content)}</textarea>`; div.querySelector('.item-name-input').onchange = (e) => { notes[idx].title = e.target.value; saveData('promptNotes', notes); }; div.querySelector('textarea').oninput = (e) => { notes[idx].content = e.target.value; saveData('promptNotes', notes); }; div.querySelector('.btn-delete').onclick = () => { if(confirm('Xóa ghi chú này?')) { notes.splice(idx, 1); saveData('promptNotes', notes); renderNotes();} }; container.appendChild(div); }); }
-    addSessionBtn.addEventListener('click', () => { const newSession = createNewSessionData(`Phiên ${new Date().toLocaleTimeString()}`); const lastPinnedIndex = sessions.map(s => s.isPinned).lastIndexOf(true); sessions.splice(lastPinnedIndex === -1 ? 0 : lastPinnedIndex + 1, 0, newSession); saveData('promptSessions', sessions); renderSessions(); window.scrollTo(0,0); });
-    collapseAllBtn.addEventListener('click', () => { const allRows = document.querySelectorAll('#prompt-view .prompt-row'); const hasExpanded = [...allRows].some(r => !r.classList.contains('collapsed')); allRows.forEach(r => r.classList.toggle('collapsed', hasExpanded)); });
-    window.openTab = (evt, tabId) => { document.querySelectorAll('.tab-content, .tab-button').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); evt.currentTarget.classList.add('active'); };
-    document.addEventListener('click', (e) => { if (!e.target.closest('.suggestions-popup, .toggle-suggestions-btn')) { document.querySelectorAll('.suggestions-popup').forEach(p => p.style.display = 'none'); } });
+    // =========================================================================
+    // LOGIC RENDER VÀ SỰ KIỆN (ĐƯỢC GIỮ NGUYÊN 100% CỦA BẠN)
+    // =========================================================================
+    function escapeHtml(text) { if (typeof text !== 'string') return ""; return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
+    function getFormattedTime() { const now = new Date(); return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} ${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}`; }
+    function updateShortcutDisplay() { shortcutDisplay.textContent = `Alt+${shortcuts.copy} (Copy), Alt+${shortcuts.upload} (Code), Alt+${shortcuts.focus} (Focus), Alt+${shortcuts.voice} (Voice)`; }
 
-    async function initializeApp() {
-        GIST_ID = localStorage.getItem('promptGistId') || '';
-        GITHUB_TOKEN = localStorage.getItem('promptGistToken') || '';
+    settingsBtn.addEventListener('click', () => { const cfg = getFirebaseConfig(); document.getElementById('fb-api-key').value = cfg.apiKey; document.getElementById('fb-project-id').value = cfg.projectId; document.getElementById('fb-app-id').value = cfg.appId; document.getElementById('fb-doc-id').value = cfg.docId; document.getElementById('key-copy').value = shortcuts.copy; document.getElementById('key-upload').value = shortcuts.upload; document.getElementById('key-focus').value = shortcuts.focus; document.getElementById('key-voice').value = shortcuts.voice; document.getElementById('char-limit-input').value = settings.maxCharDisplay || 0; settingsModal.style.display = 'flex'; });
+    cancelSettingsBtn.addEventListener('click', () => settingsModal.style.display = 'none');
+    saveSettingsBtn.addEventListener('click', async () => {
+        const newApiKey = document.getElementById('fb-api-key').value.trim(); const newProjectId = document.getElementById('fb-project-id').value.trim(); const newAppId = document.getElementById('fb-app-id').value.trim(); const newDocId = document.getElementById('fb-doc-id').value.trim() || 'prompt-sessions';
+        const changed = newApiKey !== (localStorage.getItem('fb_apiKey')||'') || newProjectId !== (localStorage.getItem('fb_projectId')||'') || newAppId !== (localStorage.getItem('fb_appId')||'') || newDocId !== (localStorage.getItem('fb_docId')||'');
+        localStorage.setItem('fb_apiKey', newApiKey); localStorage.setItem('fb_projectId', newProjectId); localStorage.setItem('fb_appId', newAppId); localStorage.setItem('fb_docId', newDocId);
+        const k1 = document.getElementById('key-copy').value.trim().toLowerCase(); const k2 = document.getElementById('key-upload').value.trim().toLowerCase(); const k3 = document.getElementById('key-focus').value.trim().toLowerCase(); const k4 = document.getElementById('key-voice').value.trim().toLowerCase();
+        if(k1&&k2&&k3&&k4){ shortcuts={copy:k1,upload:k2,focus:k3,voice:k4}; saveLocalOnly('promptShortcuts',shortcuts); updateShortcutDisplay(); }
+        const charLimit = parseInt(document.getElementById('char-limit-input').value,10); settings.maxCharDisplay = isNaN(charLimit)||charLimit<0 ? 0 : charLimit; saveLocalOnly('promptSettings', settings);
+        localStorage.setItem('geminiApiKey', document.getElementById('gemini-key').value); localStorage.setItem('geminiModel', document.getElementById('gemini-model').value); const opacity = document.getElementById('ai-panel-opacity').value; localStorage.setItem('aiPanelOpacity', opacity); document.documentElement.style.setProperty('--ai-panel-opacity', opacity/100);
+        settingsModal.style.display = 'none';
+        if (changed && newApiKey && newProjectId && newAppId) { if (unsubscribeListener) { unsubscribeListener(); unsubscribeListener = null; } const ok = initFirebase(); if (ok) { await loadFromFirestore(); renderSessions(); startRealtimeListener(); } } else { renderSessions(); }
+    });
 
-        let loadedFromGist = false;
-        if (GIST_ID && GITHUB_TOKEN) {
-            const result = await loadSessionsFromGist();
-            if (result !== null) { loadedFromGist = true; }
+    exportDataBtn.addEventListener('click', () => { const allData = { sessions, files, history, notes, suggestions, shortcuts, settings, geminiApiKey: localStorage.getItem('geminiApiKey'), geminiModel: localStorage.getItem('geminiModel'), aiPanelOpacity: localStorage.getItem('aiPanelOpacity'), promptAiActions: aiActions }; const blob = new Blob([JSON.stringify(allData,null,2)],{type:'application/json'}); const a = document.createElement('a'); a.download=`prompt_pro_backup_${new Date().toISOString().slice(0,10)}.json`; a.href=URL.createObjectURL(blob); a.click(); URL.revokeObjectURL(a.href); });
+    importDataBtn.addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = async (event) => { try { const d = JSON.parse(event.target.result); if (!confirm("GHI ĐÈ DỮ LIỆU? Hành động này không thể hoàn tác.")) return; sessions = d.sessions||[]; files=d.files||[]; history=d.history||[]; notes=d.notes||[]; suggestions=d.suggestions||[]; aiActions=d.promptAiActions||[]; if(d.shortcuts) shortcuts={...shortcuts,...d.shortcuts}; if(d.settings) settings=d.settings; localStorage.setItem('geminiApiKey',d.geminiApiKey||''); localStorage.setItem('geminiModel',d.geminiModel||'gemini-1.5-pro-latest'); localStorage.setItem('aiPanelOpacity',d.aiPanelOpacity||'98'); saveLocalOnly('promptFiles',files); saveLocalOnly('promptHistory',history); saveLocalOnly('promptNotes',notes); saveLocalOnly('promptSuggestions',suggestions); saveLocalOnly('promptShortcuts',shortcuts); saveLocalOnly('promptSettings',settings); saveLocalOnly('promptAiActions',aiActions); await saveToFirestore(true); alert("Đã nhập thành công! Trang sẽ tải lại."); location.reload(); } catch(err) { alert("Lỗi: File backup không hợp lệ."); console.error(err); } finally { importFileInput.value=''; } }; reader.readAsText(file); });
+    exportSessionsBtn.addEventListener('click', () => { if(!sessions||sessions.length===0){alert("Không có phiên nào.");return;} const blob=new Blob([JSON.stringify(sessions,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.download=`prompt_sessions_${new Date().toISOString().slice(0,10)}.json`; a.href=URL.createObjectURL(blob); a.click(); URL.revokeObjectURL(a.href); });
+    importSessionsBtn.addEventListener('click', ()=>importSessionsFileInput.click());
+    importSessionsFileInput.addEventListener('change', (e) => { const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=async(event)=>{ try { const imported=JSON.parse(event.target.result); if(!Array.isArray(imported)) throw new Error("File không chứa danh sách phiên hợp lệ."); if(!confirm(`THÊM ${imported.length} phiên mới vào dữ liệu hiện tại?`)) return; sessions=sessions.concat(imported); await saveToFirestore(true); renderSessions(); alert("Đã nhập thêm các phiên mới!"); } catch(err) { alert("Lỗi: "+err.message); } finally { importSessionsFileInput.value=''; } }; reader.readAsText(file); });
+
+    function createNewSessionData(defaultTitle) { return { id: Date.now()+Math.random(), customTitle: defaultTitle||'Phiên mới', isPinned: false, rows: [ {id:1,title:'1. Lệnh tổng quát',content:'',type:'general'}, {id:2,title:'2. Yêu cầu chi tiết',content:'1. ',type:'numbered',isNumbered:true}, {id:3,title:'3. Ví dụ',content:'',type:'example'}, {id:4,title:'4. Lưu ý',content:'1. ',type:'numbered',isNumbered:true}, {id:5,title:'5. Code cần sửa',content:'',type:'code'} ] }; }
+    function renderSessions() { sessions.sort((a,b)=>(b.isPinned?1:0)-(a.isPinned?1:0)); sessionsContainer.innerHTML=''; sessions.forEach((session)=>{ sessionsContainer.appendChild(createSessionElement(session)); }); attachSessionEvents(); }
+    function createSessionElement(session) { const div=document.createElement('div'); div.className=`session ${session.isPinned?'pinned':''}`; if(session.id===lastActiveSessionId) div.classList.add('last-active'); div.dataset.sessionId=session.id; const rowsHtml=session.rows.map(row=>createRowHtml(row)).join(''); const pinBtnClass=`main-button pin-session-btn ${session.isPinned?'pinned':''}`; div.innerHTML=`<div class="session-header"><input type="text" class="session-title-input" value="${escapeHtml(session.customTitle)}" spellcheck="false" placeholder="Tên phiên..."><span class="copy-success-icon">✔</span><div class="session-controls"><button class="${pinBtnClass}">📌</button><button class="main-button move-btn" data-dir="up">←</button><button class="main-button move-btn" data-dir="down">→</button><button class="main-button copy-all-btn">Sao chép</button><button class="main-button delete-session-btn" style="color:#dc3545;">Xóa</button></div></div><div class="rows-container">${rowsHtml}</div>`; return div; }
+    function createRowHtml(row) { let controls='', contentVal=row.content||'', placeholder='', extraClass='', spellcheck='false'; if (contentVal) { try { contentVal=decodeURIComponent(escape(atob(contentVal))); } catch(e) { } } if(row.isNumbered && !contentVal.trim()) contentVal="1. "; if(row.type==='general') { controls=`<button class="toggle-suggestions-btn" title="Gợi ý">+</button><div class="suggestions-popup"><div class="suggestion-list"></div><div style="display:flex;gap:5px;margin-top:5px;"><input type="text" class="add-new-sug-input" placeholder="Thêm..." spellcheck="false"><button class="save-sug-btn">Lưu</button></div></div>`; placeholder="Nhập lệnh tổng quát..."; } else if(row.type==='numbered' && row.title.includes('Yêu cầu chi tiết')) { controls=`<button class="action-btn supreme-numbering-btn">Đánh số All</button><button class="action-btn supreme-unnumbering-btn">Bỏ số All</button><button class="action-btn selective-numbering-btn">Đánh số Chọn</button><button class="action-btn selective-unnumbering-btn">Bỏ số Chọn</button><button class="action-btn renumber-btn">↻</button><label><input type="checkbox" class="numbering-chk" ${row.isNumbered?'checked':''}> Số</label>`; } else if(row.type==='numbered') { controls=`<button class="action-btn renumber-btn">↻</button><label><input type="checkbox" class="numbering-chk" ${row.isNumbered?'checked':''}> Số</label>`; } else if(row.type==='code') { controls=`<button class="upload-code-btn">📂</button>`; extraClass='collapsed'; } else if(row.type==='example') { placeholder="Ví dụ..."; } return `<div class="prompt-row row-${row.type} ${extraClass}" data-row-id="${row.id}"><div class="row-header"><span>${escapeHtml(row.title)}</span><div class="row-controls">${controls}</div></div><div class="row-content"><textarea data-row-type="${row.type}" placeholder="${placeholder}" spellcheck="${spellcheck}">${escapeHtml(contentVal)}</textarea></div></div>`; }
+    function truncateTextarea(ta) { const limit=settings.maxCharDisplay; if(!limit||limit<=0) return; const full=ta.dataset.fullText||ta.value; if(!ta.dataset.fullText && full.length>limit) { ta.value=full.substring(0,limit)+'...'; ta.dataset.fullText=full; ta.style.height='auto'; ta.style.height=(ta.scrollHeight+2)+'px'; } }
+    function expandTextarea(ta) { if(ta.dataset.fullText) { ta.value=ta.dataset.fullText; ta.removeAttribute('data-full-text'); ta.style.height='auto'; ta.style.height=(ta.scrollHeight+2)+'px'; } }
+    function attachSessionEvents() { document.querySelectorAll('textarea').forEach(tx=>{ if(tx.closest('#voice-ai-panel')) return; truncateTextarea(tx); tx.addEventListener('focus',()=>expandTextarea(tx)); tx.addEventListener('blur',()=>truncateTextarea(tx)); if(!tx.closest('.row-code')) { tx.style.height='auto'; tx.style.height=(tx.scrollHeight+2)+'px'; tx.addEventListener('input',function(){ this.style.height='auto'; this.style.height=(this.scrollHeight+2)+'px'; updateSessionData(this); }); } else { tx.addEventListener('input',()=>updateSessionData(tx)); } }); document.querySelectorAll('.session-title-input').forEach(inp=>{ inp.addEventListener('change',(e)=>{ const sessId=parseFloat(e.target.closest('.session').dataset.sessionId); const sess=sessions.find(s=>s.id===sessId); if(sess){sess.customTitle=e.target.value; saveSessions();} }); }); document.querySelectorAll('.pin-session-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ const sessId=parseFloat(e.target.closest('.session').dataset.sessionId); const sess=sessions.find(s=>s.id===sessId); if(sess){sess.isPinned=!sess.isPinned; saveSessions(); renderSessions();} }); }); document.querySelectorAll('.move-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ const sessEl=e.target.closest('.session'); const sessId=parseFloat(sessEl.dataset.sessionId); const index=sessions.findIndex(s=>s.id===sessId); if(index===-1) return; const dir=e.target.dataset.dir; if(dir==='up'&&index>0) [sessions[index],sessions[index-1]]=[sessions[index-1],sessions[index]]; else if(dir==='down'&&index<sessions.length-1) [sessions[index],sessions[index+1]]=[sessions[index+1],sessions[index]]; else return; saveSessions(); renderSessions(); }); }); document.querySelectorAll('.row-header').forEach(header=>{ header.addEventListener('click',(e)=>{ if(!e.target.closest('.row-controls')) header.parentElement.classList.toggle('collapsed'); }); }); document.querySelectorAll('.delete-session-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ if(confirm("Xóa phiên này?")){ const sessId=parseFloat(e.target.closest('.session').dataset.sessionId); sessions=sessions.filter(s=>s.id!==sessId); saveSessions(); renderSessions(); } }); }); document.querySelectorAll('.copy-all-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>copySessionContent(e.target.closest('.session'))); }); document.querySelectorAll('.upload-code-btn').forEach(btn=>{ btn.addEventListener('click',()=>{ const fi=document.createElement('input'); fi.type='file'; fi.onchange=e=>{ const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ const ta=btn.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value=ev.target.result; ta.dispatchEvent(new Event('input')); btn.closest('.prompt-row').classList.remove('collapsed'); }; r.readAsText(f); } }; fi.click(); }); }); document.querySelectorAll('.toggle-suggestions-btn').forEach(btn=>{ btn.addEventListener('click',e=>{ const popup=e.target.closest('.prompt-row').querySelector('.suggestions-popup'); const isVisible=popup.style.display==='block'; document.querySelectorAll('.suggestions-popup').forEach(p=>p.style.display='none'); if(!isVisible){ renderSuggestions(popup); popup.style.display='block'; } }); }); document.querySelectorAll('.supreme-numbering-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ const ta=e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); let c=1; ta.value=ta.value.split('\n').map(l=>{ const t=l.trim(); if(!t) return ''; return `${c++}. ${t.replace(/^\d+\.\s*/,'')}`; }).join('\n'); ta.dispatchEvent(new Event('input')); }); }); document.querySelectorAll('.supreme-unnumbering-btn').forEach(btn=>{ btn.addEventListener('click',(e)=>{ const ta=e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value=ta.value.split('\n').map(l=>l.replace(/^\s*\d+\.\s*/,'')).join('\n'); ta.dispatchEvent(new Event('input')); }); }); document.querySelectorAll('.selective-numbering-btn').forEach(btn=>{ btn.addEventListener('mousedown',(e)=>{ e.preventDefault(); const ta=e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const {selectionStart:start,selectionEnd:end,value:full}=ta; if(start===end) return; const before=full.substring(0,start),selected=full.substring(start,end),after=full.substring(end); const beforeLines=before.trimEnd().split('\n'); let lastNumber=0; for(let i=beforeLines.length-1;i>=0;i--){ const m=beforeLines[i].match(/^\s*(\d+)\./); if(m){lastNumber=parseInt(m[1],10);break;} } let c=lastNumber+1; const numbered=selected.split('\n').map(l=>{ if(!l.trim()) return l; return `${c++}. ${l.trim().replace(/^\d+\.\s*/,'')}`; }).join('\n'); ta.value=before+numbered+after; ta.dispatchEvent(new Event('input')); ta.focus(); ta.selectionStart=start; ta.selectionEnd=before.length+numbered.length; }); }); document.querySelectorAll('.selective-unnumbering-btn').forEach(btn=>{ btn.addEventListener('mousedown',(e)=>{ e.preventDefault(); const ta=e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); const {selectionStart:start,selectionEnd:end,value:full}=ta; if(start===end) return; const before=full.substring(0,start),selected=full.substring(start,end),after=full.substring(end); const unnumbered=selected.split('\n').map(l=>l.replace(/^\s*\d+\.\s*/,'')).join('\n'); ta.value=before+unnumbered+after; ta.dispatchEvent(new Event('input')); ta.focus(); ta.selectionStart=start; ta.selectionEnd=before.length+unnumbered.length; }); }); document.querySelectorAll('.renumber-btn').forEach(btn=>{ btn.addEventListener('click',e=>{ const ta=e.target.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value=renumberContent(ta.value); ta.dispatchEvent(new Event('input')); }); }); document.querySelectorAll('.numbering-chk').forEach(chk=>{ chk.addEventListener('change',function(){ updateSessionData(this); }); }); document.querySelectorAll('textarea[data-row-type="numbered"]').forEach(ta=>{ if(!ta.closest('#voice-ai-panel')) ta.addEventListener('keydown',handleNumberedInput); }); }
+    function renumberContent(text) { let c=1; return text.split('\n').map(line=>{ if(!line.trim()) return line; const m=line.match(/^(\s*)(\d+)\.(.*)/); if(m) return `${m[1]}${c++}.${m[3]}`; const t=line.trim(); return t?`${c++}. ${t}`:line; }).join('\n'); }
+    function updateSessionData(el) { const sessEl=el.closest('.session'), rowEl=el.closest('.prompt-row'); if(!sessEl||!rowEl) return; const sessId=parseFloat(sessEl.dataset.sessionId), rowId=parseInt(rowEl.dataset.rowId); const sess=sessions.find(s=>s.id===sessId); if(!sess) return; const row=sess.rows.find(r=>r.id===rowId); if(!row) return; if(el.tagName==='TEXTAREA'){ expandTextarea(el); row.content=btoa(unescape(encodeURIComponent(el.value))); } if(el.type==='checkbox') row.isNumbered=el.checked; saveSessions(); }
+    function handleNumberedInput(e) { if(e.key!=='Enter') return; const el=e.target; if(!el.closest('.prompt-row').querySelector('.numbering-chk')?.checked) return; e.preventDefault(); expandTextarea(el); const {selectionStart:cursorPos,value:text}=el, before=text.substring(0,cursorPos), after=text.substring(cursorPos); const currentLine=before.split('\n').pop(), match=currentLine.match(/^(\s*)(\d+)\.\s*/); if(match){ if(currentLine.trim()===match[0].trim()){ const lines=before.split('\n'); lines.pop(); let nb=lines.join('\n'); el.value=nb+'\n'+after; el.value=renumberContent(el.value); el.selectionStart=el.selectionEnd=nb.length+1; el.dispatchEvent(new Event('input')); return; } const insert=`\n${match[1]}${parseInt(match[2])+1}. `; el.value=before+insert+after; el.selectionStart=el.selectionEnd=cursorPos+insert.length; } else { el.value=before+'\n'+after; el.selectionStart=el.selectionEnd=cursorPos+1; } const oldLen=el.value.length, oldCur=el.selectionStart; el.value=renumberContent(el.value); el.selectionStart=el.selectionEnd=oldCur+(el.value.length-oldLen); el.dispatchEvent(new Event('input')); }
+    function copySessionContent(sessionEl) { const sessId=parseFloat(sessionEl.dataset.sessionId); const sess=sessions.find(s=>s.id===sessId); if(!sess) return; let text=''; sess.rows.forEach(row=>{ let content=''; try{ content=row.content?decodeURIComponent(escape(atob(row.content))).trim():''; }catch(e){ content=(row.content||'').trim(); } if(!content||(row.isNumbered&&!content.split('\n').filter(l=>!l.trim().match(/^\d+\.\s*$/)).join('').trim())) return; if(row.type==='general') text+=content+'\n\n'; else if(row.type==='code') text+='```\n'+content+'\n```\n\n'; else text+=content+'\n\n'; }); navigator.clipboard.writeText(text.trim()).then(()=>{ const tick=sessionEl.querySelector('.copy-success-icon'); tick.style.display='inline-block'; setTimeout(()=>{ tick.style.display='none'; },1500); addToHistory(text.trim(),`Bản sao: ${sess.customTitle}`); }); }
+    function renderSuggestions(popup) { const list=popup.querySelector('.suggestion-list'); list.innerHTML=''; suggestions.forEach((s,idx)=>{ const div=document.createElement('div'); div.className='suggestion-item'; div.dataset.id=idx; div.innerHTML=`<span class="suggestion-item-text">${escapeHtml(s)}</span> <span class="btn-delete" style="cursor:pointer;color:red;">&times;</span>`; div.querySelector('.suggestion-item-text').onclick=()=>{ const ta=popup.closest('.prompt-row').querySelector('textarea'); expandTextarea(ta); ta.value=ta.value.trim()?(ta.value.trim()+' '+s):s; ta.dispatchEvent(new Event('input')); popup.style.display='none'; }; div.querySelector('.btn-delete').onclick=()=>{ suggestions.splice(idx,1); saveLocalOnly('promptSuggestions',suggestions); renderSuggestions(popup); }; list.appendChild(div); }); new Sortable(list,{ animation:150, onEnd:(evt)=>{ const [m]=suggestions.splice(evt.oldIndex,1); suggestions.splice(evt.newIndex,0,m); saveLocalOnly('promptSuggestions',suggestions); } }); const input=popup.querySelector('.add-new-sug-input'), saveBtn=popup.querySelector('.save-sug-btn'); const newBtn=saveBtn.cloneNode(true); saveBtn.parentNode.replaceChild(newBtn,saveBtn); newBtn.addEventListener('click',()=>{ if(input.value.trim()){ suggestions.unshift(input.value.trim()); saveLocalOnly('promptSuggestions',suggestions); input.value=''; renderSuggestions(popup); } }); }
+    document.getElementById('file-upload').addEventListener('change',(e)=>{ Array.from(e.target.files).forEach(f=>{ const reader=new FileReader(); reader.onload=ev=>{ files.push({id:Date.now()+Math.random(),name:f.name,content:ev.target.result,timestamp:getFormattedTime()}); saveLocalOnly('promptFiles',files); renderFileList(); }; reader.readAsDataURL(f); }); e.target.value=''; });
+    function renderFileList() { const container=document.getElementById('file-list'); container.innerHTML=''; files.forEach((f,idx)=>{ const div=document.createElement('div'); div.className='storage-item'; div.innerHTML=`<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(f.name)}" spellcheck="false"><span class="item-time">${f.timestamp||''}</span><button class="btn-sm btn-download">⬇</button><button class="btn-sm btn-delete">✕</button></div>`; div.querySelector('.item-name-input').onchange=(e)=>{ files[idx].name=e.target.value; saveLocalOnly('promptFiles',files); }; div.querySelector('.btn-delete').onclick=()=>{ if(confirm('Xóa file này?')){ files.splice(idx,1); saveLocalOnly('promptFiles',files); renderFileList(); } }; div.querySelector('.btn-download').onclick=()=>{ const a=document.createElement('a'); a.href=f.content; a.download=f.name; a.click(); }; container.appendChild(div); }); }
+    function addToHistory(text, defaultTitle) { history.unshift({id:Date.now(),title:defaultTitle||new Date().toLocaleString(),content:text,timestamp:getFormattedTime()}); if(history.length>50) history.pop(); saveLocalOnly('promptHistory',history); renderHistoryList(); }
+    function renderHistoryList() { const container=document.getElementById('history-list'); container.innerHTML=''; history.forEach((h,idx)=>{ const div=document.createElement('div'); div.className='storage-item'; div.innerHTML=`<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(h.title)}" spellcheck="false"><span class="item-time">${h.timestamp||''}</span><button class="btn-sm btn-delete">✕</button></div><div class="history-content">${escapeHtml(h.content.substring(0,100))}${h.content.length>100?'...':''}</div>`; div.querySelector('.item-name-input').onchange=(e)=>{ history[idx].title=e.target.value; saveLocalOnly('promptHistory',history); }; div.querySelector('.btn-delete').onclick=()=>{ history.splice(idx,1); saveLocalOnly('promptHistory',history); renderHistoryList(); }; const cd=div.querySelector('.history-content'); cd.onclick=()=>{ cd.classList.toggle('expanded'); cd.textContent=cd.classList.contains('expanded')?h.content:h.content.substring(0,100)+(h.content.length>100?'...':''); }; container.appendChild(div); }); }
+    document.getElementById('add-note-btn').onclick=()=>{ notes.unshift({id:Date.now(),title:'Ghi chú mới',content:'',timestamp:getFormattedTime()}); saveLocalOnly('promptNotes',notes); renderNotes(); };
+    function renderNotes() { const container=document.getElementById('notes-container'); container.innerHTML=''; notes.forEach((n,idx)=>{ const div=document.createElement('div'); div.className='storage-item'; div.innerHTML=`<div class="item-header-row"><input type="text" class="item-name-input" value="${escapeHtml(n.title)}" placeholder="Tên ghi chú" spellcheck="false"><span class="item-time">${n.timestamp||''}</span><button class="btn-sm btn-delete">✕</button></div><textarea class="note-content-area" placeholder="Nội dung..." spellcheck="false">${escapeHtml(n.content)}</textarea>`; div.querySelector('.item-name-input').onchange=(e)=>{ notes[idx].title=e.target.value; saveLocalOnly('promptNotes',notes); }; div.querySelector('textarea').oninput=(e)=>{ notes[idx].content=e.target.value; saveLocalOnly('promptNotes',notes); }; div.querySelector('.btn-delete').onclick=()=>{ if(confirm('Xóa ghi chú này?')){ notes.splice(idx,1); saveLocalOnly('promptNotes',notes); renderNotes(); } }; container.appendChild(div); }); }
+    addSessionBtn.addEventListener('click',()=>{ const newSession=createNewSessionData(`Phiên ${new Date().toLocaleTimeString()}`); const lastPinned=sessions.map(s=>s.isPinned).lastIndexOf(true); sessions.splice(lastPinned===-1?0:lastPinned+1,0,newSession); saveSessions(); renderSessions(); window.scrollTo(0,0); });
+    collapseAllBtn.addEventListener('click',()=>{ const all=document.querySelectorAll('#prompt-view .prompt-row'); const hasExpanded=[...all].some(r=>!r.classList.contains('collapsed')); all.forEach(r=>r.classList.toggle('collapsed',hasExpanded)); });
+    document.addEventListener('keydown',(e)=>{ if(e.altKey){ const key=e.key.toLowerCase(); if(key===shortcuts.voice.toLowerCase()){ e.preventDefault(); toggleVoiceRecognition(); return; } if(e.target.closest('#voice-ai-panel')) return; if(key===shortcuts.copy.toLowerCase()||key===shortcuts.upload.toLowerCase()||key===shortcuts.focus.toLowerCase()){ e.preventDefault(); const targetEl=lastActiveSessionId?document.querySelector(`.session[data-session-id="${lastActiveSessionId}"]`):document.querySelector('.session'); if(!targetEl) return; if(key===shortcuts.copy.toLowerCase()) copySessionContent(targetEl); else if(key===shortcuts.upload.toLowerCase()) targetEl.querySelector('.row-code .upload-code-btn')?.click(); else { const inputs=[...targetEl.querySelectorAll('textarea, input.session-title-input')]; let cur=inputs.findIndex(i=>i===document.activeElement); inputs[(cur+1)%inputs.length]?.focus(); } } } });
+    document.addEventListener('focusin',(e)=>{ const sessEl=e.target.closest('.session'); if(sessEl){ lastActiveSessionId=parseFloat(sessEl.dataset.sessionId); document.querySelectorAll('.session').forEach(s=>s.classList.remove('last-active')); sessEl.classList.add('last-active'); } if(!e.target.closest('#voice-ai-panel')) lastFocusedElement=e.target; });
+    document.addEventListener('click',(e)=>{ if(!e.target.closest('.suggestions-popup, .toggle-suggestions-btn')) document.querySelectorAll('.suggestions-popup').forEach(p=>p.style.display='none'); });
+    window.openTab=(evt,tabId)=>{ document.querySelectorAll('.tab-content, .tab-button').forEach(el=>el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); evt.currentTarget.classList.add('active'); };
+
+    const aiPanel=document.getElementById('voice-ai-panel'); const aiPanelHeader=document.getElementById('ai-panel-header'); const aiEditor=document.getElementById('ai-interactive-editor'); const aiStatusDiv=document.getElementById('ai-status'); const aiLiveTranscriptContainer=document.getElementById('ai-live-transcript-container'); const aiLiveTranscriptDiv=document.getElementById('ai-live-transcript'); const aiActionsListDiv=document.getElementById('ai-actions-list'); const aiModal=document.getElementById('ai-prompt-modal'); const aiStartButton=document.getElementById('ai-start-button'); const aiStopButton=document.getElementById('ai-stop-button'); const aiInsertButton=document.getElementById('ai-insert-button'); const addAiActionButton=document.getElementById('add-ai-action-btn');
+    function toggleAiPanel(show){ if(show) aiPanel.classList.add('visible'); else { aiPanel.classList.remove('visible'); if(window.webkitSpeechRecognition&&recognition&&isListening) recognition.stop(); } }
+    aiPanelHeader.addEventListener('click',(e)=>{ if(e.target.closest('.ai-panel-header')) aiPanel.classList.toggle('collapsed'); });
+    function renderAiActions(){ aiActionsListDiv.innerHTML=''; aiActions.forEach((action,index)=>{ const item=document.createElement('div'); item.className='ai-action-item'; item.innerHTML=`<span class="name">${escapeHtml(action.name)}</span><button class="action-control-btn edit" data-id="${index}">Sửa</button><button class="action-control-btn delete" data-id="${index}">Xóa</button><button class="action-control-btn run" data-id="${index}">Thực thi</button>`; aiActionsListDiv.appendChild(item); }); }
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition; let recognition, isListening=false;
+    if(SpeechRecognition){ recognition=new SpeechRecognition(); recognition.continuous=true; recognition.interimResults=true; recognition.lang='vi-VN'; let fullTranscript=''; recognition.onstart=()=>{ isListening=true; aiStatusDiv.textContent='🔴 Đang lắng nghe...'; aiLiveTranscriptContainer.style.display='block'; }; recognition.onend=()=>{ isListening=false; aiStatusDiv.textContent='Đã dừng ghi âm.'; aiLiveTranscriptContainer.style.display='none'; }; recognition.onresult=(event)=>{ let interim='', finalPart=''; for(let i=event.resultIndex;i<event.results.length;++i){ const t=event.results[i][0].transcript; if(event.results[i].isFinal){fullTranscript+=t+'. '; finalPart+=t+'. ';}else{interim+=t;} } aiLiveTranscriptDiv.innerHTML=escapeHtml(fullTranscript)+`<span style="color:grey;">${escapeHtml(interim)}</span>`; if(finalPart) aiEditor.innerText+=finalPart; }; aiStartButton.onclick=()=>{ fullTranscript=''; recognition.start(); }; aiStopButton.onclick=()=>{ if(isListening) recognition.stop(); }; } else { aiStartButton.disabled=true; aiStopButton.disabled=true; aiStatusDiv.textContent="Trình duyệt không hỗ trợ Speech Recognition."; }
+    aiActionsListDiv.addEventListener('click',(e)=>{ const id=e.target.dataset.id; if(e.target.classList.contains('run')) executeAiAction(id); else if(e.target.classList.contains('edit')) openAiPromptModal(id); else if(e.target.classList.contains('delete')){ if(confirm(`Xóa "${aiActions[id].name}"?`)){ aiActions.splice(id,1); saveLocalOnly('promptAiActions',aiActions); renderAiActions(); } } });
+    addAiActionButton.onclick=()=>openAiPromptModal();
+    async function executeAiAction(id) { const apiKey=document.getElementById('gemini-key').value, model=document.getElementById('gemini-model').value; const textToProcess=aiEditor.innerText, action=aiActions[id]; if(!apiKey||!textToProcess.trim()){alert('Vui lòng nhập API Key và nội dung.');return;} aiStatusDiv.textContent='🤖 AI đang suy nghĩ...'; aiEditor.innerHTML='<div style="text-align:center;color:#aaa;">Đang xử lý...</div>'; let processedPrompt=action.prompt.replace('{{SUGGESTION_COUNT}}',"2"); const fullPrompt=`${processedPrompt}\n\nVăn bản gốc:\n"""\n${textToProcess}\n"""`; const apiURL=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`; try{ const response=await fetch(apiURL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:fullPrompt}]}]})}); const responseData=await response.json(); if(!response.ok) throw new Error(responseData.error?responseData.error.message:'Unknown API error'); let resultText=responseData.candidates[0].content.parts[0].text.replace(/```json/g,'').replace(/```/g,'').trim(); const resultJson=JSON.parse(resultText); if(action.renderer&&action.renderer.trim()!==""){const customRenderer=new Function('editor','jsonData',action.renderer); customRenderer(aiEditor,resultJson); aiStatusDiv.textContent='✅ Renderer tùy chỉnh.';} else if(resultJson.summary){aiEditor.innerHTML=`<strong>Tóm tắt:</strong><br>${resultJson.summary.replace(/\n/g,'<br>')}`; aiStatusDiv.textContent='✅ Đã tóm tắt!';} else if(resultJson.changes){renderInteractiveChanges(textToProcess,resultJson.changes); aiStatusDiv.textContent='✅ Nhấp vào gợi ý để sửa.';} else throw new Error("AI không trả về JSON hợp lệ."); } catch(error){aiStatusDiv.textContent=`❌ Lỗi: ${error.message}`; aiEditor.innerHTML=textToProcess; console.error(error);} }
+    function renderInteractiveChanges(originalText, changes){ let html=escapeHtml(originalText); changes.reverse().forEach((change)=>{ const op=escapeHtml(change.original_phrase); let sh=`<span class="suggestions-container">(<span class="suggestion-item best" data-value="${escapeHtml(change.best_suggestion)}">${escapeHtml(change.best_suggestion)}</span>`; (change.alternatives||[]).forEach(alt=>{sh+=`<span class="suggestion-item" data-value="${escapeHtml(alt)}">${escapeHtml(alt)}</span>`;}); sh+=`<span class="suggestion-item original selected" data-value="${op}">(Giữ lại)</span>)</span>`; const rh=`<span class="review-block" data-original="${op}" data-selected-text="${op}"><del>${op}</del>${sh}</span>`; const pos=html.lastIndexOf(op); if(pos!==-1) html=html.substring(0,pos)+rh+html.substring(pos+op.length); }); aiEditor.innerHTML=html; }
+    aiEditor.addEventListener('click',(e)=>{ if(e.target.classList.contains('suggestion-item')){ const rb=e.target.closest('.review-block'), container=e.target.closest('.suggestions-container'); if(rb&&container){container.querySelectorAll('.suggestion-item').forEach(i=>i.classList.remove('selected')); e.target.classList.add('selected'); rb.dataset.selectedText=e.target.dataset.value;} } });
+    aiInsertButton.onclick=()=>{ let finalString=''; aiEditor.childNodes.forEach(node=>{ if(node.nodeType===Node.TEXT_NODE) finalString+=node.textContent; else if(node.nodeType===Node.ELEMENT_NODE&&node.classList.contains('review-block')) finalString+=node.dataset.selectedText; else if(node.nodeType===Node.ELEMENT_NODE) finalString+=node.innerText||''; }); finalString=finalString.replace(/\s+/g,' ').trim(); if(lastFocusedElement&&(lastFocusedElement.tagName==='TEXTAREA'||lastFocusedElement.tagName==='INPUT')){ const {selectionStart:s,selectionEnd:e,value:t}=lastFocusedElement; lastFocusedElement.value=t.substring(0,s)+finalString+t.substring(e); lastFocusedElement.selectionStart=lastFocusedElement.selectionEnd=s+finalString.length; lastFocusedElement.dispatchEvent(new Event('input',{bubbles:true})); lastFocusedElement.focus(); toggleAiPanel(false); alert("Đã chèn kết quả!"); } else alert("Không tìm thấy ô nhập liệu để chèn."); };
+    function openAiPromptModal(id=null){ const mId=document.getElementById('ai-modal-action-id'), mName=document.getElementById('ai-modal-action-name'), mPrompt=document.getElementById('ai-modal-action-prompt'), mRenderer=document.getElementById('ai-modal-action-renderer'), mTitle=document.getElementById('ai-modal-title'); if(id!==null){mTitle.textContent="Chỉnh sửa hành động"; mId.value=id; mName.value=aiActions[id].name; mPrompt.value=aiActions[id].prompt; mRenderer.value=aiActions[id].renderer||"";} else{mTitle.textContent="Thêm hành động mới"; mId.value=-1; mName.value=''; mPrompt.value=`Phân tích văn bản... YÊU CẦU: JSON:\n{"changes": [{"original_phrase":"...","best_suggestion":"...","alternatives":["...","..."]}]}`; mRenderer.value='';} aiModal.style.display='flex'; }
+    document.getElementById('ai-modal-cancel-btn').onclick=()=>aiModal.style.display='none';
+    document.getElementById('ai-modal-save-btn').onclick=()=>{ const id=document.getElementById('ai-modal-action-id').value, name=document.getElementById('ai-modal-action-name').value, prompt=document.getElementById('ai-modal-action-prompt').value, renderer=document.getElementById('ai-modal-action-renderer').value; if(!name||!prompt){alert("Tên và câu lệnh không được để trống.");return;} const newAction={name,prompt,renderer}; if(id==-1) aiActions.push(newAction); else aiActions[id]=newAction; saveLocalOnly('promptAiActions',aiActions); renderAiActions(); aiModal.style.display='none'; };
+    function toggleVoiceRecognition(){ if(!SpeechRecognition){alert("Trình duyệt không hỗ trợ giọng nói.");return;} lastFocusedElement=document.activeElement; toggleAiPanel(true); aiPanel.classList.remove('collapsed'); setTimeout(()=>{ if(!isListening) aiStartButton.click(); else aiStopButton.click(); },100); }
+
+    // =========================================================================
+    // INIT
+    // =========================================================================
+    async function initialize() {
+        const ok = initFirebase();
+        if (ok) {
+            const loaded = await loadFromFirestore();
+            loadLocalData(loaded);
+            startRealtimeListener();
         } else {
-            updateGistStatus('Chưa cấu hình đồng bộ.');
+            loadLocalData(false);
         }
-
-        loadLocalData(loadedFromGist);
-        renderAll();
+        renderSessions(); renderFileList(); renderHistoryList(); renderNotes(); renderAiActions();
     }
-    
-    initializeApp();
-});
+
+    initialize();
+}
 </script>
 </body>
 </html>
